@@ -109,8 +109,7 @@ model of their goals, which is exactly the failure the intake rewrite exists to 
 **Session 1 ends without the coach proposing anything.** It asks what they want and what
 would count as it having happened, reflects it back, and stops. That is deliberate.
 
-The coach follows `skills/intake`. It will take several short sessions. It will not
-propose anything in Session 1 — that is the design, not a stall.
+The coach follows `skills/intake`, across several short sessions rather than one sitting.
 
 **What intake decides, that you do not decide up front:**
 - which domains exist, and in what order
