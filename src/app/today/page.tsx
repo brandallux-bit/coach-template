@@ -46,9 +46,11 @@ export default function TodayPage() {
           foot={
             d.steps == null
               ? 'automation has not reported yet'
-              : d.steps >= stepGoal
-                ? `target ${stepGoal.toLocaleString()} — hit`
-                : `${(stepGoal - d.steps).toLocaleString()} to the ${stepGoal.toLocaleString()} target`
+              : stepGoal == null
+                ? 'recorded — no domain sets a target'
+                : d.steps >= stepGoal
+                  ? `target ${stepGoal.toLocaleString()} — hit`
+                  : `${(stepGoal - d.steps).toLocaleString()} to the ${stepGoal.toLocaleString()} target`
           } />
       </div>
 
@@ -74,7 +76,7 @@ export default function TodayPage() {
         {d.alcoholKcal != null && d.alcoholKcal > 0 && (
           <p className="footnote">
             Alcohol: {Math.round(d.alcoholKcal).toLocaleString()} kcal today, included in the
-            calorie figure above. Weekly budget is {plan.weeklyKcalBudget ? '~1,200–1,400' : ''} kcal.
+            calorie figure above, not added to it.
           </p>
         )}
       </Card>

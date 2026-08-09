@@ -8,8 +8,10 @@ export const dynamic = 'force-dynamic'
 export default function HistoryPage() {
   const now = today()
   const weeks = allWeeks(now)
-  const plannedWeeklyBurn = plan.estMaintenanceKcal * 7
-  const plannedWeeklyDeficit = plannedWeeklyBurn - plan.weeklyKcalBudget
+  // Only meaningful where the chart has an energy budget at all.
+  const plannedWeeklyDeficit = plan.weeklyKcalBudget != null
+    ? plan.estMaintenanceKcal * 7 - plan.weeklyKcalBudget
+    : null
 
   const label = (w: (typeof weeks)[number], i: number) =>
     i === weeks.length - 1 ? `${w.label}*` : w.label
@@ -46,7 +48,7 @@ export default function HistoryPage() {
 
       <Card
         title="Calories in — actual vs plan"
-        caption={<>Weekly totals. The plan is a weekly budget of ~{plan.weeklyKcalBudget.toLocaleString()} kcal, not a flat daily number — it is built to absorb one big social dinner.</>}
+        caption={<>Weekly totals.{plan.weeklyKcalBudget != null && <> The plan is a weekly budget of ~{plan.weeklyKcalBudget.toLocaleString()} kcal, not a flat daily number — it is built to absorb the occasions in <code>values.md</code>.</>}</>}
       >
         <Legend items={[
           { label: 'Eaten', color: 'var(--series-1)' },
@@ -83,12 +85,14 @@ export default function HistoryPage() {
 
       <Card
         title="Energy balance"
-        caption={<>Burn minus intake, by week. Above the line is a deficit; below it, in red, is a surplus. The dashed line is the planned deficit of ~{plannedWeeklyDeficit.toLocaleString()} kcal/week — roughly {plan.targetRateLbPerWk[0]}&ndash;{plan.targetRateLbPerWk[1]} lb.</>}
+        caption={<>Burn minus intake, by week. Above the line is a deficit; below it, in red, is a surplus.{plannedWeeklyDeficit != null && <> The dashed line is the planned deficit of ~{plannedWeeklyDeficit.toLocaleString()} kcal/week{plan.targetRateLbPerWk && <> — roughly {plan.targetRateLbPerWk[0]}&ndash;{plan.targetRateLbPerWk[1]} lb</>}.</>}</>}
       >
         {weeks.length ? (
           <DeficitBars
             groups={deficitGroups}
-            refLine={{ value: plannedWeeklyDeficit, label: `plan ${plannedWeeklyDeficit.toLocaleString()}` }}
+            refLine={plannedWeeklyDeficit != null
+              ? { value: plannedWeeklyDeficit, label: `plan ${plannedWeeklyDeficit.toLocaleString()}` }
+              : undefined}
           />
         ) : <Empty>No weeks recorded.</Empty>}
       </Card>
@@ -99,7 +103,9 @@ export default function HistoryPage() {
             series={[{ name: 'Weight', color: 'var(--series-1)', points: weightPoints }]}
             refLines={[
               { value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` },
-              { value: plan.weightTriggerLb, label: `trigger ${plan.weightTriggerLb}`, tone: 'good' },
+              ...(plan.weightTriggerLb != null
+                ? [{ value: plan.weightTriggerLb, label: `trigger ${plan.weightTriggerLb}`, tone: 'good' as const }]
+                : []),
             ]}
             unit=" lb"
           />
@@ -121,7 +127,9 @@ export default function HistoryPage() {
                 { name: 'Waist', color: 'var(--series-1)', points: waistPoints },
                 ...(neckPoints.length ? [{ name: 'Neck', color: 'var(--series-2)', points: neckPoints }] : []),
               ]}
-              refLines={[{ value: plan.waistTriggerIn, label: `waist trigger ${plan.waistTriggerIn}″`, tone: 'good' }]}
+              refLines={plan.waistTriggerIn != null
+                ? [{ value: plan.waistTriggerIn, label: `waist trigger ${plan.waistTriggerIn}″`, tone: 'good' as const }]
+                : []}
               decimals={2}
               unit="″"
             />

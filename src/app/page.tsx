@@ -21,11 +21,21 @@ export default function GoalsPage() {
   const weightTrend = trend(weightPoints, MIN_READINGS_FOR_PROJECTION)
 
   const lostLb = latestWeight ? plan.baselineWeightLb - latestWeight.value : null
-  const toWeightTrigger = latestWeight ? latestWeight.value - plan.weightTriggerLb : null
-  const toWaistTrigger = latestWaist ? latestWaist.value - plan.waistTriggerIn : null
+  // These triggers exist only if a domain defines them. A chart measuring something else
+  // has no waist trigger, and this page renders without one rather than assuming it.
+  const toWeightTrigger =
+    latestWeight && plan.weightTriggerLb != null ? latestWeight.value - plan.weightTriggerLb : null
+  const toWaistTrigger =
+    latestWaist && plan.waistTriggerIn != null ? latestWaist.value - plan.waistTriggerIn : null
 
-  const daysToPortugal = daysBetween(now, plan.portugalDepartDate)
-  const daysToPhaseEnd = daysBetween(now, plan.phaseEndDate)
+  // Events are per-chart. Count down to whichever is nearest, whatever it's called.
+  const nextEvent = Object.entries(plan.events ?? {})
+    .map(([key, date]) => ({ key, date, days: daysBetween(now, date) }))
+    .filter((e) => e.days >= 0)
+    .sort((a, b) => a.days - b.days)[0]
+  const eventLabel = (key: string) =>
+    key.replace(/(Depart)?Date$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
+  const daysToPhaseEnd = plan.phaseEndDate ? daysBetween(now, plan.phaseEndDate) : null
 
   // Only ever project from a real slope, and only downward-moving weight reaches the trigger.
   const weeksToWeightTrigger =
@@ -46,9 +56,11 @@ export default function GoalsPage() {
           value={fmt(latestWaist?.value, 2)}
           unit="in"
           foot={
-            latestWaist
-              ? <>{fmt(toWaistTrigger, 2)}″ to the {plan.waistTriggerIn}″ trigger</>
-              : 'no morning-protocol reading yet'
+            !latestWaist
+              ? 'no morning-protocol reading yet'
+              : toWaistTrigger != null
+                ? <>{fmt(toWaistTrigger, 2)}″ to the {plan.waistTriggerIn}″ trigger</>
+                : 'no trigger set for this metric'
           }
         />
         <Tile
@@ -61,22 +73,26 @@ export default function GoalsPage() {
               : 'no weigh-in recorded'
           }
         />
-        <Tile
-          label="To 175 lb trigger"
-          value={fmt(toWeightTrigger, 1)}
-          unit="lb"
-          foot={
-            weeksToWeightTrigger
-              ? `~${weeksToWeightTrigger.toFixed(1)} weeks at the current trend`
-              : `TBD — needs ${MIN_READINGS_FOR_PROJECTION} weigh-ins, have ${weightPoints.length}`
-          }
-        />
-        <Tile
-          label="Phase 1 runway"
-          value={String(daysToPhaseEnd)}
-          unit="days"
-          foot={`Portugal in ${daysToPortugal} days — a 2-week maintenance break, not a deficit`}
-        />
+        {plan.weightTriggerLb != null && (
+          <Tile
+            label={`To ${plan.weightTriggerLb} lb trigger`}
+            value={fmt(toWeightTrigger, 1)}
+            unit="lb"
+            foot={
+              weeksToWeightTrigger
+                ? `~${weeksToWeightTrigger.toFixed(1)} weeks at the current trend`
+                : `TBD — needs ${MIN_READINGS_FOR_PROJECTION} weigh-ins, have ${weightPoints.length}`
+            }
+          />
+        )}
+        {daysToPhaseEnd != null && (
+          <Tile
+            label="Phase runway"
+            value={String(daysToPhaseEnd)}
+            unit="days"
+            foot={nextEvent ? `${eventLabel(nextEvent.key)} in ${nextEvent.days} days` : undefined}
+          />
+        )}
       </div>
 
       <Card
@@ -88,19 +104,24 @@ export default function GoalsPage() {
             <p>
               Weight trend over the last {weightTrend.n} readings:{' '}
               <strong>{weightTrend.perWeek >= 0 ? '+' : '−'}{fmt(Math.abs(weightTrend.perWeek), 2)} lb/week</strong>
-              {' '}(plan targets {plan.targetRateLbPerWk[0]}–{plan.targetRateLbPerWk[1]} lb/week).
+              {plan.targetRateLbPerWk
+                ? <> (plan targets {plan.targetRateLbPerWk[0]}–{plan.targetRateLbPerWk[1]} lb/week).</>
+                : '.'}
             </p>
             <p>
               {weeksToWeightTrigger
-                ? <>At that rate the 175 lb demotion trigger arrives in about{' '}
-                    <strong>{weeksToWeightTrigger.toFixed(1)} weeks</strong>. The 10-week phase cap
-                    ({plan.phaseEndDate}) binds independently, whichever comes first.</>
+                ? <>At that rate the {plan.weightTriggerLb} lb demotion trigger arrives in about{' '}
+                    <strong>{weeksToWeightTrigger.toFixed(1)} weeks</strong>.
+                    {plan.phaseEndDate && <> The phase cap ({plan.phaseEndDate}) binds independently,
+                    whichever comes first.</>}</>
                 : <>The trend is not moving toward the trigger, so no date is projected.</>}
             </p>
-            <p className="footnote">
-              Waist is the primary metric and it is not yet projectable — it needs repeated
-              morning-protocol readings, not scale weight.
-            </p>
+            {plan.waistTriggerIn != null && (
+              <p className="footnote">
+                Waist is the primary metric and it is not yet projectable — it needs repeated
+                morning-protocol readings, not scale weight.
+              </p>
+            )}
           </div>
         ) : (
           <Empty>
@@ -113,7 +134,9 @@ export default function GoalsPage() {
 
       <Card
         title="Weight"
-        caption={`Baseline ${plan.baselineWeightLb} lb locked ${plan.baselineDate}. The 175 lb line is a Phase 1 demotion trigger, not a goal.`}
+        caption={`Baseline ${plan.baselineWeightLb} lb locked ${plan.baselineDate}.${
+          plan.weightTriggerLb ? ` The ${plan.weightTriggerLb} lb line is a demotion trigger, not a goal.` : ''
+        }`}
       >
         {weightPoints.length ? (
           <>
@@ -121,7 +144,9 @@ export default function GoalsPage() {
               series={[{ name: 'Weight', color: 'var(--series-1)', points: weightPoints }]}
               refLines={[
                 { value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` },
-                { value: plan.weightTriggerLb, label: `trigger ${plan.weightTriggerLb}`, tone: 'good' },
+                ...(plan.weightTriggerLb != null
+                  ? [{ value: plan.weightTriggerLb, label: `trigger ${plan.weightTriggerLb}`, tone: 'good' as const }]
+                  : []),
               ]}
               unit=" lb"
             />
@@ -152,8 +177,12 @@ export default function GoalsPage() {
             <LineChart
               series={[{ name: 'Waist', color: 'var(--series-1)', points: waistPoints }]}
               refLines={[
-                { value: plan.waistTriggerIn, label: `trigger ${plan.waistTriggerIn}″`, tone: 'good' },
-                { value: plan.waistAmbitionIn, label: `ambition ${plan.waistAmbitionIn}″` },
+                ...(plan.waistTriggerIn != null
+                  ? [{ value: plan.waistTriggerIn, label: `trigger ${plan.waistTriggerIn}″`, tone: 'good' as const }]
+                  : []),
+                ...(plan.waistAmbitionIn != null
+                  ? [{ value: plan.waistAmbitionIn, label: `ambition ${plan.waistAmbitionIn}″` }]
+                  : []),
               ]}
               decimals={2}
               unit="″"
@@ -184,7 +213,7 @@ export default function GoalsPage() {
                     <td>{fmt(w.avgWeightLb, 1)}</td>
                     <td>{fmt(w.lastWaistIn, 2)}</td>
                     <td>{fmt(w.avgSteps)}</td>
-                    <td>{w.sessions} / {plan.sessionsPerWeekFloor}</td>
+                    <td>{w.sessions}{plan.sessionsPerWeekFloor ? ` / ${plan.sessionsPerWeekFloor}` : ''}</td>
                     <td>{fmt(w.intakeKcal)}</td>
                     <td>{fmt(w.burnKcal)}</td>
                     <td>{fmt(w.deficitKcal)}</td>

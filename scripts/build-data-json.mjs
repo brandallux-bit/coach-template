@@ -29,7 +29,7 @@ const asOf = body.at(-1)?.date
 const plan = {
   ...c.plan,
   ...c.triggers,
-  ...c.events,
+  events: c.events ?? {},
   baselineWeightLb: c.baseline.weightLb,
   baselineDate: c.baseline.date,
   heightIn: c.athlete.heightIn,

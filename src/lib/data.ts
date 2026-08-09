@@ -2,7 +2,42 @@ import bundle from '@/generated/data.json'
 
 export type Row = Record<string, string>
 
-export const plan = bundle.plan
+/**
+ * Universal fields are required. Everything below the line is decided by this chart's
+ * domains and is therefore optional — a chart with no body-composition domain has no
+ * waist trigger, and pages must render without one rather than assume it.
+ *
+ * TODO: trigger keys are still named here, which means a chart measuring something this
+ * type doesn't know about can't drive a reference line. The fix is a per-athlete view
+ * config; deferred until a second chart's intake shows what it actually needs.
+ */
+export type Plan = {
+  name: string
+  pronouns: string
+  timezone: string
+  heightIn: number
+  age: number | null
+  baselineDate: string
+  baselineWeightLb: number
+  rmrFloorKcal: number | null
+  estMaintenanceKcal: number
+  proteinFloorG: number
+  events: Record<string, string>
+  proteinAimG?: number
+  weeklyKcalBudget?: number
+  targetRateLbPerWk?: number[]
+  maxRatePctBwPerWk?: number
+  stepsPerDayTarget?: number
+  sessionsPerWeekFloor?: number
+  sessionsPerWeekTarget?: number
+  phaseEndDate?: string
+  waistTriggerIn?: number
+  waistAmbitionIn?: number
+  waistWorkingBaselineIn?: number
+  weightTriggerLb?: number
+}
+
+export const plan = bundle.plan as Plan
 export const body = bundle.body as Row[]
 export const steps = bundle.steps as Row[]
 export const targets = bundle.targets as Row[]
