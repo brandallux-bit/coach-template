@@ -1,0 +1,59 @@
+{
+  "_README": "Copy to athlete/constants.json and fill during intake. Every athlete-specific number the code needs lives here — nothing in scripts/ or src/ may hardcode a value about the athlete. The validator requires the fields marked REQUIRED and will fail the build without them.",
+
+  "athlete": {
+    "name": "",
+    "pronouns": "they/them",
+    "sex": "",
+    "_sex_REQUIRED": "\"male\" or \"female\". Input to the Mifflin-St Jeor RMR equation ONLY: male adds +5, female subtracts 161 — a 166 kcal/day difference that is invisible on screen if wrong. It is used for nothing else. If no domain needs energy expenditure, it still must be set for the validator; the number simply goes unused.",
+    "dob": "",
+    "_dob_REQUIRED": "YYYY-MM. Year-month is enough — age moves RMR by 5 kcal/year, so day precision would be false precision. Age is derived, never stored, so it cannot go stale.",
+    "heightIn": 0,
+    "timezone": "America/Los_Angeles"
+  },
+
+  "baseline": {
+    "_comment": "Set once, at intake, from the protocol in skills/intake Session 6. weightLb is REQUIRED by the validator even on charts with no body-composition domain — RMR needs it.",
+    "date": "",
+    "weightLb": 0
+  },
+
+  "plan": {
+    "_comment": "Current phase parameters. Only fill what this athlete's domains actually need — a chart with no energy domain does not need a calorie budget, and inventing one is the failure CLAUDE.md 1.1 exists to prevent. estMaintenanceKcal and proteinFloorG are validator-required.",
+    "estMaintenanceKcal": 0,
+    "proteinFloorG": 0,
+    "proteinAimG": 0,
+    "weeklyKcalBudget": 0,
+    "targetRateLbPerWk": [0, 0],
+    "maxRatePctBwPerWk": 1.0,
+    "_max_rate_note": "CLAUDE.md section 5 hard floor. Do not raise it.",
+    "stepsPerDayTarget": 0,
+    "sessionsPerWeekFloor": 0,
+    "sessionsPerWeekTarget": 0,
+    "phaseEndDate": ""
+  },
+
+  "triggers": {
+    "_comment": "Machine-readable mirror of the trigger values in athlete/goals.md, so the dashboard can draw reference lines. goals.md is authoritative for the reasoning; if the two disagree, goals.md wins and this is the bug. Key names are per-athlete — whatever this chart's domains measure."
+  },
+
+  "events": {
+    "_comment": "Dated things worth counting down to: a trip, a procedure, an event the plan is built around."
+  },
+
+  "metOverrides": {
+    "_comment": "Optional per-athlete MET values overriding the defaults in scripts/lib/athlete.mjs. Walking must stay 0 — its energy is already counted in steps."
+  },
+
+  "metrics": {
+    "_comment": "Registry for anything tracked in data/metrics.csv — the long-format file for measures the fixed columns of body.csv don't cover. Every entry must name its unit, its direction (up|down = which way is progress), and the goals.md domain it serves. The validator rejects an entry with no domain, because a metric no domain needs is a chore the coach invented.",
+    "_example": {
+      "reaction_severity": {
+        "label": "Reaction severity",
+        "unit": "0-3 scale",
+        "direction": "down",
+        "domain": "Eating without a reaction"
+      }
+    }
+  }
+}

@@ -1,0 +1,235 @@
+/* Palette and chrome per the data-viz reference instance. Light values are the default;
+   dark is a selected set stepped for the dark surface, not an automatic flip. */
+:root {
+  color-scheme: light;
+
+  --page:           #f9f9f7;
+  --surface:        #fcfcfb;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --gridline:       #e1e0d9;
+  --baseline:       #c3c2b7;
+  --border:         rgba(11, 11, 11, 0.10);
+
+  /* Categorical slots, assigned in fixed order and never cycled. */
+  --series-1: #2a78d6;  /* actual / intake */
+  --series-2: #eb6834;  /* burn */
+  --series-3: #1baf7a;  /* third measure, where one exists */
+
+  /* Status — reserved, never reused as a series. Always paired with an icon or label. */
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+  --delta-good: #006300;
+
+  --radius: 10px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface:        #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --delta-good: #0ca30c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:           #0d0d0d;
+  --surface:        #1a1a19;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --delta-good: #0ca30c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+.shell { max-width: 1080px; margin: 0 auto; padding: 0 20px 72px; }
+
+/* --- Header / nav ------------------------------------------------------------------ */
+
+.masthead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; padding: 28px 0 18px;
+}
+.masthead h1 { font-size: 19px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+.masthead .sub { color: var(--text-muted); font-size: 13px; }
+
+.nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.nav a {
+  padding: 9px 14px; text-decoration: none; font-size: 14px; font-weight: 500;
+  color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.nav a:hover { color: var(--text-primary); }
+.nav a[aria-current="page"] { color: var(--text-primary); border-bottom-color: var(--series-1); }
+
+/* --- Cards & sections --------------------------------------------------------------- */
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+}
+.card > h2 {
+  font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-secondary); margin: 0 0 4px;
+}
+.card > .caption { color: var(--text-muted); font-size: 13px; margin: 0 0 18px; }
+.card > .caption:last-child { margin-bottom: 0; }
+
+.grid { display: grid; gap: 16px; }
+.grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+
+/* --- Stat tiles --------------------------------------------------------------------- */
+
+.tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.tile .label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.tile .value { font-size: 30px; font-weight: 620; letter-spacing: -0.02em; line-height: 1.1; }
+.tile .value .unit { font-size: 15px; font-weight: 500; color: var(--text-secondary); margin-left: 3px; }
+.tile .foot { font-size: 12.5px; color: var(--text-secondary); margin-top: 7px; }
+.tile.primary { border-color: var(--series-1); border-width: 1.5px; }
+
+.pill {
+  display: inline-block; font-size: 10.5px; font-weight: 650; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text-secondary);
+}
+.pill.primary { border-color: var(--series-1); color: var(--series-1); }
+
+.tbd { color: var(--text-muted); font-weight: 500; }
+
+/* --- Progress rows ------------------------------------------------------------------ */
+
+.meter { margin-bottom: 16px; }
+.meter:last-child { margin-bottom: 0; }
+.meter .head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; margin-bottom: 6px;
+}
+.meter .name { font-size: 13.5px; font-weight: 550; }
+.meter .nums { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.meter .track {
+  position: relative; height: 10px; border-radius: 5px;
+  background: var(--gridline); overflow: visible;
+}
+.meter .fill { height: 100%; border-radius: 5px; }
+.meter .marker {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--text-primary); opacity: 0.55;
+}
+.meter .note { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+/* --- Tables ------------------------------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+th {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted); border-bottom-color: var(--baseline);
+}
+td { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+td.text, th.text { text-align: left; }
+td.text { font-variant-numeric: normal; color: var(--text-secondary); }
+tbody tr:last-child td { border-bottom: none; }
+tr.now td { font-weight: 620; }
+
+.scroll-x { overflow-x: auto; }
+
+/* --- Charts ------------------------------------------------------------------------- */
+
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { font-family: var(--font); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 14px; font-size: 12.5px; color: var(--text-secondary); }
+.legend .key { display: inline-flex; align-items: center; gap: 7px; }
+.legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.legend .swatch.line { height: 3px; border-radius: 2px; width: 16px; }
+
+details.table-view { margin-top: 16px; }
+details.table-view > summary {
+  cursor: pointer; font-size: 12.5px; color: var(--text-secondary);
+  list-style: revert; padding: 4px 0;
+}
+details.table-view[open] > summary { margin-bottom: 10px; }
+
+/* --- Prose blocks ------------------------------------------------------------------- */
+
+.note-block { font-size: 14px; color: var(--text-secondary); }
+.note-block p { margin: 0 0 10px; }
+.note-block p:last-child { margin-bottom: 0; }
+.note-block strong { color: var(--text-primary); font-weight: 600; }
+
+.empty {
+  color: var(--text-muted); font-size: 13.5px; padding: 18px 0; text-align: center;
+}
+
+.footnote { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
+
+/* --- Login -------------------------------------------------------------------------- */
+
+.login-wrap { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.login-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 28px; width: 100%; max-width: 340px;
+}
+.login-card h1 { font-size: 17px; margin: 0 0 4px; font-weight: 650; }
+.login-card p { color: var(--text-muted); font-size: 13px; margin: 0 0 20px; }
+.login-card input {
+  width: 100%; padding: 10px 12px; font-size: 15px; font-family: var(--font);
+  border: 1px solid var(--baseline); border-radius: 8px;
+  background: var(--page); color: var(--text-primary);
+}
+.login-card input:focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+.login-card button {
+  width: 100%; margin-top: 12px; padding: 10px 12px; font-size: 14.5px; font-weight: 600;
+  font-family: var(--font); border: none; border-radius: 8px; cursor: pointer;
+  background: var(--series-1); color: #fff;
+}
+.login-card .error { color: var(--critical); font-size: 13px; margin: 12px 0 0; }
+
+.logout {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--text-muted); font-size: 12.5px; font-family: var(--font);
+  text-decoration: underline; text-underline-offset: 2px;
+}

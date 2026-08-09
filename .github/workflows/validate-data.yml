@@ -1,0 +1,48 @@
+name: Validate data
+
+# data/ is the source of truth for every number in the chart. A malformed row must fail loudly
+# here rather than render as a confident wrong number on the dashboard.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate schema
+        run: node scripts/validate-data.mjs
+
+      - name: Check energy.csv is current
+        run: |
+          node scripts/compute-energy.mjs > /dev/null
+          if ! git diff --quiet -- data/energy.csv; then
+            echo "::error::data/energy.csv is stale. Run 'node scripts/compute-energy.mjs' and commit the result."
+            git diff -- data/energy.csv
+            exit 1
+          fi
+
+  # Runs the same clean install Vercel runs. A package.json range that doesn't resolve, or a
+  # lockfile out of step with it, fails here on push rather than on the deploy.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Clean install from the lockfile
+        run: npm ci
+
+      - name: Build
+        run: npm run build

@@ -1,0 +1,13 @@
+.DS_Store
+
+# Dashboard build artefacts
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+.env
+.env*.local
+
+# Generated at build from data/*.csv — data/ is the source of truth, this is a copy
+src/generated/

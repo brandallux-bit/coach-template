@@ -1,0 +1,90 @@
+name: Log Steps
+
+# Triggered by an iOS Shortcut (via a personal automation off Apple Health)
+# POSTing to the GitHub repository_dispatch API:
+#
+#   POST https://api.github.com/repos/<owner>/<repo>/dispatches
+#   Authorization: Bearer <fine-grained PAT, Contents: read/write on this repo only>
+#   Accept: application/vnd.github+json
+#   Content-Type: application/json
+#   {
+#     "event_type": "steps",
+#     "client_payload": { "date": "2026-08-06", "steps": 9432 }
+#   }
+#
+# This workflow does the actual git write, not the Shortcut — so the on-device
+# automation never has to touch git internals (base64 content, blob SHAs, retries).
+
+on:
+  repository_dispatch:
+    types: [steps]
+
+permissions:
+  contents: write
+
+jobs:
+  log-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate payload
+        run: |
+          DATE="${{ github.event.client_payload.date }}"
+          STEPS="${{ github.event.client_payload.steps }}"
+          if [ -z "$DATE" ] || [ -z "$STEPS" ]; then
+            echo "::error::Missing date or steps in client_payload"
+            exit 1
+          fi
+          if ! [[ "$DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::date must be YYYY-MM-DD, got: $DATE"
+            exit 1
+          fi
+          if ! [[ "$STEPS" =~ ^[0-9]+$ ]]; then
+            echo "::error::steps must be a non-negative integer, got: $STEPS"
+            exit 1
+          fi
+
+      - name: Append or update today's row
+        run: |
+          FILE=data/steps.csv
+          DATE="${{ github.event.client_payload.date }}"
+          STEPS="${{ github.event.client_payload.steps }}"
+
+          if [ ! -f "$FILE" ]; then
+            echo "date,steps" > "$FILE"
+          fi
+
+          if grep -q "^${DATE}," "$FILE"; then
+            # Same-day automation can fire more than once (e.g. re-run) — last write wins
+            sed -i "s/^${DATE},.*/${DATE},${STEPS}/" "$FILE"
+          else
+            echo "${DATE},${STEPS}" >> "$FILE"
+          fi
+
+      - name: Commit and push (retry on race with a concurrent push)
+        run: |
+          git config user.name "steps-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/steps.csv
+
+          if git diff --cached --quiet; then
+            echo "No change — steps value already recorded."
+            exit 0
+          fi
+
+          git commit -m "Log steps: ${{ github.event.client_payload.date }} = ${{ github.event.client_payload.steps }}"
+
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed (attempt $attempt) — pulling and retrying..."
+            git pull --rebase origin main
+            sleep 2
+          done
+
+          echo "::error::Failed to push after 5 attempts"
+          exit 1

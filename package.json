@@ -1,0 +1,27 @@
+{
+  "name": "coach-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web dashboard over the coaching chart. Reads data/*.csv — never writes to it.",
+  "scripts": {
+    "predev": "npm run data",
+    "dev": "next dev",
+    "prebuild": "npm run data",
+    "build": "next build",
+    "start": "next start",
+    "data": "node scripts/validate-data.mjs && node scripts/compute-energy.mjs > /dev/null && node scripts/build-data-json.mjs",
+    "validate": "node scripts/validate-data.mjs",
+    "energy": "node scripts/compute-energy.mjs"
+  },
+  "dependencies": {
+    "next": "^16.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "typescript": "^7.0.2"
+  }
+}
