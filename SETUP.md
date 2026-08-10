@@ -1,6 +1,6 @@
 # Starting a new chart
 
-Roughly 15 minutes of setup, then intake. **Do not fill anything in before intake** — the
+Roughly 30 minutes of setup on a fresh Mac — most of it waiting on Homebrew — then intake. **Do not fill anything in before intake** — the
 whole design depends on the athlete's goals being elicited before any category is named.
 
 > **Every command below runs in Terminal on the ATHLETE's Mac**, not the helper's, unless
@@ -22,13 +22,33 @@ the web app can't reach files on their Mac.
 Check what's already installed:
 
 ```bash
-echo "git: $(git --version 2>/dev/null || echo MISSING)"; echo "gh: $(gh --version 2>/dev/null | head -1 || echo MISSING)"; echo "brew: $(brew --version 2>/dev/null | head -1 || echo MISSING)"
+for c in git gh node brew; do printf "%s: %s\n" "$c" "$(command -v $c >/dev/null 2>&1 && $c --version 2>&1 | head -1 || echo MISSING)"; done
 ```
 
-- **git MISSING** → run `xcode-select --install` and click through the installer.
-- **brew MISSING** → install from [brew.sh](https://brew.sh) (one command, asks for the
-  Mac password).
-- **gh MISSING** → `brew install gh`
+**If anything is MISSING, install Homebrew** — it brings Apple's command line tools with
+it, which is where `git` comes from:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+It asks for the Mac login password (typing shows nothing — normal). **When it finishes it
+prints a "Next steps" section with two `echo` commands. Run those exactly as printed** —
+skipping them is the single most common failure here, and the symptom is `brew: command
+not found` afterwards. Then open a fresh Terminal window.
+
+```bash
+brew install gh node
+```
+
+`gh` talks to GitHub. **`node` runs the chart's validator and energy calculation** — the
+coach needs it every time it writes numbers, so it is not optional.
+
+Verify — three version numbers means ready:
+
+```bash
+git --version && gh --version && node --version
+```
 
 Then sign in to GitHub from Terminal. This opens a browser and asks for a one-time code —
 no tokens, no SSH keys:
@@ -37,8 +57,9 @@ no tokens, no SSH keys:
 gh auth login
 ```
 
-Choose: **GitHub.com** → **HTTPS** → **Yes** (authenticate git) → **Login with a web
-browser**.
+Answer: **GitHub.com** → **HTTPS** → **Y** (authenticate Git) → **Login with a web
+browser**. It shows an 8-character code; press Return, paste the code in the browser,
+approve.
 
 **On the template owner's Mac**, if the template repo is private, grant read access once:
 
