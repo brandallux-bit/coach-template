@@ -120,8 +120,24 @@ the design.
 
 ## 3. Run intake
 
-Open the Claude desktop app, start **Cowork**, point it at the `NAME-coach` folder, and
-say **"Let's start the intake."**
+> ### ⚠ Use Claude Code, not Cowork
+>
+> **Cowork cannot run git**, and this system depends on it: CLAUDE.md §0.1 syncs at the
+> start of every session, and §0.3 commits after every logged number. In Cowork those
+> silently don't happen, so the chart stops being backed up and stops being readable from
+> another device — while everything on screen still looks fine. Verified 2026-08-09 on a
+> fresh chart: identical prompt, Cowork could not sync, Claude Code synced normally.
+>
+> Claude Code is available **inside the same desktop app** as well as in Terminal, so this
+> usually costs nothing — same window, same login.
+>
+> If someone does end up working in Cowork, tell the coach at the top of the session:
+> *"Git syncing isn't available in this app — skip §0.1 and record in the log that it was
+> skipped."* That is much better than the protocol quietly failing, but it is a stopgap:
+> the chart is then local-only until someone commits it from Claude Code or Terminal.
+
+Open the Claude desktop app, start **Claude Code**, point it at the `NAME-coach` folder,
+and say **"Let's start the intake."**
 
 **The athlete answers, not whoever set this up.** The whole design is that their goals get
 elicited before any category is named — a helper supplying answers produces the helper's
