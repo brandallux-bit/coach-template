@@ -1,0 +1,134 @@
+# Merges any branch that isn't `main` back into `main`, immediately and automatically.
+#
+# WHY THIS EXISTS. This repo has no PR workflow. A branch is not a feature here — it is a bug
+# report. Some surfaces the athlete coaches from create their own branch instead of committing to
+# `main`, and when they do, the data is *in git and invisible*: `main` never gets it, the build
+# never sees it, and the dashboard shows a blank panel for a meal that was logged hours ago.
+#
+# **The Claude mobile and web surfaces do this by default** — they run Claude Code against the repo
+# in a cloud sandbox and commit to a generated `claude/*` branch. So any chart whose athlete logs
+# from a phone needs this workflow, or their data lands in git and is never seen again.
+#
+# It happened on the first chart on 2026-08-11: a breakfast was logged to
+# `claude/breakfast-nutrition-log-pw347w` at 09:56 local and was still missing from the dashboard
+# at 12:09. CLAUDE.md §0.1 already required a coaching session to find and merge stray branches at
+# session start — but that is a manual cleanup that only runs when a session happens to run. The
+# athlete had been staring at a wrong dashboard for two hours by then.
+#
+# So: absorb them on push, within seconds, with no human and no agent involved.
+name: Absorb stray branches
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - 'keep/**'   # escape hatch: a branch the athlete deliberately wants left alone
+  schedule:
+    # Backstop, hourly. Catches branches pushed while this workflow was failing, branches that
+    # predate it, and anything created by a path that doesn't fire a push event.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # Never run two absorbs at once — they would race each other pushing main.
+  group: absorb-branches
+  cancel-in-progress: false
+
+jobs:
+  absorb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Absorb every branch that is not main
+        run: |
+          set -euo pipefail
+          git config user.name "absorb-bot"
+          git config user.email "actions@users.noreply.github.com"
+
+          git fetch origin --prune
+
+          BRANCHES=$(git branch -r --format='%(refname:short)' \
+            | grep '^origin/' \
+            | grep -v -E '^origin/(main|HEAD)$' \
+            | grep -v -E '^origin/keep/' \
+            | sed 's|^origin/||' || true)
+
+          if [ -z "$BRANCHES" ]; then
+            echo "No stray branches. Nothing to absorb."
+            exit 0
+          fi
+
+          echo "Stray branches found:"; echo "$BRANCHES"
+          FAILED=""
+
+          for BRANCH in $BRANCHES; do
+            echo "::group::Absorbing $BRANCH"
+
+            AHEAD=$(git rev-list --count main..origin/"$BRANCH")
+            if [ "$AHEAD" = "0" ]; then
+              echo "Already contained in main — deleting."
+              git push origin --delete "$BRANCH"
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "$AHEAD commit(s) not on main:"
+            git log main..origin/"$BRANCH" --oneline
+
+            # A conflict here is a real one — two surfaces editing the same day. Resolving it
+            # means COMBINING rows, never dropping a side (CLAUDE.md §0.1), which is a judgement
+            # this job must not make. Leave the branch and fail loudly instead.
+            if ! git merge origin/"$BRANCH" --no-edit; then
+              git merge --abort || true
+              echo "::error::$BRANCH conflicts with main. Left in place for a coaching session to resolve by COMBINING rows, never dropping a side."
+              FAILED="$FAILED $BRANCH"
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "::endgroup::"
+          done
+
+          # energy.csv is derived from files the merge may have changed.
+          node scripts/compute-energy.mjs > /dev/null
+          git add data/energy.csv
+          git diff --cached --quiet || git commit -m "Recompute energy.csv after absorbing branch work"
+
+          # Nothing reaches main that would fail the build. A merge that breaks validation is
+          # worse than a stray branch: it takes the whole dashboard down instead of one meal.
+          node scripts/validate-data.mjs
+          [ -f scripts/test-rowwrite.mjs ] && node scripts/test-rowwrite.mjs || true
+
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              PUSHED=1; break
+            fi
+            echo "Push rejected (attempt $attempt) — rebasing on main and retrying."
+            git pull --rebase origin main
+            sleep 2
+          done
+          [ "${PUSHED:-}" = "1" ] || { echo "::error::Could not push main after 5 attempts."; exit 1; }
+
+          # Only delete what actually made it in.
+          for BRANCH in $BRANCHES; do
+            case " $FAILED " in *" $BRANCH "*) continue ;; esac
+            git push origin --delete "$BRANCH" && echo "Deleted $BRANCH"
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Left unmerged (conflicts):$FAILED"
+            exit 1
+          fi
+
+          echo "All stray branches absorbed into main."
