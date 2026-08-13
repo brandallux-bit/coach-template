@@ -71,29 +71,28 @@ The athlete accepts the emailed invitation before continuing.
 
 ## 1. Create the chart repo
 
-This downloads the template, **deletes its git history** so the chart starts clean rather
-than inheriting the template's commits, and makes the first commit of their own:
+This downloads the template and renames the remote, **keeping the git history**:
 
 ```bash
 cd ~/Documents
 git clone https://github.com/OWNER/coach-template.git NAME-coach
 cd NAME-coach
-rm -rf .git
-git init -b main
-git add -A
-git commit -m "Start chart from template"
+git remote rename origin upstream
 ```
 
-Now create their own **private** repo and push to it:
+> **Keep the history — do not `rm -rf .git`.** An earlier version of this doc deleted it "for a
+> clean slate," which silently broke the whole point of the template: with no common ancestor,
+> `git pull upstream main` fails with *refusing to merge unrelated histories*, and system fixes
+> can never reach the chart. The template's handful of commits cost nothing to carry.
+>
+> A chart already created the old way isn't stuck — individual files can still be pulled across:
+> `git fetch upstream && git checkout upstream/main -- path/to/file`.
+
+Now create their own **private** repo as `origin` and push to it (`upstream` already points at
+the template from the rename above):
 
 ```bash
 gh repo create NAME-coach --private --source=. --remote=origin --push
-```
-
-Then wire the template as `upstream`, so system improvements can be pulled in later:
-
-```bash
-git remote add upstream https://github.com/OWNER/coach-template.git
 ```
 
 Sanity check — `origin` should point at their repo, `upstream` at the template:
