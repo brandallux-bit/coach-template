@@ -61,11 +61,10 @@ export const SPEC = {
   'body.csv': {
     records: 'measurement',
     header: ['date', 'weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
-      'resting_hr_overnight', 'energy', 'hunger', 'mood', 'bowel_movements', 'miralax', 'note'],
+      'resting_hr_overnight', 'energy', 'hunger', 'mood', 'note'],
     uniqueDate: true,
     numeric: ['weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
-      'resting_hr_overnight', 'energy', 'hunger', 'mood', 'bowel_movements'],
-    enums: { miralax: ['y', 'n'] },
+      'resting_hr_overnight', 'energy', 'hunger', 'mood'],
     ranges: { weight_lb: [100, 400], waist_in: [20, 60], neck_in: [10, 25], sleep_h: [0, 16],
       sleep_quality: [1, 5], resting_hr_overnight: [30, 120], energy: [1, 5], hunger: [1, 5],
       mood: [1, 5] },

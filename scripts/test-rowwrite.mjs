@@ -41,8 +41,8 @@ const header = (file) => SPEC[file].header.join(',')
 
 const FIXTURE = {
   'body.csv': `${header('body.csv')}
-2026-08-05,181.9,,,7,4,,4,3,4,1,n,First morning of the chart
-2026-08-11,179.4,35.25,16.00,7.5,4,,4,2,4,1,y,"Third morning-protocol reading, taken fasted"
+2026-08-05,181.9,,,7,4,,4,3,4,First morning of the chart
+2026-08-11,179.4,35.25,16.00,7.5,4,,4,2,4,"Third morning-protocol reading, taken fasted"
 `,
   'sets.csv': `${header('sets.csv')}
 2026-08-11,Session B,Push-up,1,,20,,2,

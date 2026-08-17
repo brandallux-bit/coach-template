@@ -1,5 +1,7 @@
 import { Card, Masthead, Nav, Shell } from '@/components/ui'
-import { allOf, plan, prettyDate, sets, today, weekdayKey, type Row } from '@/lib/data'
+import {
+  allOf, metrics, metricsRegistry, plan, prettyDate, sets, today, weekdayKey, type Row,
+} from '@/lib/data'
 import {
   orderedSessions, primarySession, rxFor, sessionKey, setsForSession,
 } from '@/lib/forecast'
@@ -26,6 +28,14 @@ export default async function LogPage({
   const now = today()
   const d = rollDay(now)
   const configured = writesConfigured()
+
+  // Names the chart already uses, from the registry it declared plus anything actually written.
+  // Offered as suggestions, never as a fixed list: a chart may start tracking something new on any
+  // day, and a closed list would be this file deciding what an athlete is allowed to measure.
+  const knownMetrics = [...new Set([
+    ...Object.keys(metricsRegistry ?? {}).filter((k) => !k.startsWith('_')),
+    ...metrics.map((m) => String(m.metric ?? '')).filter(Boolean),
+  ])].sort()
 
   const templated = plan.weeklyTemplate?.[weekdayKey(now)] ?? null
   const sessions = orderedSessions(d.sessions, now)
@@ -109,11 +119,35 @@ export default async function LogPage({
             <Field name="energy" label="Energy (1–5)" type="number" min="1" max="5" />
             <Field name="hunger" label="Hunger (1–5)" type="number" min="1" max="5" />
             <Field name="mood" label="Mood (1–5)" type="number" min="1" max="5" />
-            <Field name="bowel_movements" label="Bowel movements" type="number" min="0" />
-            <SelectField name="miralax" label="Miralax" options={['', 'y', 'n']} />
           </div>
           <Field name="note" label="Note" type="text" wide />
           <button type="submit" disabled={!configured}>Save measurements</button>
+        </form>
+      </Card>
+
+      <Card
+        title="Anything else"
+        caption={
+          'One reading that the form above has no box for — a symptom count, a medication taken, '
+          + 'a lab result, a reading off a device. Name it whatever you call it and keep using the '
+          + 'same name, so it lines up into a trend. These go to metrics.csv.'
+        }
+      >
+        <form className="log-form" method="POST" action="/api/log">
+          <input type="hidden" name="kind" value="metric" />
+          <div className="fields">
+            <Field name="date" label="Date" type="date" defaultValue={now} required />
+            <Field name="metric" label="What" type="text" required list="known-metrics" />
+            <Field name="value" label="Value" type="text" required />
+            <Field name="unit" label="Unit" type="text" />
+          </div>
+          {/* Names already in the chart, so the same reading does not end up under three
+              spellings and split into three trends that each look like noise. */}
+          <datalist id="known-metrics">
+            {knownMetrics.map((m) => <option key={m} value={m} />)}
+          </datalist>
+          <Field name="note" label="Note" type="text" wide />
+          <button type="submit" disabled={!configured}>Save reading</button>
         </form>
       </Card>
 
@@ -245,6 +279,8 @@ function Field({
   name: string; label: string; type: string
   defaultValue?: string | number; required?: boolean; wide?: boolean
   step?: string; min?: string; max?: string
+  /** id of a <datalist> — suggestions the athlete can ignore, not a closed set of options. */
+  list?: string
 }) {
   return (
     <label className={wide ? 'field wide' : 'field'}>

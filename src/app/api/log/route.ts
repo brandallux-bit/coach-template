@@ -19,7 +19,10 @@ const rowFrom = (form: FormData, fields: string[]): Row =>
   Object.fromEntries(fields.map((f) => [f, str(form, f)])) as Row
 
 const BODY_FIELDS = ['weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
-  'resting_hr_overnight', 'energy', 'hunger', 'mood', 'bowel_movements', 'miralax', 'note']
+  'resting_hr_overnight', 'energy', 'hunger', 'mood', 'note']
+// Anything not in that list is a per-athlete reading and belongs in metrics.csv, which is long
+// format precisely so one athlete's medication or symptom never becomes a column in every chart.
+const METRIC_FIELDS = ['metric', 'value', 'unit', 'note']
 const TRAINING_FIELDS = ['type', 'session', 'status', 'rpe', 'duration_min', 'pain_flag', 'note']
 const SETS_FIELDS = ['session', 'exercise', 'set_index', 'load_lb', 'reps', 'duration_s', 'rir', 'note']
 
@@ -40,6 +43,19 @@ export async function POST(req: NextRequest) {
       if (BODY_FIELDS.every((f) => !row[f])) throw new LogError('Nothing filled in — nothing saved.')
       await commitRow('body.csv', row, `Log ${date} measurements from the dashboard`)
       return back({ ok: summarise(row, [['weight_lb', 'lb'], ['waist_in', '" waist'], ['neck_in', '" neck']]) })
+    }
+
+    // The escape hatch, and the reason no per-athlete reading needs a column of its own. Anything
+    // a chart tracks that body.csv does not cover — a symptom count, a medication taken, a lab
+    // value, a peak-flow reading — is a row here, named by the athlete's own vocabulary.
+    if (kind === 'metric') {
+      const row: Row = { date, ...rowFrom(form, METRIC_FIELDS) }
+      if (!row.metric) throw new LogError('A metric needs a name.')
+      // Empty means "not measured" everywhere else in the chart, and a metric row whose whole
+      // point is the value must not be written blank (data/METHOD.md rule 3).
+      if (!row.value) throw new LogError(`No value given for "${row.metric}" — nothing saved.`)
+      await commitRow('metrics.csv', row, `Log ${date} ${row.metric}: ${row.value}`)
+      return back({ ok: `${row.metric} — ${row.value}${row.unit ? ` ${row.unit}` : ''}` })
     }
 
     if (kind === 'training') {

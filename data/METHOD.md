@@ -230,22 +230,27 @@ is built and no view can accidentally render it.
 | `energy` | 1–5 | |
 | `hunger` | 1–5 | |
 | `mood` | 1–5 | |
-| `bowel_movements` | count | ⚠ See the note below — this column and the next are not universal. |
-| `miralax` | y/n | ⚠ See the note below. |
 | `note` | text | Why a reading is what it is, or why one is deliberately excluded. |
 
-> ⚠ **`bowel_movements` and `miralax` are a known X-11 breach, carried deliberately and openly.**
-> They are one athlete's medical detail hardcoded into a shared schema (`SPEC` in
-> `scripts/lib/schema.mjs`), and `scripts/check-no-athlete-leak.mjs` **cannot see them** — its
-> denylist is derived from structured fields, and a brand-name medication in a column name is
-> exactly the case that derivation misses (`scripts/lib/athlete-leak.mjs`, the note above
-> `denylistFrom`). They are documented in `docs/INVARIANTS.md` X-11 as open work.
+> ⚠ **These columns are the universal ones, and the list is closed on purpose. Everything else
+> goes in `metrics.csv`.**
 >
-> **A chart that does not need them should leave both columns empty** — empty means not measured
-> (rule 3), so they cost nothing but a confusing header. The real fix is to make the non-universal
-> body columns a registry in `athlete/constants.json`, the same seam `sessionTypes` already uses,
-> so each chart declares its own; until then anything a chart wants to track that these columns
-> don't cover belongs in **`metrics.csv`**, which is the long-format table built for exactly that.
+> This table used to carry two more: `bowel_movements` and a brand-name laxative, belonging to the
+> athlete this system was first built for. They were an X-11 breach the leak scanner structurally
+> **cannot see** — its denylist is derived from structured fields, and a medication in a *column
+> name* is exactly what that misses (`scripts/lib/athlete-leak.mjs`, the note above `denylistFrom`).
+>
+> **The argument that settled it:** if one athlete's medication earns a column, every other
+> athlete's does too, and the schema becomes a pharmacy. And a column *asks a question* — a chart
+> whose athlete never raised digestion should never put a bowel-movement box in front of them.
+> Most people have no interest in tracking it, and the ones who do said so at intake.
+>
+> So the rule is: **a reading gets a fixed column only if it is worth asking every athlete for.**
+> Anything a particular chart tracks — a symptom count, a medication, a lab value, a device
+> reading — is a row in `metrics.csv`, named in that athlete's own vocabulary, with the Log page's
+> "Anything else" form and `metricsRegistry` in `athlete/constants.json` to give it a label and a
+> unit. Nothing is lost by moving: it charts the same way, and it stops being a question every
+> future athlete gets asked.
 
 > **`sleep_h` and `resting_hr_overnight` are machine-written where a value is available**, by the
 > same iOS Shortcut and `.github/workflows/log-steps.yml` job that writes `steps.csv` — a second
