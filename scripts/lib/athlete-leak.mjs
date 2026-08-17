@@ -154,7 +154,7 @@ const words = (s) => String(s ?? '')
 const singular = (w) => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w)
 
 /**
- * A proper noun or an acronym — `Miralax`, `Peloton`, `BJJ`, `MCL`.
+ * A proper noun or an acronym — a drug name, a brand of machine, a sport, a ligament.
  *
  * ⚠ **THIS IS WHY THE CHECK CAN READ PROSE AT ALL WITHOUT DROWNING.** Harvesting every content word
  * out of the athlete's files was tried first and produced **463 hits across 43 files, almost all of
@@ -182,7 +182,7 @@ const properNounsIn = (text) => {
   // A NAME RECURS; A SENTENCE-INITIAL CAPITAL USUALLY DOES NOT.
   //
   // Excluding sentence-initial words directly was tried first and was worse than useless: in a
-  // chart, the words that matter live in bullets and table cells — `| Miralax |`, `- **Peloton**`
+  // chart, the words that matter live in bullets and table cells — `| <drug> |`, `- **<brand>**`
   // — so stripping the markdown furniture made every one of them token zero and dropped the drug,
   // the machine and the movement names while keeping nothing. **Recurrence separates them
   // properly**: a name is used repeatedly, a capitalised sentence opener is not. Three occurrences
@@ -280,8 +280,15 @@ export function denylistFrom(root) {
    * So the denylist is **structured fields only**. What that costs is stated plainly in
    * `docs/INVARIANTS.md` X-11 rather than hidden here: a term that identifies the athlete but is
    * not in any structured field — a brand-name medication, an injury site, a food preference — is
-   * NOT detected. `body.csv`'s `miralax` and `bowel_movements` columns are exactly that case, they
-   * are a real X-11 breach, and they are open work rather than a caught one.
+   * NOT detected.
+   *
+   * **The worst instance of that is now closed, and not by making the scanner smarter.** One
+   * athlete's medication and a digestion count were fixed COLUMNS in `body.csv`, inside `SPEC` —
+   * invisible here, because a column name is not prose and not a structured chart field. They
+   * were removed from the schema on 2026-08-16 and live in `metrics.csv` as rows, named per
+   * chart. The general lesson holds and is the one to apply next time: **a leak this scanner
+   * cannot see is usually a leak in a SHAPE rather than in a word, and the fix is to move the
+   * shape, not to widen the denylist.**
    */
 
   return [...terms.values()].map((t) => ({ term: t.term, stem: t.stem, kind: t.kind, from: [...t.from].sort() }))
