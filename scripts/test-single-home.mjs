@@ -758,11 +758,16 @@ console.log('\n5 · generated documents are current, and the model version is ho
   // The two SYSTEM documents deliberately no longer enumerate the table — a rebuild spec that lists
   // one athlete's sports describes the wrong system (X-11). What must survive is that the block is
   // rendered rather than silently emptied, and that it still points at the chart's own table.
-  const appendix = src('docs/build-prd/appendices.md')
-  yes('the PDF appendix explains where MET comes from — it is the artifact that gets shared',
-    /GENERATED:met-table-inline[\s\S]{0,600}sessionTypes/.test(appendix))
-  yes('...and does NOT enumerate this chart\'s activity list into a system document',
-    !new RegExp(`GENERATED:met-table-inline[\\s\\S]{0,600}\`${firstType}\``).test(appendix))
+  // ...where that appendix exists. It is a build artifact of one chart's PRD, not part of the
+  // system every chart gets, so its absence is a valid chart and not a skipped check worth
+  // failing on. Same reasoning as the walk() guard above.
+  if (existsSync(join(ROOT, 'docs/build-prd/appendices.md'))) {
+    const appendix = src('docs/build-prd/appendices.md')
+    yes('the PDF appendix explains where MET comes from — it is the artifact that gets shared',
+      /GENERATED:met-table-inline[\s\S]{0,600}sessionTypes/.test(appendix))
+    yes('...and does NOT enumerate this chart\'s activity list into a system document',
+      !new RegExp(`GENERATED:met-table-inline[\\s\\S]{0,600}\`${firstType}\``).test(appendix))
+  }
 
   // F-64: a model constant may not change without METHOD_VERSION moving with it.
   const digest = modelDigest()
