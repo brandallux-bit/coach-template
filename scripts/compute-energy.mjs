@@ -21,15 +21,20 @@ import { METHOD_VERSION } from './lib/method-version.mjs'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
 
-// No chart, no ledger to derive — and this has to exit BEFORE `localToday()`, which reads
-// `athlete.timezone` at module scope and throws the intake message. `validate-data.mjs` already
-// exits cleanly here, so without this guard `npm run build` passed validation and then crashed
-// one command later: a fresh fork deployed before intake failed the build outright instead of
-// serving an empty dashboard. `test-cold-start.mjs` deliberately does not cover the build (see
-// its header), which is why this survived to be found by running it.
+// No chart, no ledger to derive — and this has to stop BEFORE `localToday()`, which reads
+// `athlete.timezone` at module scope and throws the intake message as a raw stack trace.
+//
+// **Non-zero on purpose, unlike `validate-data.mjs`'s clean exit two lines up the `npm run data`
+// chain.** The difference is real: validating zero rows is a complete answer, whereas an energy
+// ledger without a weight, an age or a timezone is not something this file can produce. That
+// distinction is `test-cold-start.mjs`'s F-17 red fixture — *"a script that needs the chart fails
+// with the intake message, not an ENOENT"* — and this is the script it asserts it against.
+//
+// The build chain no longer depends on this exiting 0: `scripts/check-chart-for-build.mjs` stops
+// `prebuild` before it gets here, with a message about intake rather than about a ledger.
 if (!hasChart) {
-  console.log(`no energy ledger to compute — ${NO_CHART_MESSAGE}`)
-  process.exit(0)
+  console.error(`no energy ledger to compute — ${NO_CHART_MESSAGE}`)
+  process.exit(1)
 }
 
 const TODAY_LOCAL = localToday()
