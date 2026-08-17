@@ -82,11 +82,67 @@ Specific to this athlete, at every phase and every ranking:
 - **A resolved injury in a deficit deserves more caution, not less.** Reduced recovery
   and reduced tissue tolerance arrive together.
 
-## Output
+## Output — `data/` first, prose second, in this order
 
-Write to `program/current-block.md`: dates, weekly template, full session detail with
-sets/reps/RIR, the progression rule, weekly volume tally by muscle group, deload week,
-and the autoregulation rules.
+**A block that exists only as a markdown table has not been prescribed.** `data/METHOD.md`
+names this failure mode in one line — *"a rehab block that exists in a markdown file and
+never reaches the athlete"* — and this chart has already paid for it with **three knee
+flares while a rehab block called for at intake sat unwritten** (audit F-13). The Today
+tab resolves from `data/prescriptions.csv`; with no rows it renders "no prescription for
+today", and since 2026-08-14 `skills/daily-dashboard` no longer falls back to prose, so a
+block written only here reaches him **nowhere at all**. That is the improvement, not a
+regression: a blank is honest and a stale table is not.
 
-Route to the **red-team** agent before delivering. Then present it with its strongest
-counterargument, its confidence level, and the failure mode. Log it in `decisions.md`.
+Do these in order. Do not do them in parallel, and do not write the prose first "and
+transcribe it after" — that is the same order failure with a promise attached.
+
+**1 · Write the rows.** Append to `data/prescriptions.csv`, one row per exercise:
+`date,session,order,exercise,sets,reps,load,note`.
+
+- `date` is the athlete's **local** date the prescription takes effect — derive it from
+  `scripts/lib/athlete.mjs`'s `localToday()`, never from the session clock (`data/METHOD.md`
+  rule 6). Rows are **effective-dated**: a session resolves to its newest dated set, so a
+  revision is a new full set of rows for that session on today's date, not an edit.
+- **A new set supersedes the whole session.** Write every exercise, including warm-up and
+  cooldown rows — an omitted row is a deleted prescription, which is how Session B lost its
+  warm-up (audit F-48).
+- `load` and `reps` are what a strength marker in `athlete/goals.md` will be read against.
+  If a marker fires at a load or a dose the block does not prescribe, the guardrail cannot
+  be read at all and the marker is noise — check `markerAudit`'s output in
+  `node scripts/build-findings.mjs` before you finish.
+- Reserved session names: `Daily` for work prescribed every day whatever the session is,
+  `Supplements` for the stack. They have their own effective-dating timeline — do not put
+  anything else under them (`data/METHOD.md`).
+
+**2 · Write the weekly skeleton.** `athlete/constants.json` → `program.weeklyTemplate`, one
+entry per athlete-local weekday: `type`, `session`, `focus`, `durationMin`. **`session` must
+match the `session` column of the rows you just wrote**, or the day resolves to nothing.
+Update `program.dailyRehabMin` if the daily block's length changed.
+
+**3 · Run the checks. A failure here is a hard stop, not a note to fix later.**
+
+```
+node scripts/validate-data.mjs
+node scripts/check-suspensions.mjs
+node scripts/build-findings.mjs
+```
+
+`check-suspensions.mjs` is the one that catches the block contradicting itself: no template
+entry, live prescription row or `program/exercise-library.md` substitution may name anything
+the active block suspends. If the new block suspends something, say so in a sentence the
+check can read — *"Not in Phase 1: …"*, *"Still not in Phase 2: …"*, *"X is out"* — and then
+run `node scripts/build-docs.mjs` so the library's ⛔ banner regenerates. Mark any
+substitution that is now out with ⛔ in the library itself, so he reads it in the file he
+opens rather than in a second file he has to remember to open.
+
+**4 · Then write the prose**, and write it *from the rows*, never beside them.
+`program/current-block.md`: dates, block goal, frequency, the progression rule, the weekly
+volume tally by muscle group, the deload week, the autoregulation rules, and the
+rationale — **the why, not a second copy of the numbers.** Where the prose must state a
+load or a dose, it must equal the row; `scripts/test-single-home.mjs` §2b fails on a
+disagreement. Prefer pointing at the file: *"the schedule is `weeklyTemplate`"* is one home,
+restating the table is two (audit F-25).
+
+**5 · Commit and push immediately** (CLAUDE.md §0.3), then route to the **red-team** agent,
+then present it with its strongest counterargument, its confidence level and the failure
+mode. Log the change in `decisions.md` with what would reverse it.

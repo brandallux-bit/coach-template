@@ -1,1 +1,1 @@
-date,type,session,status,rpe,duration_min,pain_flag,note
+date,type,session,status,rpe,duration_min,pain_flag,note,kcal_override,light_min,moderate_min,hard_min

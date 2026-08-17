@@ -9,7 +9,7 @@
 | Agent | Route when |
 |---|---|
 | `red-team` | Before **any** plan, target revision, goal conclusion, or intake output reaches the athlete |
-| `adherence` | Completion below 80% for a week — **instead of** the domain specialists |
+| `adherence` | Completion below `plan.adherenceRoutingPct` (`athlete/constants.json`) for a completed week — **instead of** the domain specialists |
 
 ## This chart's specialists
 

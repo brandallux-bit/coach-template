@@ -1,0 +1,118 @@
+/**
+ * `energy.csv`'s `method_version`, and the tripwire that makes it mean something.
+ *
+ * WHAT THE COLUMN IS FOR, in its own words: *"so historical rows stay interpretable."* A row
+ * stamped `1` is a promise that it was computed under a named set of model constants, so a reader
+ * three months from now can tell a real change in expenditure from a change in the model.
+ *
+ * WHY THIS FILE EXISTS (audit F-64). Every row in `energy.csv` claims version 1 — including rows
+ * produced under `bjj: 10.0`, rows produced after it became `10.3`, and rows produced after
+ * `rehab: 3.0` was added and after `peloton` gained a per-tier table. The column's promise has
+ * been false since the first MET correction, and nothing anywhere could notice.
+ *
+ * ⚠ **THE VERSION STAYS AN INTEGER, DELIBERATELY.** The audit's own recommendation was to derive
+ * it from a hash of the model constants "so it cannot be forgotten". That trades *stale* for
+ * *unreadable*: `method_version: a3f19c…` on every row defeats the exact purpose the column was
+ * given, and it churns on constants that do not affect the model. See
+ * `docs/audit/TRIAGE-2026-08-13.md` D2. The integer stays; a **digest is used as a tripwire only**,
+ * never as the value written to a row.
+ *
+ * WHY A DIGEST RATHER THAN A SNAPSHOT OF THE VALUES. A recorded copy of the MET table beside the
+ * version would be a second home for the MET table, which is the very invariant this workstream
+ * exists to enforce (X-8). A one-way digest cannot be read as values, cannot be edited into
+ * agreement with a wrong table, and cannot drift — it can only be re-recorded, which is the
+ * deliberate act the check is asking for. `modelInputsJson()` prints the current canonical inputs
+ * when the check fires, so the maintainer sees exactly what changed by diffing that output against
+ * `git show HEAD:scripts/lib/method-version.mjs`.
+ *
+ * TO CHANGE THE MODEL: change the constant, run `node scripts/test-single-home.mjs`, read the
+ * canonical inputs it prints, bump `METHOD_VERSION`, paste the new digest, and record the change
+ * in `decisions.md`. Historical rows keep their old integer and stay interpretable, which is the
+ * whole point.
+ */
+import { createHash } from 'node:crypto'
+import { sessionCost, sessionKcal } from './aggregate.mjs'
+import {
+  KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, RMR_COEFFICIENTS, TEF_RATE, rmrKcal,
+} from './athlete.mjs'
+
+/** The version stamped on every `energy.csv` row computed by the current model. */
+export const METHOD_VERSION = 1
+
+/**
+ * The digest of the model inputs `METHOD_VERSION` was last recorded against.
+ *
+ * Re-recorded 2026-08-14 (W7) against Mifflin-St Jeor's coefficients, `TEF_RATE`,
+ * `NEAT_OTHER_RATE`, `KCAL_PER_STEP_PER_LB`, and the source shape of `rmrKcal`, `sessionKcal` and
+ * `sessionCost`. **`METHOD_VERSION` is NOT bumped**: nothing about the model changed, only what the
+ * digest covers — the MET tables became chart data and left it. See the note in `modelInputs()`,
+ * which is the argument, not a summary of it. Deliberately no figures in this sentence: a prose
+ * copy beside the digest would be the second home the digest exists to make unnecessary.
+ * `modelInputsJson()` prints the current inputs when the check fires.
+ */
+export const METHOD_DIGEST = 'a99c95682095bb485f2fdd906282085c3b69e5d0090bfd5a3ed4b41f279bb352'
+
+/**
+ * Every constant that changes what a burn figure means, canonically ordered.
+ *
+ * Anything whose change would make two rows stamped with the same version incomparable belongs
+ * here. Anything that does not — a target, a trigger, a threshold, the athlete's own weight —
+ * deliberately does not: those move constantly and a version that churned on them would be noise,
+ * which is half of why the hash proposal was rejected.
+ */
+export function modelInputs() {
+  const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)))
+  return {
+    // ⚠ **THE MET TABLES ARE DELIBERATELY NOT HERE ANY MORE (W7), and this is a real trade-off.**
+    //
+    // They used to be, and W5 recorded the digest against them — correctly, at the time: the MET
+    // table lived in `scripts/lib/athlete.mjs` and was model code, so `bjj: 10.0 → 10.3` silently
+    // re-valuing every historical row under an unchanged `method_version` was exactly F-64.
+    //
+    // W7 moved the table into `athlete/constants.json`'s session-type registry, because a
+    // hardcoded activity list is one athlete's chart wearing the system's clothes (X-11). It is
+    // now DATA, and data cannot be in a digest that ships in code: every chart registers different
+    // activities, so a fresh chart would fail this check on day one for the crime of not
+    // grappling. Verified — that is precisely how `scripts/test-cold-start.mjs` found it.
+    //
+    // **What is lost, stated plainly:** a MET change no longer fails a build by itself. What
+    // catches it instead is the `energy.csv` staleness gate in `scripts/check-all.mjs` —
+    // `compute-energy.mjs` re-runs, every affected row moves, and the diff is in the same commit,
+    // where a reviewer sees the re-valuation directly rather than inferring it from a hash. Per
+    // `CLAUDE.md` §0.3 that change also owes a `decisions.md` entry. The digest keeps what only it
+    // can see: the MODEL — coefficients, rates, and the shape of the functions over them.
+    rmr: {
+      perKg: RMR_COEFFICIENTS.perKg,
+      perCm: RMR_COEFFICIENTS.perCm,
+      perYear: RMR_COEFFICIENTS.perYear,
+      sexTerm: sorted(RMR_COEFFICIENTS.sexTerm),
+    },
+    tefRate: TEF_RATE,
+    neatOtherRate: NEAT_OTHER_RATE,
+    kcalPerStepPerLb: KCAL_PER_STEP_PER_LB,
+    // ⚠ THE FORMULAE THEMSELVES, AS SOURCE — not a description of them.
+    //
+    // A change to `MET × 3.5 × kg / 200 × minutes`, or to the precedence over it, is invisible to a
+    // constants-only digest and is the most consequential change there is. The first version of
+    // this file carried the formula as a hand-written STRING, which is a second home for it: the
+    // string could go stale against the function beside it and nothing would notice, which is the
+    // very defect `method_version` exists to prevent, one level up. `scripts/test-single-home.mjs`
+    // caught it.
+    //
+    // Comments and whitespace are stripped so re-wording a docstring does not churn the digest.
+    // A digest that fires on noise is one somebody eventually re-records without reading.
+    formulae: [rmrKcal, sessionKcal, sessionCost].map(shape),
+  }
+}
+
+/** A function's source with comments and whitespace removed — its shape, not its prose. */
+const shape = (fn) => fn.toString()
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\/\/.*$/gm, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+/** The canonical text the digest is taken over. Printed by the check when it fires. */
+export const modelInputsJson = () => JSON.stringify(modelInputs(), null, 2)
+
+export const modelDigest = () => createHash('sha256').update(modelInputsJson()).digest('hex')

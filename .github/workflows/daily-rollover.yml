@@ -1,0 +1,70 @@
+# Rolls the chart over into a new day without anyone — human or AI — being involved.
+#
+# Added 2026-08-11. Before this, the day's calorie/macro target was typed in by hand during a
+# coaching session, so the dashboard read "no target set" until a conversation happened. That
+# target was never a judgement call: it is a pure function of nutrition/plan.md's weekday
+# structure and the calendar. See decisions.md 2026-08-11.
+#
+# The push is the point. src/generated/data.json is gitignored and built at build time, so the
+# dashboard only reflects data/ as of the last commit — a day with no commits is a stale
+# dashboard. This job guarantees at least one push per day.
+name: Daily rollover
+
+on:
+  schedule:
+    # 09:00 UTC = 02:00 America/Los_Angeles during PDT, 01:00 during PST. Cron is fixed UTC and
+    # does not shift for DST; both land safely after local midnight, which is what matters — the
+    # script derives the athlete-local date itself and never trusts the runner's clock.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date to generate (YYYY-MM-DD). Defaults to today, athlete-local.'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  rollover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Generate, check and push in ONE step, because on a lost race the push loop resets to
+      # origin/main and re-runs the generator against it (audit F-18). generate-targets.mjs is
+      # already the right shape for that: it never overwrites a row that exists, so re-running it
+      # after someone else's write is a no-op rather than a clobber. The loop lives in
+      # scripts/lib/push-retry.mjs and is shared with log-steps.yml and absorb-branches.yml.
+      #
+      # The old loop ran `git pull --rebase` on rejection, which conflicts on every concurrent
+      # append to an append-only CSV — so it died on attempt 1 and the day silently got no target
+      # row, with nothing checking for one. F-42 also notes this push path had never executed in
+      # 238 commits, so it was both broken and unexercised.
+      #
+      # A generated row that fails validation must never reach main — the dashboard rendering a
+      # confident wrong number is the failure mode this whole repo is built to avoid. The full
+      # suite runs, not just validate-data: this bot's pushes use GITHUB_TOKEN and therefore never
+      # trigger the Validate data workflow, so this is the only gate they get.
+      # --fill-gaps, not today alone. A run GitHub drops — the schedule note above says whole slots
+      # get dropped — used to leave that day with no target forever, because the next run only ever
+      # wrote its own date. It never overwrites an existing row, so it stays idempotent and the
+      # push-retry loop can still replay it verbatim. It is also what keeps
+      # `check-targets-gap.mjs` (a hard error in check-all) from wedging the other bots: the job
+      # that guarantees a target is the job that closes every gap. See scripts/lib/targets.mjs.
+      - name: Generate today's targets row, fill any gap, check it, and push
+        env:
+          ROLLOVER_DATE: ${{ inputs.date }}
+        run: |
+          git config user.name "rollover-bot"
+          git config user.email "brandallux@gmail.com"
+          node scripts/git-commit-push.mjs \
+            --apply "node scripts/generate-targets.mjs --fill-gaps" \
+            --message "Daily rollover: generate today's targets, recompute energy.csv" \
+            --file data/targets.csv --file data/energy.csv

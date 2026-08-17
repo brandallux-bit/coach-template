@@ -16,24 +16,57 @@ For every plan you review, answer:
 2. **What did we assume that isn't in the chart?** Check the plan against
    `athlete/profile.md`, `constraints.md`, and `goals.md`. Assumed equipment, assumed
    time, assumed cooking, assumed schedule.
-3. **What's the failure mode?** Name the specific week this plan falls apart. Travel
+3. **Whose number is each one?** For every threshold, target, trigger or floor in this output,
+   say `athlete-stated`, `athlete-confirmed`, `coach-proposed-unconfirmed`, `derived` or
+   `external` — the vocabulary in `data/METHOD.md`, "Provenance". Then check that the chart says
+   the same thing: a value written under `baseline`, `plan` or `triggers` carries a `_provenance`
+   marker, and one the coach produced is marked **proposed, with the date**, not filed as the
+   athlete's.
+
+   **Reject anything that presents a coach number back to the athlete as his own instruction.**
+   This is the one failure on this list that is unrecoverable — every other number can be
+   recomputed from data; a goal cannot. It has happened three times in one day: a 185 lb weight
+   ceiling recorded as his (*"I don't know what that is or where it came from... if I get close to
+   it, I will throw this whole system away and call it a failure"*), a 135/85 BP threshold invented
+   to make a failing check go green, and a 34.5" waist target retro-justified with a real clinical
+   cut-point three days after he had asked for 33".
+
+   Two specific things to look for, because both fooled a careful reader:
+   - **A well-anchored number is not the athlete's number.** Good justification makes this harder
+     to catch, not easier. Ask where it came from, not whether it is defensible.
+   - **Deleting an unconfirmed threshold is the same error with the sign flipped.** Flag it as
+     proposed; do not resolve it by removing it, and do not resolve it by picking a value.
+4. **Does every session in this block have rows in `data/prescriptions.csv`?** Not a table
+   in `program/`, not a list in the chat — rows, effective-dated, with the load and dose the
+   athlete will actually be shown. Check the same way the dashboard does: for each `session`
+   named in `constants.json`'s `weeklyTemplate`, the newest set of rows on or before today.
+   A session with no rows renders "no prescription for today"; a session whose rows are older
+   than the revision renders the superseded one.
+
+   **Reject a block that exists only as prose.** `data/METHOD.md`: *"the failure mode is a
+   rehab block that exists in a markdown file and never reaches the athlete."* This chart has
+   paid for it with three knee flares. Also run `node scripts/check-suspensions.mjs` and read
+   what it says — nothing in the template, the rows, or `program/exercise-library.md` may
+   prescribe what the active block suspends.
+
+5. **What's the failure mode?** Name the specific week this plan falls apart. Travel
    weeks, deadline weeks, the days already flagged in `constraints.md`.
-4. **Is this sycophantic?** Did we agree with something we should have challenged? Check
+6. **Is this sycophantic?** Did we agree with something we should have challenged? Check
    `precommitments.md` — was there a line that should have been quoted back and wasn't?
-5. **Is it contrarian for its own sake?** The opposite failure. Are we manufacturing
+7. **Is it contrarian for its own sake?** The opposite failure. Are we manufacturing
    disagreement to seem rigorous? Are we adding friction that buys nothing?
-6. **Does it serve the *current* priority order in `athlete/goals.md`,** or one we
+8. **Does it serve the *current* priority order in `athlete/goals.md`,** or one we
    remembered from an earlier session? Check whether any promotion or demotion trigger
    has fired and gone unnoticed — that's a silent failure the head coach won't catch.
-7. **Does it delete a value?** Check `athlete/values.md`. If the plan works only because
+9. **Does it delete a value?** Check `athlete/values.md`. If the plan works only because
    he drinks less wine or eats out less than he stated, the plan doesn't work. Reject it.
-8. **Does it respect `athlete/injury-history.md`?** Back and knee constraints are
+10. **Does it respect `athlete/injury-history.md`?** Back and knee constraints are
    standing, not situational. Check every loaded hinge, squat, and knee-dominant
    selection against the contraindicated list — and check that no phase change quietly
    reintroduced something.
-9. **What did we get wrong?** Evidence quality, arithmetic, an overstated effect size, a
+11. **What did we get wrong?** Evidence quality, arithmetic, an overstated effect size, a
    confident claim that should be hedged. Check the numbers — recalculate them.
-10. **What's the safety exposure?** Check against the floors in CLAUDE.md section 5.
+12. **What's the safety exposure?** Check against the floors in CLAUDE.md section 5.
    Confirm the current numbers haven't drifted toward a floor across successive
    revisions.
 

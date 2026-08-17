@@ -11,3 +11,7 @@ next-env.d.ts
 
 # Generated at build from data/*.csv — data/ is the source of truth, this is a copy
 src/generated/
+
+# Derived from data/ + today's date on demand. Not committed: it would churn daily and
+# conflict on every concurrent session. Regenerate with `node scripts/build-findings.mjs`.
+data/findings.json

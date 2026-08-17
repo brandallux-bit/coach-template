@@ -157,7 +157,33 @@ a { color: inherit; }
   position: absolute; top: -3px; bottom: -3px; width: 2px;
   background: var(--text-primary); opacity: 0.55;
 }
+/* Where the plan says he should be BY NOW, as against `.marker`'s "where the plan's line is".
+   Dashed so the two are distinguishable on a track that carries both. */
+.meter .marker.pace {
+  width: 0; border-left: 2px dashed var(--text-primary); background: none; opacity: 0.75;
+}
 .meter .note { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+
+/* --- kcal ⇄ % ------------------------------------------------------------------------
+   `Meter` renders both forms and one attribute hides one, so the only client code on the
+   page is the two buttons below (src/components/unit-toggle.tsx). Every figure stays
+   server-rendered, and the page reads correctly with no JavaScript at all. */
+.unit-scope[data-unit="kcal"] .u-pct { display: none; }
+.unit-scope[data-unit="pct"] .u-kcal { display: none; }
+
+.unit-switch { display: flex; justify-content: flex-end; gap: 0; margin: -4px 0 14px; }
+.unit-switch button {
+  font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 3px 10px; cursor: pointer;
+  background: var(--surface); color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.unit-switch button:first-child { border-radius: 5px 0 0 5px; }
+.unit-switch button:last-child { border-radius: 0 5px 5px 0; border-left-width: 0; }
+.unit-switch button[aria-pressed="true"] {
+  color: var(--text-primary); border-color: var(--text-muted); background: var(--gridline);
+}
+.unit-switch button:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
 
 /* --- Tables ------------------------------------------------------------------------- */
 
@@ -192,6 +218,44 @@ details.table-view > summary {
   list-style: revert; padding: 4px 0;
 }
 details.table-view[open] > summary { margin-bottom: 10px; }
+
+/* --- Daily table (expandable rows) --------------------------------------------------- */
+
+.day-table { min-width: 760px; border: 1px solid var(--border); border-radius: 8px; }
+.day-head, .day-row > summary {
+  display: grid; grid-template-columns: 84px repeat(6, 1fr) 1.3fr;
+  gap: 6px; align-items: baseline; padding: 8px 10px;
+}
+.day-head {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted); border-bottom: 1px solid var(--baseline);
+}
+.day-row { border-bottom: 1px solid var(--gridline); }
+.day-row:last-child { border-bottom: none; }
+.day-row > summary {
+  cursor: pointer; list-style: none; font-size: 13.5px; font-variant-numeric: tabular-nums;
+}
+.day-row > summary::-webkit-details-marker { display: none; }
+.day-row > summary:hover { background: var(--page); }
+.day-row[open] > summary { background: var(--page); font-weight: 620; }
+.day-row .cell-date {
+  font-variant-numeric: normal; color: var(--text-secondary); display: flex;
+  align-items: center; gap: 6px;
+}
+.day-row .cell-date::before {
+  content: '▸'; font-size: 10px; color: var(--text-muted); transition: transform 0.15s;
+}
+.day-row[open] .cell-date::before { transform: rotate(90deg); }
+.day-row .plan { color: var(--text-muted); }
+.day-row .cell-ex { font-size: 12.5px; }
+.day-detail { padding: 2px 14px 18px; }
+.day-detail h4 {
+  font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin: 14px 0 8px;
+}
+.day-detail h4:first-child { margin-top: 2px; }
+.day-detail table { font-size: 13px; }
+.day-detail .empty { padding: 8px 0; text-align: left; }
 
 /* --- Prose blocks ------------------------------------------------------------------- */
 
@@ -233,3 +297,87 @@ details.table-view[open] > summary { margin-bottom: 10px; }
   color: var(--text-muted); font-size: 12.5px; font-family: var(--font);
   text-decoration: underline; text-underline-offset: 2px;
 }
+
+/* --- Log forms -------------------------------------------------------------------------------
+   Direct data entry, added 2026-08-11. Deliberately plain: this is a form the athlete fills in
+   between sets on a phone, not a surface that needs personality. */
+.log-form .fields {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px; margin-bottom: 12px;
+}
+.log-form .field { display: flex; flex-direction: column; gap: 5px; }
+.log-form .field.wide { margin-bottom: 12px; }
+.log-form .field > span {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.log-form input, .log-form select {
+  width: 100%; padding: 9px 10px; font-size: 15px; font-family: var(--font);
+  border: 1px solid var(--baseline); border-radius: 8px;
+  background: var(--page); color: var(--text-primary);
+}
+.log-form input:focus, .log-form select:focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+.log-form button {
+  padding: 10px 18px; font-size: 14.5px; font-weight: 600; font-family: var(--font);
+  border: none; border-radius: 8px; cursor: pointer;
+  background: var(--series-1); color: #fff;
+}
+.log-form button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* --- Findings ------------------------------------------------------------------------------
+   The surface for everything the system computed and nobody could see (src/components/
+   FindingsCard.tsx). Deliberately built from the existing vocabulary — the same .card shell,
+   the same .pill, the same status colours already reserved in :root — rather than a second
+   design language for one card. Severity is carried by a left rule and the pill, never by
+   colour alone: the status tokens are documented above as "always paired with an icon or
+   label", and a red border on its own says nothing to anyone who cannot see red. */
+
+.finding-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.finding-list + .finding-list { margin-top: 4px; }
+
+.finding {
+  border-left: 3px solid var(--baseline);
+  padding: 2px 0 2px 14px;
+  margin-bottom: 18px;
+}
+.finding:last-child { margin-bottom: 0; }
+.finding.sev-critical { border-left-color: var(--critical); }
+.finding.sev-attention { border-left-color: var(--warning); }
+.finding.sev-info { border-left-color: var(--baseline); }
+
+.finding-head {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  font-size: 14.5px; line-height: 1.45;
+}
+.finding-head strong { font-weight: 620; color: var(--text-primary); }
+
+.pill.sev-critical { border-color: var(--critical); color: var(--critical); }
+.pill.sev-attention { border-color: var(--warning); color: var(--text-secondary); }
+.pill.sev-info { border-color: var(--border); color: var(--text-muted); }
+
+.finding-detail { font-size: 13.5px; color: var(--text-secondary); margin: 7px 0 0; }
+
+.finding-action { font-size: 13.5px; color: var(--text-secondary); margin: 7px 0 0; }
+.finding-label {
+  display: block; font-size: 10.5px; font-weight: 650; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px;
+}
+
+.finding-meta { font-size: 12px; color: var(--text-muted); margin: 7px 0 0; }
+.finding-meta .finding-domain { font-weight: 600; }
+.finding-meta code { font-size: 11.5px; }
+
+/* The critical group sits above everything, with a rule under it, so "read this first" is a
+   position on the page and not a colour the reader has to interpret. */
+.finding-list.pinned {
+  padding-bottom: 16px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--gridline);
+}
+
+.banner {
+  padding: 11px 14px; border-radius: 8px; font-size: 13.5px; margin: 0 0 16px;
+  border: 1px solid var(--border);
+}
+.banner.ok { border-color: var(--good); color: var(--text-primary); }
+.banner.bad { border-color: var(--critical); color: var(--text-primary); }
+.banner code { font-size: 12.5px; }

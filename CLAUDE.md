@@ -26,7 +26,18 @@ recommendation, read"):
 4. **Check for unmerged branches.** `git branch -r | grep -v -E '/(main|HEAD)$'` lists
    any remote branch other than `main`. **A branch existing here is itself a bug
    report** — something committed data somewhere other than `main`, whether the athlete
-   asked for a branch or not. For every branch listed:
+   asked for a branch or not.
+
+   > ✅ **This is now automated — `.github/workflows/absorb-branches.yml` merges stray branches
+   > into `main` within seconds of the push, and hourly as a backstop.** Keep doing this check
+   > anyway: the automation deliberately **refuses to merge a conflict**, because resolving one
+   > means combining rows and that is a judgement call it must not make. So a branch still sitting
+   > here means either the automation is broken or it hit a conflict and is waiting for you.
+   > Added after a breakfast logged to a branch at 09:56 was still invisible on the dashboard at
+   > 12:09 — the manual protocol below only runs when a session happens to run, and the athlete
+   > had been reading a wrong dashboard for two hours.
+
+   For every branch listed:
    1. Check what it has that `main` doesn't: `git log main..origin/<branch> --oneline`
    2. Merge it into `main`: `git merge origin/<branch> --no-edit`
    3. If the merge conflicts inside a log or ledger file (e.g. two sessions both added
@@ -54,6 +65,19 @@ recommendation made on bad data.
   small, complete, and machine-readable; `logs/` is long and explains *why*. Reconstructing
   a trend by re-reading three months of narrative is how a coach ends up working from
   recall. `data/METHOD.md` documents the schema, the units, and the burn model.
+- **Run `node scripts/build-findings.mjs` and read what it prints.** This is the chart
+  telling you what it noticed — a calorie target near the RMR floor, a loss rate above the
+  §5.2 ceiling, a deficit approaching the 16-week cap, a `goals.md` trigger with a blank
+  threshold that therefore cannot fire. **Raise anything marked `critical` before anything
+  else in the session**, ahead of whatever the athlete opened with.
+
+  These are findings, not gates. Nothing in `data/` refuses a write because a number is
+  unwise — the ledger's only job is to record faithfully what was decided and what
+  happened, and the athlete's actual behaviour is their own. **Judgement lives here, in the
+  conversation, where it can be argued with.** A finding tells you what to raise; it does
+  not tell them what to do. If a finding names a threshold nobody has set, ask for it or
+  route it to whoever owns it — for anything clinical that is their doctor. **Never invent a
+  number to close a gap.**
 - `athlete/goals.md` — **the domains and their current order.** Both are per-athlete and
   both change; never carry either forward from memory (§1)
 - `athlete/hard-constraints.md` — allergies and anything else where exposure is a medical
@@ -62,6 +86,10 @@ recommendation made on bad data.
 - `athlete/constants.json` — the athlete's physiological and plan constants, as the code
   sees them
 - `athlete/values.md` — how they want to live while doing this. Not optional reading.
+- `athlete/constraints.md` — the practical friction: time, equipment, travel, what gets in the
+  way. **Six agents in `.claude/agents/` list it as required reading and this section omitted it**
+  (audit F-50), so the head coach could route to a specialist that had read it while never having
+  read it itself.
 - `athlete/precommitments.md` — pushback they pre-authorized
 - `.claude/agents/MANIFEST.md` — this chart's specialists and what they're required to read
 - The last 14 days of `logs/`
@@ -95,12 +123,41 @@ prose in `logs/YYYY-MM-DD.md` **from that row**. Do not type a number twice from
 that is the only way the two can disagree. If a number appears in a log and not in `data/`,
 that is a bug in the log, and `data/` is what the next session will trust.
 
+**Every row's `date` is the athlete's local date — derive it, never assume the session
+clock matches it.** The coaching session runs UTC; the athlete is on `athlete.timezone`,
+which puts every evening session on a different calendar date from the one the session's own
+clock reads. Get it from `scripts/lib/athlete.mjs`'s `localToday()`, not from the date in
+your own context. This has caused real, silent day-corruption twice (`data/METHOD.md` rule
+6) — treat any date you didn't derive this way as untrustworthy.
+
 Then run `node scripts/compute-energy.mjs` and commit the regenerated `data/energy.csv`
 alongside. It is a derived file; CI fails if it is stale.
+
+**Before every commit that touches `data/`, run `node scripts/validate-data.mjs`.** This is
+not optional and not a suggestion — it is the enforcement mechanism for every rule in this
+section (including the date rule above), because a rule that only lives in this file is one
+a session can silently fail to follow, as already happened twice. **A failing validator is a
+hard stop: do not commit past it.** Fix the row it flags, re-run, and only commit once it
+exits clean. `scripts/test-rowwrite.mjs` is the same check for anything written through the
+dashboard's write path — both run in CI as a backstop, but the point is to never rely on
+that backstop: catch it here, before it ships.
 
 **Never invent a number to fill a cell.** An empty cell means "not measured" and is a
 perfectly good answer — it renders as TBD and tells the truth. A zero means a measured
 zero. Confusing the two puts fiction into the trend line, which is worse than a gap.
+
+**A day may never lack a calorie target — and this is not an exception to the rule above,
+because nothing is being invented.** `plan.kcalByWeekday` in `athlete/constants.json` is the
+fallback and **it always answers**. Prose may *refine* a day's target; it may never *suppress*
+one. The single exception is the athlete explicitly saying they want no target for a specific
+day. If a plan file describes a window in words but names no number — "a hard calorie ceiling"
+for a travel week, say — that is a refinement nobody has written yet, **not** a reason to leave
+the day blank: write the weekday figure, run `node scripts/generate-targets.mjs`, and raise the
+missing number with them in conversation. An automated job once reasoned its way to the opposite
+conclusion, recorded the reasoning in `decisions.md`, wrote nothing, and the athlete woke up
+travelling with no target. `data/METHOD.md` (`targets.csv`) carries the full rule;
+`scripts/check-targets-gap.mjs` fails the build on any gap and
+`node scripts/generate-targets.mjs --fill-gaps` closes every one of them.
 
 **Write immediately, not at session end.** Sessions on different surfaces can overlap in
 time. Every single time you log a set, a meal, a weigh-in, or any other data point,
@@ -346,6 +403,11 @@ Two routing rules hold on every chart:
   goal-setting conclusion, and the output of any intake.
 - Route to **adherence** whenever completion falls below 80% for a week — *not* to the
   domain specialists. A plan that isn't being followed is not a programming problem.
+  The machine-readable copy is `plan.adherenceRoutingPct` in `athlete/constants.json`, and
+  `scripts/test-single-home.mjs` fails if any file in the chart states a different figure
+  for this decision. **It is the routing threshold and nothing else** — `skills/weekly-review`
+  carries a separate, higher gate for whether a stall indicts the plan, and the two were
+  merged into one contradictory number until 2026-08-14 (audit F-28).
 
 ### 7.1 Adding a specialist — veto or parameters?
 

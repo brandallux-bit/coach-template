@@ -93,14 +93,22 @@ Design around adherence, not elegance. Read `athlete/constraints.md` and
 **Do not adjust weekly.** Use the 7-day rolling average and require three weeks of data.
 
 - On track (within ±0.2% BW/wk of target) → **change nothing.** Say so plainly.
-- Stalled 3 weeks with adherence above 85% → **first check the social eating pattern for
-  the stalled period** (`skills/lifestyle-integration`) — two big evenings a week can
-  erase a moderate deficit while every logged day looks perfect. Then add steps
-  (+1000–2000/day). Then cut 10% from calories. In that order. Movement before
+- Stalled 3 weeks with adherence above the **85%** stall-diagnosis gate → the plan is being
+  followed well enough that a null result indicts the plan, so **first check the social
+  eating pattern for the stalled period** (`skills/lifestyle-integration`) — two big
+  evenings a week can erase a moderate deficit while every logged day looks perfect. Then
+  add steps (+1000–2000/day). Then cut 10% from calories. In that order. Movement before
   restriction, always.
-- Stalled with adherence below 85% → this is not a nutrition problem. Route to the
-  **adherence** agent. Cutting calories on a plan that isn't being followed makes the
-  plan harder and adherence worse.
+- Stalled below `plan.adherenceRoutingPct` (`athlete/constants.json`, **currently 80%**,
+  from `CLAUDE.md` §7) → this is not a nutrition problem. Route to the **adherence**
+  agent. Cutting calories on a plan that isn't being followed makes the plan harder and
+  adherence worse.
+
+> **This file routed the adherence agent at 85% while `CLAUDE.md` §7 routed at 80%
+> (historical — not the live threshold)** (audit F-28); it now renders from the constant.
+> The 85% above is a *different* decision — "can I
+> read a stall as evidence about the plan?" — and it is the coach's number, unruled on. It
+> is deliberately not collapsed into the routing threshold; see `skills/weekly-review`.
 - Losing faster than 1.0% BW/wk → add calories. This is not a good sign. Say why:
   above that rate, an increasing share of what's coming off is lean tissue, and strength
   will follow it down.
@@ -117,10 +125,63 @@ lifts, sleep degrades for a week without cause, resting HR climbs and stays up, 
 or mood falls off, or menstrual changes appear. These mean the deficit is too large
 regardless of what the scale says.
 
-## 7. Write it down
+## 7. Write it down — `data/` first, prose second, in this order
 
-Output goes to `nutrition/plan.md`: maintenance estimate and how derived, target
-calories, macro targets in grams, RMR floor, expected weekly rate, review date. Log the
-change in `decisions.md` with what would make you reverse it.
+**`nutrition/plan.md` is not where the athlete's calorie target lives.** It lives in
+`athlete/constants.json` → `plan`, and `scripts/generate-targets.mjs` writes a
+`data/targets.csv` row from it every morning on a timer, *"no AI, no coaching session, no
+judgement."* Revise to 1,950 kcal, write it to `plan.md` as this skill used to say, and the
+generator keeps emitting the **old** figure tomorrow morning and every morning after — and
+because it never overwrites an existing row, the wrong row is durable. **He eats to a number
+the coach believes it changed** (audit F-13).
 
-Then state your confidence level and the strongest counterargument to these numbers.
+Do these in order.
+
+**1 · Write the constants.** `athlete/constants.json` → `plan`: `kcalByWeekday` (one entry
+per athlete-local weekday abbreviation), `weeklyKcalBudget`, `proteinFloorG`, `proteinAimG`,
+`fatTargetG`, `fibreTargetG`, `targetRateLbPerWk`, `estMaintenanceKcal`.
+
+- **`sum(kcalByWeekday)` must equal `weeklyKcalBudget`.** `validate-data.mjs` enforces it —
+  the weekday structure is the decision and the weekly figure is its total, so if they
+  disagree one of them is a typo and the arithmetic says which.
+- **Every value you change gets its `_provenance` entry updated in the same edit** (W0,
+  X-16). A number you chose is `coach-proposed-unconfirmed` **with today's date**, never
+  filed as his. Where he said it, quote him. Where it is arithmetic, name the inputs.
+  A `coach-proposed-unconfirmed` value older than seven days becomes a finding, which is
+  the mechanism by which "ask him" survives the end of this session.
+- **Do not delete an unconfirmed value to make the marker go away**, and do not upgrade a
+  marker without a quote (`data/METHOD.md`, "Provenance").
+
+**2 · Fix today's row if it is already wrong.** `generate-targets.mjs` never overwrites, so
+if `data/targets.csv` already carries today's row it still states the superseded figure.
+Correct that row in place and say in its `note` that it was revised and why. A target row is
+a prescription; leaving a superseded one on the day the plan changed is the whole defect
+above, one row wide.
+
+**3 · Run the checks. A failure is a hard stop.**
+
+```
+node scripts/validate-data.mjs
+node scripts/test-provenance.mjs
+node scripts/build-findings.mjs
+```
+
+Read what `build-findings` prints before you write a word of prose: it computes the §5.2
+floors — the calorie target against estimated RMR, protein, the loss-rate ceiling, the
+16-week deficit cap — and **surfaces them rather than blocking, which means nothing else
+will stop you.** Raise anything `critical` with him first.
+
+**4 · Then write the prose**, from the constants. `nutrition/plan.md`: the maintenance
+estimate and how it was derived, the RMR floor, the expected weekly rate, the review date,
+the meal architecture, and **the reasoning** — not a second copy of the figures. Where a
+figure must appear, it must equal the constant; `scripts/test-single-home.mjs` §2 fails on a
+disagreement, and it fails **by correcting the prose**, never the constant.
+
+**5 · Commit and push immediately** (CLAUDE.md §0.3). Log the change in `decisions.md` with
+what would make you reverse it, then state your confidence level and the strongest
+counterargument to these numbers.
+
+> **Anything the athlete has not ruled on stays visible rather than getting quietly
+> settled.** As of 2026-08-14 the calorie figures, both protein numbers, fat and fibre are
+> all `coach-proposed-unconfirmed` — his rate is on record in his own words and the budget
+> that implements it is not. Ask; do not resolve it by choosing.

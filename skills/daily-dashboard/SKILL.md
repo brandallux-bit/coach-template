@@ -56,33 +56,64 @@ Numbers above are illustrative, not a template to copy verbatim — recompute fo
 
 ## 2. Workout chart
 
-Source, in this order:
+Source, in this order — **all of it machine-readable. There is no prose fallback.**
 
-1. **Which session** — today's row in `data/training.csv`. If there isn't one, derive it
-   from `program/current-block.md`'s weekly template for today's day-of-week and mark it
-   `(proposed)` — the block is explicitly a flexible framework, not a fixed grid, so an
+1. **Which session** — today's row in `data/training.csv`. If there isn't one, read
+   `athlete/constants.json` → `program.weeklyTemplate` for today's athlete-local weekday
+   and mark it `(proposed)`; the block is a flexible framework, not a fixed grid, so an
    inferred session is a guess until it's recorded.
-2. **Exercise list** — today's rows in `data/prescriptions.csv`, in `order`. If that's
-   empty, pull the matching session's table (Session A / Session B / minimum-viable) from
-   `program/current-block.md`, **write it into `data/prescriptions.csv`**, and render from
-   there. Where a sharper load has been called out for today — e.g. after a knee event or
-   a load bump — that is the number that goes in the row.
-3. **Progress** — count today's rows in `data/sets.csv` per exercise against the
-   prescribed `sets`. Match on the base exercise name before any parenthetical, so
-   "Push-up (feet elevated)" and "Push-up (flat)" both count toward the prescribed push-up.
-4. Skip warm-up and cooldown rows — they aren't "exercises" in the sense he's asking
+2. **Exercise list** — `data/prescriptions.csv`, **effective-dated**: the newest set of
+   rows on or before today for that session name, in `order`. Plus the `Daily` rows and
+   the `Supplements` rows, which run whatever today's session is (`data/METHOD.md`,
+   reserved session names).
+3. **If neither has anything, say "no session written for today yet" and stop.** Do not
+   fall back to a table in `program/`.
+
+   > **This was the bug.** The skill used to fall back to `program/current-block.md`'s
+   > "weekly template" — and the section carrying that heading is the **preserved,
+   > not-live, BJJ-anchored** one, kept deliberately for the Phase 4 revert. So a Monday
+   > with no row surfaced *"BJJ (6pm), 90 min"*: the single activity the active rehab
+   > block suspends, rendered as today's plan (audit F-35). **A fallback to a stale table
+   > is worse than "no session written yet"** — the blank is obviously a blank, and the
+   > stale table is indistinguishable from the plan.
+   >
+   > The same reasoning kills the old "write it into `data/prescriptions.csv` and render
+   > from there" instruction: transcribing a preserved table into the live file is how a
+   > superseded prescription becomes the current one. **A prescription row is written by
+   > `skills/program-design`, in a session, on purpose — never by a rendering skill.**
+
+4. **Anything ⛔ in `program/exercise-library.md` is out.** If he asks for a substitution
+   mid-session, that banner — generated from the active block — is the answer, not the
+   substitution table under it.
+5. **Progress** — count today's rows in `data/sets.csv` **for this session** against the
+   prescribed `sets`. Scope on session as well as exercise name: two sessions on one day
+   share exercises, and matching on name alone renders an evening session's rows "done"
+   because the morning logged them (audit F-53). Match on the base exercise name before
+   any parenthetical, so "Push-up (feet elevated)" and "Push-up (flat)" both count toward
+   the prescribed push-up.
+6. Skip warm-up and cooldown rows — they aren't "exercises" in the sense he's asking
    for. Keep everything else, in order.
 
 ```
 WORKOUT — Session B (Upper Push/Pull + Core)
 Push-ups (feet-elevated)          3 x AMRAP-2
 Single-arm KB overhead press      3 x 6-10 @ 35 lb
-Bent-over KB rows                 3 x 8-12 @ 35 lb
+Bent-over row                     3 x 8-12 @ 50 lb DB
 Band face-pulls                   2 x 15
 KB curls + band curls             2 x 10-15
-Suitcase carry                    3 x 30-40s/side @ 35 lb
+Suitcase carry                    3 x 40-55s/side @ 50 lb
 Plank / dead bug                  2 x 30-45s
 ```
+
+> **The shape is the example; the numbers are not.** Recompute every one from
+> `prescriptions.csv`. The loads above read **35 lb** for the row and the carry until
+> 2026-08-14 — both were re-anchored to **50 lb** on 08-11 at the athlete's own
+> instruction, and the carry's 30-40 s dose sat entirely below the fire line of the
+> strength marker it feeds, so a coach following this file verbatim rendered a
+> superseded prescription into the chart he was shown (audit F-35, F-50).
+> `scripts/test-single-home.mjs` §2b now fails on any load stated here that disagrees
+> with the live row, which is why the example is kept rather than deleted: a rule with
+> nothing to check certifies whatever happens next.
 
 If the session was skipped or hasn't been decided yet, say that in one line instead of
 rendering an empty table.
@@ -90,10 +121,12 @@ rendering an empty table.
 ## Notes
 
 - Read-only **as to measured data** — this skill never invents or records a weight, a meal
-  or a set; logging happens through the normal session flow (CLAUDE.md §0.3). The two
-  exceptions above are prescriptive, not measured: a target or a prescription derived from
-  the plan gets **written to `data/` before it is rendered**, so the chart and the screen
-  never show a number the record doesn't have.
+  or a set; logging happens through the normal session flow (CLAUDE.md §0.3). **One
+  exception, and it is now the only one:** today's `targets.csv` row, which is a pure
+  function of `plan.kcalByWeekday` and the calendar, gets **written to `data/` before it is
+  rendered** — the same row `scripts/generate-targets.mjs` writes on a timer. The
+  prescription exception was removed on 2026-08-14; see step 3 above for why a rendering
+  skill must never write a prescription.
 - Meals + workout only, per the athlete's spec — steps, weight, sleep, etc. aren't part
   of this view. Adding them is a scope change to this file, not something to improvise
   in the moment.

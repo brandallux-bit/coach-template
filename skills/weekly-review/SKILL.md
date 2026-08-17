@@ -12,10 +12,23 @@ The engine of the whole system. Numbers first, diagnosis second, verdict third.
 Read `athlete/goals.md` and check every promotion and demotion trigger against this
 week's data. Health triggers first, since they override everything.
 
-If a trigger has fired, say so before the numbers and propose the reorder. If the
-appearance demotion trigger has fired (−5 to −8 lbs), that's a **phase switch**, not a
-tweak — fat loss demotes, muscle gain promotes, energy balance changes direction. Handle
-it as a decision, with a `decisions.md` entry.
+If a trigger has fired, say so before the numbers and propose the reorder.
+
+**Read every threshold out of `goals.md`. Never name a figure in this file.** A number
+written here is a second copy that goes stale the day `goals.md` changes, and the coach
+following this procedure has no way to know it did. This section previously named a −5 to
+−8 lb appearance demotion trigger; `goals.md` demoted those weight conditions to **review
+checkpoints** on 2026-08-11 and `constants.json` renamed the field to `weightCheckpointLb`
+"so the dashboard cannot keep calling it a trigger" — and this file kept firing a phase
+switch on it for two days. A checkpoint means *stop, put the numbers on the table, decide
+explicitly*; it does not end a phase on its own.
+
+Distinguish the two before acting:
+
+- **A checkpoint** — surface it, present the numbers, ask. No plan change in this session.
+- **A fired trigger** — that is a **phase switch**, not a tweak: the domain order changes
+  and energy balance may change direction with it. Handle it as a decision, with a
+  `decisions.md` entry, and route to `red-team` before delivering it.
 
 If nothing fired, say "priorities unchanged" in one line and move on.
 
@@ -55,11 +68,24 @@ action.
 
 Calculate adherence: sessions completed / planned, and protein days hit / 7.
 
-- **Above 85%** — the plan is being followed. If results are absent, the plan is wrong.
-  Adjust the plan.
-- **Below 85%** — the plan is not being followed. Do not adjust the plan. Route to the
-  **adherence** agent and find the friction. Making an unfollowed plan stricter is the
-  single most common way coaching fails.
+**Two different decisions hang off this number, at two different thresholds. Do not merge them.**
+
+- **Is the plan being followed well enough that a null result indicts it?** The gate is
+  **85%** — the coach's figure, and the athlete has never ruled on it. Above it, if the
+  results are absent the plan is wrong: adjust the plan. Below it, do not adjust the
+  plan — making an unfollowed plan stricter is the single most common way coaching fails.
+- **Which specialist do I consult?** The threshold is `plan.adherenceRoutingPct` in
+  `athlete/constants.json` — **currently 80%**, from `CLAUDE.md` §7. Below it, route to
+  the **adherence** agent *instead of* the domain specialists, and find the friction.
+
+> **This file routed the adherence agent at 85% until 2026-08-14 while `CLAUDE.md` §7 routed at
+> 80% (historical — not the live threshold)** — so the system gave two defensible, contradictory
+> answers to "do I route?" (audit F-28). The routing figure now renders from one constant, and
+> `scripts/test-single-home.mjs` fails if any file states a different one. The 85% above is left
+> alone deliberately: it answers a different question, nobody has recorded it as a
+> considered second threshold, and collapsing two real thresholds into one is the same
+> class of damage as letting one drift into two. **Whether these should be one number is a
+> coaching decision — raise it with the athlete, do not resolve it in a file.**
 
 Diagnose the mechanism, not the character. "You missed Thursday three weeks running" is
 an observation about Thursdays, not about discipline. Look at what Thursday is.

@@ -9,8 +9,33 @@ name: Log Steps
 #   Content-Type: application/json
 #   {
 #     "event_type": "steps",
-#     "client_payload": { "date": "2026-08-06", "steps": 9432 }
+#     "client_payload": {
+#       "date": "2026-08-06", "steps": 9432,
+#       "sleep_date": "2026-08-16", "sleep_hours": 6.5, "resting_hr_overnight": 58
+#     }
 #   }
+#
+# ⚠ `date` (steps) MUST BE A COMPLETED DAY — normally yesterday, athlete-local. As of 2026-08-14
+# (W4) `scripts/log-steps-row.mjs` REFUSES a payload dated athlete-local today or later, and this
+# job fails loudly rather than writing it. The Shortcut sometimes sends the current *running*
+# total, and four of those were written as if they were finished days (2026-08-09 = 29, 2026-08-10
+# = 466, 2026-08-13 = 16) — each flipping its day to complete=y on ~1 kcal of step burn. A red run
+# here means the Shortcut fired at the wrong time; re-fire it after local midnight. The reasoning
+# for why a write path is allowed to refuse this at all is in that script's header — it is a
+# fidelity rule about what the column holds, not a judgement about the number.
+#
+# ⚠ `sleep_date` is NOT the same value as `date`, and sending the same string for both is a bug.
+# `date` is yesterday because a step count only completes at day's end. A night's sleep completes
+# at wake, almost always well before the day is half over, so `sleep_date` is the WAKE day — i.e.
+# ordinarily today, athlete-local, at the moment the Shortcut runs. `scripts/log-sleep-row.mjs`
+# only refuses a *future* sleep_date, never a same-day one — see that script's header for why this
+# is not the same rule as the steps date, despite both looking like "a date check."
+#
+# `sleep_date`, `sleep_hours` and `resting_hr_overnight` are all OPTIONAL and independent of each
+# other and of `steps`/`date`: a re-fire missing any of them (an older Shortcut version, a night
+# with no Health data) writes only what is present. They land in `data/body.csv`, not
+# `data/steps.csv` — see data/METHOD.md's body.csv section for why that write is a column-level
+# merge rather than a whole-row replace.
 #
 # This workflow does the actual git write, not the Shortcut — so the on-device
 # automation never has to touch git internals (base64 content, blob SHAs, retries).
@@ -30,61 +55,69 @@ jobs:
         with:
           ref: main
 
-      - name: Validate payload
-        run: |
-          DATE="${{ github.event.client_payload.date }}"
-          STEPS="${{ github.event.client_payload.steps }}"
-          if [ -z "$DATE" ] || [ -z "$STEPS" ]; then
-            echo "::error::Missing date or steps in client_payload"
-            exit 1
-          fi
-          if ! [[ "$DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-            echo "::error::date must be YYYY-MM-DD, got: $DATE"
-            exit 1
-          fi
-          if ! [[ "$STEPS" =~ ^[0-9]+$ ]]; then
-            echo "::error::steps must be a non-negative integer, got: $STEPS"
-            exit 1
-          fi
+      # Pinned to match the Validate data workflow. This job had no setup-node at all and ran on
+      # whatever the runner image happened to ship, so the suite it now runs could pass in CI and
+      # behave differently here — a second home for "which Node is this checked against".
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Append or update today's row
-        run: |
-          FILE=data/steps.csv
-          DATE="${{ github.event.client_payload.date }}"
-          STEPS="${{ github.event.client_payload.steps }}"
-
-          if [ ! -f "$FILE" ]; then
-            echo "date,steps" > "$FILE"
-          fi
-
-          if grep -q "^${DATE}," "$FILE"; then
-            # Same-day automation can fire more than once (e.g. re-run) — last write wins
-            sed -i "s/^${DATE},.*/${DATE},${STEPS}/" "$FILE"
-          else
-            echo "${DATE},${STEPS}" >> "$FILE"
-          fi
-
-      - name: Commit and push (retry on race with a concurrent push)
+      # The row write, the checks and the push are ONE step, because on a lost race the push loop
+      # re-runs the row write against whatever landed on main in the meantime (audit F-18). The old
+      # loop ran `git pull --rebase`, which conflicts on every concurrent append to an append-only
+      # CSV, so it died on attempt 1 of the only failure it existed for and attempts 2-5 were
+      # decorative. The loop itself lives in scripts/lib/push-retry.mjs and is shared with
+      # daily-rollover.yml and absorb-branches.yml — one algorithm, one home (INVARIANTS.md X-8).
+      #
+      # Payload values reach the row writer through the ENVIRONMENT, never interpolated into a
+      # shell script: they arrive from an on-device Shortcut, i.e. from outside this repo.
+      # scripts/log-steps-row.mjs validates their shape and is the only thing that touches the file.
+      #
+      # Validation is scripts/check-all.mjs --regen-energy, run inside the loop before every push
+      # attempt. This workflow was the ONE writer to main with no validation of any kind, and its
+      # old payload regex accepted values validate-data.mjs rejects: a row that got past the regex
+      # and failed the validator killed `prebuild`, so the Vercel deploy failed, the PREVIOUS
+      # deployment stayed live, and every page kept rendering yesterday's numbers under today's
+      # date. --regen-energy also closes the staleness window — steps.csv feeds steps_kcal, and
+      # this workflow used to mutate it without re-deriving energy.csv, the file CLAUDE.md 0.2
+      # tells every coaching session to read first, before the prose.
+      # ⚠ AUDIT F-46, and the half of it that was still open. Passing the payload through `env:`
+      # rather than interpolating `${{ }}` into the script body was W3's fix and it is the one that
+      # matters: a `${{ }}` expansion is textual and lands in the shell BEFORE any quoting can help,
+      # which in a job holding `contents: write` is a real escalation if the Shortcut's PAT ever
+      # leaks. What was left is that the payload still reached the COMMIT MESSAGE unshaped —
+      # `$STEPS_DATE` is safe from re-evaluation inside double quotes, but a newline or a stray
+      # quote in it produces a commit message nobody can grep and, on a bad day, an argv this job
+      # did not intend.
+      #
+      # The message is now built by node from the payload's DIGITS ONLY, before git sees any of it.
+      # `scripts/log-steps-row.mjs` still validates the row itself and is the only thing that writes
+      # the file; this is about the one value that bypassed it.
+      - name: Write the row(s), check them, and push (re-applying on a lost race)
+        env:
+          STEPS_DATE: ${{ github.event.client_payload.date }}
+          STEPS_COUNT: ${{ github.event.client_payload.steps }}
+          SLEEP_DATE: ${{ github.event.client_payload.sleep_date }}
+          SLEEP_HOURS: ${{ github.event.client_payload.sleep_hours }}
+          RESTING_HR_OVERNIGHT: ${{ github.event.client_payload.resting_hr_overnight }}
         run: |
           git config user.name "steps-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add data/steps.csv
-
-          if git diff --cached --quiet; then
-            echo "No change — steps value already recorded."
-            exit 0
-          fi
-
-          git commit -m "Log steps: ${{ github.event.client_payload.date }} = ${{ github.event.client_payload.steps }}"
-
-          for attempt in 1 2 3 4 5; do
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            echo "Push failed (attempt $attempt) — pulling and retrying..."
-            git pull --rebase origin main
-            sleep 2
-          done
-
-          echo "::error::Failed to push after 5 attempts"
-          exit 1
+          git config user.email "brandallux@gmail.com"
+          MSG=$(node -e 'const d = String(process.env.STEPS_DATE ?? "").replace(/[^0-9-]/g, "").slice(0, 10);
+            const s = String(process.env.STEPS_COUNT ?? "").replace(/[^0-9]/g, "").slice(0, 6);
+            const sd = String(process.env.SLEEP_DATE ?? "").replace(/[^0-9-]/g, "").slice(0, 10);
+            const sleepBits = (process.env.SLEEP_HOURS || process.env.RESTING_HR_OVERNIGHT) && sd
+              ? ` + sleep ${sd}` : "";
+            process.stdout.write(`Log steps: ${d || "(no date)"} = ${s || "(no count)"}${sleepBits}`)')
+          # Chained with && rather than run as separate steps: push-retry re-applies the WHOLE
+          # `--apply` command on a lost race, and two separate git-commit-push.mjs calls would be
+          # two separate races (and two commits) for one Shortcut run. The tradeoff this creates —
+          # a malformed sleep payload fails the job before the steps row is committed, even though
+          # steps was fine — is accepted on purpose: log-sleep-row.mjs no-ops cleanly (exit 0) when
+          # the payload carries no sleep fields at all, so today's steps-only Shortcut keeps working
+          # unmodified, and a genuinely bad sleep value should fail loudly rather than write half a
+          # night's data, the same standard log-steps-row.mjs already holds itself to.
+          node scripts/git-commit-push.mjs \
+            --apply "node scripts/log-steps-row.mjs && node scripts/log-sleep-row.mjs" \
+            --message "$MSG" \
+            --file data/steps.csv --file data/energy.csv --file data/targets.csv --file data/body.csv

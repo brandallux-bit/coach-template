@@ -57,11 +57,63 @@ Universal on every chart:
 | Agent | Consulted for |
 |---|---|
 | `red-team` | Reviews every plan, target change and intake output before it reaches the athlete |
-| `adherence` | **Anything below 80% completion** — instead of the domain specialists |
+| `adherence` | Completion below `plan.adherenceRoutingPct` (`athlete/constants.json`) — instead of the domain specialists |
 
 Everything else is provisioned by domain from `.claude/agents/library/`, and athletes can
 add their own. The test for a new one is in CLAUDE.md §7.1: **veto → new agent, parameters
 → addendum.**
+
+## The data layer
+
+`logs/` holds the reasoning. **`data/` holds the numbers**, and it is the source of truth for
+both the coach and the dashboard. Every meal, set, weigh-in, tape measure, session and target is
+a row there — written *before* the prose, then referenced by it, so the two can never disagree
+(CLAUDE.md §0.3).
+
+An empty cell means *not measured* and renders as TBD. It never means zero. That distinction is
+enforced, because a fabricated zero in a trend line is worse than a gap.
+
+```bash
+npm run validate   # schema check — CI runs this on every push
+npm run energy     # regenerate data/energy.csv from the measured files
+npm run check      # the whole suite: validators, scanners and unit tests
+```
+
+`scripts/` is dependency-free Node — `npm install` is only needed for the dashboard. In a repo
+where intake has not run yet, the chart-dependent steps skip themselves and say so.
+
+`data/energy.csv` is **generated, never hand-edited**. The burn model — RMR recomputed daily from
+that day's weight, plus food thermic effect, non-step movement, steps, and session METs — is
+documented with its constants in `data/METHOD.md` and carries a `method_version` so history stays
+readable when the model is recalibrated.
+
+## The dashboard
+
+A Next.js app at the repo root reads `data/` at build time. Which pages are useful depends on the
+chart's domains; the app ships **Goals & Progress**, **Today**, **Next 7 Days**, **Log** and
+**History**.
+
+⚠ **`/log` WRITES to the chart.** It commits rows to `data/*.csv` through the GitHub API, using
+the same `validateRow()` the coaching session uses. Anyone hardening the deploy needs to know
+that before removing `GITHUB_TOKEN` — `/log` then fails closed with disabled buttons, so it
+degrades quietly and the athlete simply stops being able to record anything.
+
+```bash
+npm run dev        # http://localhost:3000
+```
+
+Two environment variables gate it — see `.env.example`. Both must be set or sign-in is refused
+outright; it fails closed, never open.
+
+| Variable | What it is |
+|---|---|
+| `DASHBOARD_PASSWORD` | what you type on the login screen |
+| `AUTH_SECRET` | the session cookie's secret; rotating it signs every device out |
+
+**Deploying to Vercel:** import the chart repo, leave the root directory at the repo root, and
+set both variables for Production and Preview. Every commit redeploys — and because the coach
+commits on every logged meal (§0.3), the dashboard refreshes several times a day with no extra
+machinery. See [SETUP.md](SETUP.md) §5.
 
 ## Two things that make or break it
 

@@ -96,6 +96,35 @@ month.
 Write the result to `athlete/goals.md` using the structure in
 `skills/intake/reference/domain-structure.md`. **Now** you may read the worked example.
 
+### A number you propose is recorded as proposed
+
+**You will end this session holding numbers they did not give you.** Converting "if I felt weak"
+into a percentage means picking the percentage; a trigger with a blank in it cannot fire. That is
+your job and you should do it. **What you must never do is write your number into their goals file
+in the same voice as theirs.**
+
+Every threshold, target and trigger gets a provenance marker — `athlete-stated`,
+`athlete-confirmed`, `coach-proposed-unconfirmed`, `derived` or `external` — recorded in
+`athlete/constants.json` under each section's `_provenance` map. Vocabulary and rules:
+`data/METHOD.md`, "Provenance". Anything you supplied is **`coach-proposed-unconfirmed`** with the
+date, and it stays that way until they rule on it in words you can quote.
+
+> **This is not hypothetical.** On 2026-08-11 a coach proposed a 170 lb floor and a 185 lb ceiling
+> in one commit and recorded both as the athlete's. Two days later: *"I don't know what that is or
+> where it came from. I never provided that weight and if I get close to it, I will throw this
+> whole system away and call it a failure."* He had genuinely set the floor. Same commit, same
+> author, same file — and nothing on the page distinguished them.
+
+Three failure modes, all of which have happened:
+
+- **Leaving the blank instead.** A trigger that cannot fire is a disabled alarm on the domain that
+  outranks everything. Propose a value, mark it as yours, and surface it.
+- **Filling a blank that is not yours to fill.** A clinical threshold belongs to them and their
+  doctor. Record the gap and route it; **do not close it to make the chart look finished.**
+- **Retro-justifying.** A number you produced, later supported with a real clinical cut-point, is
+  still your number — and the rigour makes it *harder* to see, not easier. That is exactly how a
+  34.5" waist target survived three days after the athlete had asked for 33".
+
 ### Rate honesty — conditional, not automatic
 
 **If** one or more domains imply a rate of change against a deadline — weight, waist, a
@@ -248,6 +277,11 @@ Write the baselines into `goals.md` alongside each domain's trigger, and the ath
 physiological constants into `athlete/constants.json` — **`sex` is required** and drives
 the RMR equation, so getting it wrong silently biases every energy number downstream.
 
+**Every value you write under `baseline`, `plan` or `triggers` needs a `_provenance` entry beside
+it** (see Session 2 and `data/METHOD.md`). `scripts/test-provenance.mjs` fails the commit if one is
+missing — a measurement cites the row and the protocol, a target you set is
+`coach-proposed-unconfirmed` with today's date, and arithmetic names its inputs.
+
 ### Then write `precommitments.md` together
 
 Explain what it's for: they are writing the arguments their future, more impatient self
@@ -272,3 +306,42 @@ question specifically:**
 
 That question exists because the person running the intake carries priors, and self-
 policing does not catch priors. Act on the answer before the chart goes live.
+
+---
+
+## The last step, and it is deliberately last
+
+> ⚠ **`athlete/constants.json` is created at the END of intake, not at the start.** Until it
+> exists, `scripts/check-all.mjs` skips every chart-dependent step and says so, so an intake that
+> runs across several sessions is GREEN the whole way through.
+>
+> SETUP used to say "copy the template constants in first, then leave the files empty", which
+> produced eight hard validator errors on every push for the entire intake — teaching a brand-new
+> athlete, in their first week, that a red build is normal. That is the exact outcome the no-chart
+> guard exists to prevent, defeated by the setup instructions (audit F-39). **Do not create the
+> file early to "get it out of the way".**
+
+Run these in order, once, when the interview is finished and the values are real:
+
+1. **Write `athlete/constants.json`.** Everything elicited above, with a `_provenance` entry on
+   every value under `baseline`, `plan` and `triggers`.
+
+   Three sections are easy to forget and each has a check behind it:
+
+   - **`sessionTypes`** — the athlete's own activities, one entry each, naming the MET, whether a
+     completed session counts toward the sessions floor, and the `goals.md` domain it serves.
+     **This is `training.csv`'s `type` enum**: an activity that is not registered can only be
+     logged as `other`, which counts toward nothing, so their training would be invisible to the
+     adherence count while they trained six days a week (audit F-15). `rest` and `other` are
+     supplied by the system — do not register them.
+   - **`domains`** — the `goals.md` domain headings, verbatim, keyed by role. Findings are filed
+     under these; a chart that omits them gets findings with no domain label, which is honest, and
+     no default is applied because a default is another athlete's domain wearing this one's name.
+   - **`plan.adherenceRoutingPct`** — `80`, `external`, cited to `CLAUDE.md` §7. It is the
+     charter's routing rule rather than anything of theirs, and four shared documents render it.
+
+2. **`node scripts/build-docs.mjs`** — `data/METHOD.md` renders **this chart's** MET table, so a
+   fork carries the previous athlete's table until this runs.
+3. **`node scripts/check-all.mjs`** — everything now applies. Fix what it prints before the first
+   coaching session; `scripts/test-cold-start.mjs` asserts a fresh chart passes clean, so anything
+   red here is real.

@@ -5,11 +5,7 @@
 # `main`, and when they do, the data is *in git and invisible*: `main` never gets it, the build
 # never sees it, and the dashboard shows a blank panel for a meal that was logged hours ago.
 #
-# **The Claude mobile and web surfaces do this by default** — they run Claude Code against the repo
-# in a cloud sandbox and commit to a generated `claude/*` branch. So any chart whose athlete logs
-# from a phone needs this workflow, or their data lands in git and is never seen again.
-#
-# It happened on the first chart on 2026-08-11: a breakfast was logged to
+# That happened on 2026-08-11: a breakfast was logged to
 # `claude/breakfast-nutrition-log-pw347w` at 09:56 local and was still missing from the dashboard
 # at 12:09. CLAUDE.md §0.1 already required a coaching session to find and merge stray branches at
 # session start — but that is a manual cleanup that only runs when a session happens to run. The
@@ -24,8 +20,20 @@ on:
       - main
       - 'keep/**'   # escape hatch: a branch the athlete deliberately wants left alone
   schedule:
-    # Backstop, hourly. Catches branches pushed while this workflow was failing, branches that
-    # predate it, and anything created by a path that doesn't fire a push event.
+    # Backstop only. Catches branches pushed while this workflow was failing, branches that predate
+    # it, and anything created by a path that doesn't fire a push event.
+    #
+    # ⚠ THIS DOES NOT RUN HOURLY, AND NOTHING HERE CAN MAKE IT. GitHub queues scheduled workflows
+    # on shared capacity and drops slots under load: observed runs never land at :17, drift up to
+    # ~50 min, and the 00:17, 01:17, 03:17, 04:17 and 20:17 slots were skipped outright (audit
+    # F-40). Read this as "roughly once an hour, sometimes not for four", because that is what it
+    # is. A cron expression is a request, not a guarantee.
+    #
+    # Deliberately left at one nominal run per hour rather than moved to */20. The extra runs would
+    # buy nothing real: the primary path is the `push` trigger above, which fires within seconds;
+    # a branch that loses the delete race is re-triggered by the very push that beat it; and the
+    # actual guarantee that stray data gets noticed is the dashboard's stray-branch banner, which
+    # is on the surface the athlete looks at and does not depend on this schedule at all.
     - cron: '17 * * * *'
   workflow_dispatch:
 
@@ -50,85 +58,20 @@ jobs:
         with:
           node-version: '22'
 
+      # The body of this job is scripts/absorb-branches.mjs, NOT this file.
+      #
+      # It lived here, inline, until 2026-08-14 — and that is precisely why a race that silently
+      # destroyed the athlete's logged data survived in it: logic inside a `run:` block cannot be
+      # tested. `scripts/test-git-sync.mjs` now replays the real race against real repositories,
+      # which is only possible because the code is somewhere a test can call it.
+      #
+      # What the script does, per branch and independently (audit F-04, F-18, F-36):
+      #   merge a CAPTURED SHA -> run the full check suite -> push main, re-applying from scratch
+      #   on a lost race -> delete the branch only under a lease on that same SHA.
+      # A branch that was pushed to mid-run is never deleted; it is left standing and absorbed by
+      # the run that push triggers.
       - name: Absorb every branch that is not main
         run: |
-          set -euo pipefail
           git config user.name "absorb-bot"
-          git config user.email "actions@users.noreply.github.com"
-
-          git fetch origin --prune
-
-          BRANCHES=$(git branch -r --format='%(refname:short)' \
-            | grep '^origin/' \
-            | grep -v -E '^origin/(main|HEAD)$' \
-            | grep -v -E '^origin/keep/' \
-            | sed 's|^origin/||' || true)
-
-          if [ -z "$BRANCHES" ]; then
-            echo "No stray branches. Nothing to absorb."
-            exit 0
-          fi
-
-          echo "Stray branches found:"; echo "$BRANCHES"
-          FAILED=""
-
-          for BRANCH in $BRANCHES; do
-            echo "::group::Absorbing $BRANCH"
-
-            AHEAD=$(git rev-list --count main..origin/"$BRANCH")
-            if [ "$AHEAD" = "0" ]; then
-              echo "Already contained in main — deleting."
-              git push origin --delete "$BRANCH"
-              echo "::endgroup::"
-              continue
-            fi
-
-            echo "$AHEAD commit(s) not on main:"
-            git log main..origin/"$BRANCH" --oneline
-
-            # A conflict here is a real one — two surfaces editing the same day. Resolving it
-            # means COMBINING rows, never dropping a side (CLAUDE.md §0.1), which is a judgement
-            # this job must not make. Leave the branch and fail loudly instead.
-            if ! git merge origin/"$BRANCH" --no-edit; then
-              git merge --abort || true
-              echo "::error::$BRANCH conflicts with main. Left in place for a coaching session to resolve by COMBINING rows, never dropping a side."
-              FAILED="$FAILED $BRANCH"
-              echo "::endgroup::"
-              continue
-            fi
-
-            echo "::endgroup::"
-          done
-
-          # energy.csv is derived from files the merge may have changed.
-          node scripts/compute-energy.mjs > /dev/null
-          git add data/energy.csv
-          git diff --cached --quiet || git commit -m "Recompute energy.csv after absorbing branch work"
-
-          # Nothing reaches main that would fail the build. A merge that breaks validation is
-          # worse than a stray branch: it takes the whole dashboard down instead of one meal.
-          node scripts/validate-data.mjs
-          [ -f scripts/test-rowwrite.mjs ] && node scripts/test-rowwrite.mjs || true
-
-          for attempt in 1 2 3 4 5; do
-            if git push origin HEAD:main; then
-              PUSHED=1; break
-            fi
-            echo "Push rejected (attempt $attempt) — rebasing on main and retrying."
-            git pull --rebase origin main
-            sleep 2
-          done
-          [ "${PUSHED:-}" = "1" ] || { echo "::error::Could not push main after 5 attempts."; exit 1; }
-
-          # Only delete what actually made it in.
-          for BRANCH in $BRANCHES; do
-            case " $FAILED " in *" $BRANCH "*) continue ;; esac
-            git push origin --delete "$BRANCH" && echo "Deleted $BRANCH"
-          done
-
-          if [ -n "$FAILED" ]; then
-            echo "::error::Left unmerged (conflicts):$FAILED"
-            exit 1
-          fi
-
-          echo "All stray branches absorbed into main."
+          git config user.email "brandallux@gmail.com"
+          node scripts/absorb-branches.mjs

@@ -222,19 +222,30 @@ export function GroupedBars({
 
 /* -------------------------------------------------------------- deficit bars ------ */
 
-/** Signed bars around a zero baseline: above = deficit, below = surplus. */
+/**
+ * Signed bars around a zero baseline: above = deficit, below = surplus.
+ *
+ * ⚠ THE REFERENCE IS PER GROUP, and that is a correctness property rather than a style choice.
+ * This used to take one `refLine` and draw it flat across the chart at the whole-week planned
+ * deficit — so a week holding four days of data was plotted against seven days of plan and read
+ * as a catastrophic miss (169 against 4,200). The chart directly above it on the same page
+ * already scaled its plan side by the days counted; two conventions for one problem, on one
+ * page, is audit F-62. Each group now carries the reference for the days IT covers, and the
+ * label is drawn once, over the last group that has one.
+ */
 export function DeficitBars({
-  groups, height = 200, refLine,
+  groups, height = 200, refLabel,
 }: {
-  groups: { key: string; label: string; value: number | null }[]
+  groups: { key: string; label: string; value: number | null; ref?: number | null }[]
   height?: number
-  refLine?: RefLine
+  refLabel?: string
 }) {
   const vals = groups.map((g) => g.value).filter((v): v is number => v != null)
   if (!vals.length) return null
 
-  const hi = Math.max(...vals, refLine?.value ?? 0, 0)
-  const lo = Math.min(...vals, 0)
+  const refs = groups.map((g) => g.ref).filter((v): v is number => v != null)
+  const hi = Math.max(...vals, ...refs, 0)
+  const lo = Math.min(...vals, ...refs, 0)
   const span = (hi - lo) || 1
   const plotW = W - PAD.left - PAD.right
   const plotH = height - PAD.top - PAD.bottom
@@ -254,14 +265,26 @@ export function DeficitBars({
         </g>
       ))}
 
-      {refLine && (
-        <g>
-          <line x1={PAD.left} x2={W - PAD.right} y1={y(refLine.value)} y2={y(refLine.value)}
-            stroke="var(--baseline)" strokeWidth={1.5} strokeDasharray="5 4" />
-          <text x={W - PAD.right} y={y(refLine.value) - 6} textAnchor="end" fontSize={11}
-            fill="var(--text-secondary)" fontWeight={550}>{refLine.label}</text>
-        </g>
-      )}
+      {/* One dashed segment per band, at that group's own reference. Drawn under the bars so a
+          bar reaching its plan is still legible. */}
+      {groups.map((g, gi) => {
+        if (g.ref == null) return null
+        const x0 = PAD.left + gi * bandW + 8
+        const x1 = PAD.left + (gi + 1) * bandW - 8
+        const lastWithRef = groups.map((x) => x.ref != null).lastIndexOf(true)
+        return (
+          <g key={`ref-${g.key}`}>
+            <line x1={x0} x2={x1} y1={y(g.ref)} y2={y(g.ref)}
+              stroke="var(--baseline)" strokeWidth={1.5} strokeDasharray="5 4">
+              <title>{`${g.label} · plan ${Math.round(g.ref).toLocaleString()} kcal`}</title>
+            </line>
+            {refLabel && gi === lastWithRef && (
+              <text x={x1} y={y(g.ref) - 6} textAnchor="end" fontSize={11}
+                fill="var(--text-secondary)" fontWeight={550}>{refLabel}</text>
+            )}
+          </g>
+        )
+      })}
 
       {groups.map((g, gi) => {
         const cx = PAD.left + gi * bandW + bandW / 2

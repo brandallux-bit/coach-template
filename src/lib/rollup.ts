@@ -1,7 +1,12 @@
 import {
-  allOf, body, eachDate, energy, meals, meanOrNull, n, oneOf, plan, steps,
-  sumOrNull, targets, training, weekStart, addDays, type Row,
+  COUNTS_TOWARD_FLOOR, allOf, body, eachDate, energy, fractionOfDayElapsed, meals, n, oneOf, plan,
+  steps, sumOrNull, targets, today, training, weekStart, weekdayKey, addDays, type Row,
 } from './data'
+import {
+  describeMissing, meanOfAccumulating, meanOfPointReadings, missingBurnComponents,
+  observedDailyBurn, partialBurnFrom, weekBalance, weekEnergy, weekIntake, weeklyBudget,
+  type PartialBurn, type WeekEnergy, type WeekIntake,
+} from './aggregate'
 
 export type DayRoll = {
   date: string
@@ -15,18 +20,61 @@ export type DayRoll = {
   fibreG: number | null
   alcoholKcal: number | null
   targetKcal: number | null
+  /**
+   * Today's alcohol allowance, from `targets.csv`.
+   *
+   * **Normally absent, and that is the correct state of this chart, not a gap.** `nutrition/plan.md`
+   * prices alcohol at ~1,200–1,400 kcal/week, but read the sentence: *"priced at his REAL intake,
+   * not a wishful number"*, off `values.md`'s athlete-stated ~7–9 glasses in a typical week. That
+   * is an OBSERVATION of what he drinks, not a budget he agreed to — and a meter needs a
+   * denominator that somebody owns. Nothing here invents one (INVARIANTS.md X-16).
+   *
+   * A coaching session may write a real allowance into a day's row — 2026-08-07 has one, 330
+   * against a logged 392 — and on those days the meter renders. On every other day the figure
+   * renders with no denominator, which says the true thing: this is what you drank, and nobody has
+   * set a line.
+   */
+  targetAlcoholKcal: number | null
   targetProteinG: number | null
   targetFatG: number | null
   targetFibreG: number | null
+  /** energy.csv's WHOLE-DAY figure. On a day still in progress this is a projection, not a fact. */
   burnKcal: number | null
   deficitKcal: number | null
   energyComplete: boolean
+  /**
+   * True when this row is the athlete's current local date — i.e. the day has not finished, so
+   * `burnKcal` and `deficitKcal` describe a day that has not happened yet.
+   *
+   * Deliberately NOT keyed off `energyComplete`: that flag means "intake and steps are present,"
+   * which goes true the moment breakfast is logged, hours before the day is over. Today's row
+   * read `complete=y` at 10:15 with 16 steps on the clock.
+   */
+  inProgress: boolean
+  /** Burn accrued so far. Equals `burnKcal` on a finished day; prorated while `inProgress`. */
+  burnToDateKcal: number | null
+  /** `burnToDateKcal` minus intake so far. Equals `deficitKcal` on a finished day. */
+  deficitToDateKcal: number | null
+  /**
+   * energy.csv columns that are blank on this day, and therefore counted as zero in its burn.
+   * Empty on a complete day. See `scripts/lib/aggregate.mjs`.
+   */
+  missingBurn: string[]
+  /**
+   * **The one flag a surface renders.** True when the day is OVER and a burn component still never
+   * arrived — so `burnToDateKcal` is a floor, the deficit shown is lower than the truth, and a
+   * figure derived from it must be marked (audit F-16).
+   *
+   * A day still in progress is deliberately excluded, and that exclusion is what keeps the marker
+   * worth reading. Today's step total does not arrive until tomorrow morning by design, so today
+   * is "incomplete" every single day; marking it would put the glyph on the dashboard permanently,
+   * which docs/SURFACES.md names as the way an alert stops being read. `inProgress` already has
+   * its own marker saying the day is not finished. **On a healthy chart this is never true.**
+   */
+  burnUnderstated: boolean
   sessions: Row[]
   countedSessions: number
 }
-
-/** Session types that count against goals.md's 3–4/week floor. Walks live in steps. */
-const COUNTS_TOWARD_FLOOR = new Set(['strength', 'circuit', 'bjj', 'peloton'])
 
 export function rollDay(date: string): DayRoll {
   const b = oneOf(body, date)
@@ -34,6 +82,14 @@ export function rollDay(date: string): DayRoll {
   const e = oneOf(energy, date)
   const m = allOf(meals, date)
   const sessions = allOf(training, date)
+
+  // A day that IS today has not finished, so energy.csv's whole-day row is a projection. Every
+  // consumer that renders a burn figure needs the accrued number instead, or it reports calories
+  // the athlete has not spent yet — 1,802 kcal "burned" at 10:15 on 16 steps, as reported
+  // 2026-08-13. Only the Today tab used to prorate; History and the weekly rollup did not.
+  const inProgress = date === today()
+  const partial = inProgress ? partialBurn(date, fractionOfDayElapsed()) : null
+  const missingBurn = e ? missingBurnComponents(e) : []
 
   return {
     date,
@@ -47,17 +103,44 @@ export function rollDay(date: string): DayRoll {
     fibreG: sumOrNull(m, 'fibre_g'),
     alcoholKcal: sumOrNull(m, 'alcohol_kcal'),
     targetKcal: n(t?.kcal),
+    targetAlcoholKcal: n(t?.alcohol_kcal),
     targetProteinG: n(t?.protein_g),
     targetFatG: n(t?.fat_g),
     targetFibreG: n(t?.fibre_g),
     burnKcal: n(e?.burn_total_kcal),
     deficitKcal: n(e?.deficit_kcal),
     energyComplete: e?.complete === 'y',
+    inProgress,
+    burnToDateKcal: partial ? partial.burnSoFarKcal : n(e?.burn_total_kcal),
+    deficitToDateKcal: partial ? partial.deficitSoFarKcal : n(e?.deficit_kcal),
+    missingBurn,
+    burnUnderstated: !inProgress && missingBurn.length > 0,
     sessions,
     countedSessions: sessions.filter(
       (s) => s.status === 'completed' && COUNTS_TOWARD_FLOOR.has(s.type),
     ).length,
   }
+}
+
+/** What a day's burn is missing, in words, for a footnote. Empty when nothing is missing. */
+export const missingBurnLabels = (d: DayRoll): string[] => describeMissing(d.missingBurn)
+
+export type { PartialBurn }
+
+/**
+ * Today's burn *so far*, rather than energy.csv's whole-day figure.
+ *
+ * The arithmetic lives in `scripts/lib/aggregate.mjs` (`partialBurnFrom`) so the property suite
+ * exercises it directly; this is the row lookup around it. Only RMR and non-step NEAT are prorated
+ * by the clock — steps, session and food-thermic burn are accrued-to-date by construction, since
+ * they exist only once the feed, the session or the meal has been logged.
+ *
+ * The returned `missing` list is the honesty contract: absent components count as zero, so the
+ * figure is a FLOOR (data/METHOD.md), and the caller is told which inputs were absent rather than
+ * being handed a bare number.
+ */
+export function partialBurn(date: string, fraction: number): PartialBurn {
+  return partialBurnFrom(oneOf(energy, date), sumOrNull(allOf(meals, date), 'kcal'), fraction)
 }
 
 export type WeekRoll = {
@@ -66,33 +149,104 @@ export type WeekRoll = {
   label: string
   days: DayRoll[]
   loggedDays: number
-  /** Days that actually produced a burn figure. The plan-side comparison must use this, not
-   *  the calendar length of the week, or a 4-day partial gets compared against 6 planned days. */
-  burnDays: number
+  /**
+   * **The denominator `intakeKcal`, `burnKcal`, `deficitKcal` and `targetKcal` all share.** A day
+   * contributes all of its figures or none of them, so `burnKcal − intakeKcal === deficitKcal`
+   * holds by construction (audit F-51). Render this beside them; never recompute it.
+   */
+  balanceDays: number
+  /** Days in the window holding data that could not be balanced — one side of the day was absent. */
+  unbalancedDays: number
   intakeKcal: number | null
   targetKcal: number | null
   burnKcal: number | null
   deficitKcal: number | null
-  /** True only when every day in the week has complete intake and step data. */
+  /** True when every counted day is a finished day with every burn component present. */
   complete: boolean
+  /** Counted days that are finished and still missing a burn component. Zero on a clean chart. */
+  partialDays: number
   avgWeightLb: number | null
   lastWaistIn: number | null
   avgSteps: number | null
   sessions: number
-  proteinDaysHit: number
+  /**
+   * Days clearing `plan.proteinFloorG` and days clearing `plan.proteinAimG`, reported **separately
+   * and never as one "protein days hit"** (audit F-29).
+   *
+   * The floor and the aim are two different quantities — 150 g and 165 g — and both are live: the
+   * dashboard graded days on the floor while `goals.md`'s process goal graded him on the aim, so a
+   * 155 g day was simultaneously a hit and a miss and neither surface said which line it meant.
+   * The fix is not to pick one. It is to render both, from the two constants that already exist.
+   */
+  proteinFloorDays: number
+  proteinAimDays: number
   proteinDaysLogged: number
-}
-
-const sum = (vals: (number | null)[]) => {
-  const v = vals.filter((x): x is number => x != null)
-  return v.length ? v.reduce((a, b) => a + b, 0) : null
+  /**
+   * Alcohol logged across the week, and how many of its days recorded a figure at all.
+   *
+   * Rendered with the day count beside it because the two are not separable: a 600 kcal week over
+   * two logged days is not a low-drinking week, it is a mostly-unlogged one, and stating the total
+   * alone would read as the first. `nutrition/plan.md` calls this his single largest discretionary
+   * lever and prices a week of it at ~0.35 lb of loss forgone; until W6 the figure it describes was
+   * written on every meal row and rendered on no page at all (audit F-38, F-69).
+   *
+   * **Both fields are read off `intake` below rather than summed again here** — until 2026-08-14
+   * they had their own day set (every day in the window), and `intake`'s is days with a meal
+   * logged. The two agreed on every row this chart has ever held, because `alcohol_kcal` only ever
+   * appears on a `meals.csv` row that also carries `kcal` (METHOD.md rule 3a), but two sums under
+   * one name is X-8 whether or not they have diverged yet.
+   */
+  alcoholKcal: number | null
+  alcoholDaysLogged: number
+  /**
+   * **The week against its budget: food, alcohol and total, over one day set.**
+   *
+   * Added 2026-08-14 at the athlete's request — *"a weekly target chart, just like the daily, but
+   * including alcohol. So each day, I can see where I stand for the day and for the week."*
+   * `budget.food` is DERIVED (`total − alcohol`) and exists nowhere else; the pace figures are what
+   * stop a week-to-date total read against a full-week budget from flattering him. See
+   * `scripts/lib/aggregate.mjs`.
+   */
+  intake: WeekIntake
+  /**
+   * **The week's estimated calories in, estimated calories out, and what they produce.**
+   *
+   * Asked for on 2026-08-15: *"my goal for the week is still lose 1 lb, so the week needs an
+   * estimated cals in and estimated cals out to achieve that, and they need to be divided
+   * logically amongst the 7 days."*
+   *
+   * ⚠ **ITS DAY SET IS ALL SEVEN DAYS, WHICH IS THE OPPOSITE OF `intake` ABOVE, ON PURPOSE.**
+   * `intake` answers "where do I stand *so far*" and is truncated at today; this answers "where
+   * does the week *land*", which is a question about days that have not happened. Reading one as
+   * the other is the whole hazard, so `estimatedBurnDays` is on the object and every surface that
+   * renders `outKcal` or `lossLb` must mark them while it is above zero (X-1).
+   */
+  energy: WeekEnergy
 }
 
 export function rollWeek(start: string, through: string): WeekRoll {
   const end = addDays(start, 6)
-  const days = eachDate(start, end < through ? end : through).map(rollDay)
+  // All seven days, then truncated at `through` for everything else. `weekEnergy` needs the days
+  // that have not happened; every other figure on this object is week-to-date by definition.
+  const allDays = eachDate(start, end).map(rollDay)
+  const days = allDays.filter((d) => d.date <= through)
   const logged = days.filter((d) => d.intakeKcal != null)
   const waists = days.map((d) => d.waistIn).filter((v): v is number => v != null)
+
+  // ONE day set for the whole energy balance. Before this, `sum()` skipped nulls per column, so
+  // each column silently picked its own days: a day with steps and a session but no food put its
+  // burn into the week's total and its blank deficit into nothing, and the row stopped adding up.
+  // burnToDate, not burnKcal: the current week contains today, and summing today's whole-day
+  // projection would credit the week with calories that have not been spent yet.
+  const balance = weekBalance(days)
+
+  // The FOOD/ALCOHOL/TOTAL split against the weekly budget. Its day set is deliberately not
+  // `balanceDays`: that predicate requires a burn figure and a deficit as well, which is right for
+  // an energy balance and wrong for "what have I eaten this week" — a day with meals logged and no
+  // energy row would drop its calories out of the numerator while the budget kept all seven days,
+  // which is the flattering direction. Days with an intake figure, and the plan summed over exactly
+  // those days.
+  const intake = weekIntake(days, weeklyBudget(plan.weeklyKcalBudget, plan.weeklyAlcoholKcalBudget))
 
   return {
     start,
@@ -102,18 +256,50 @@ export function rollWeek(start: string, through: string): WeekRoll {
     }),
     days,
     loggedDays: logged.length,
-    burnDays: days.filter((d) => d.burnKcal != null).length,
-    intakeKcal: sum(days.map((d) => d.intakeKcal)),
-    targetKcal: sum(days.map((d) => d.targetKcal)),
-    burnKcal: sum(days.map((d) => d.burnKcal)),
-    deficitKcal: sum(days.map((d) => d.deficitKcal)),
-    complete: days.length > 0 && days.every((d) => d.energyComplete),
-    avgWeightLb: meanOrNull(days.map((d) => d.weightLb)),
+    balanceDays: balance.balanceDays,
+    unbalancedDays: balance.unbalancedDays,
+    intakeKcal: balance.intakeKcal,
+    targetKcal: balance.targetKcal,
+    burnKcal: balance.burnKcal,
+    deficitKcal: balance.deficitKcal,
+    complete: balance.balanceDays > 0 && balance.partialDays === 0,
+    partialDays: balance.partialDays,
+    // A weigh-in is a point measurement — today's is as true as it will ever be. Steps accumulate,
+    // so today's partial count is excluded rather than averaged in at full weight (audit F-59).
+    avgWeightLb: meanOfPointReadings(days, (d) => d.weightLb),
     lastWaistIn: waists.length ? waists[waists.length - 1] : null,
-    avgSteps: meanOrNull(days.map((d) => d.steps)),
+    avgSteps: meanOfAccumulating(days, (d) => d.steps),
     sessions: days.reduce((a, d) => a + d.countedSessions, 0),
-    proteinDaysHit: logged.filter((d) => (d.proteinG ?? 0) >= plan.proteinFloorG).length,
+    proteinFloorDays: logged.filter((d) => (d.proteinG ?? 0) >= plan.proteinFloorG).length,
+    // `?? Infinity`, not `?? 0`: a chart with no aim on file must count ZERO aim days, not every
+    // day. Defaulting the target down is how "hit" quietly becomes "logged".
+    proteinAimDays: logged.filter((d) => (d.proteinG ?? 0) >= (plan.proteinAimG ?? Infinity)).length,
     proteinDaysLogged: logged.length,
+    // NOT `balanceDays`: a blank alcohol cell means "not recorded", and folding it into the energy
+    // balance would make an unrecorded glass look like a measured zero (INVARIANTS.md X-1). The
+    // denominator beside it says how much of the week this figure actually covers — and it is now
+    // ONE figure shared with the budget card rather than a second sum under the same name.
+    alcoholKcal: intake.alcoholKcal,
+    alcoholDaysLogged: intake.alcoholDays,
+    intake,
+    // ⚠ NO SECOND BURN COMPUTATION HERE, and that is the constraint that shaped it. A finished day
+    // hands over `energy.csv`'s own figure; a day that has not finished takes the mean of exactly
+    // those rows. Composing a fresh RMR + NEAT + TEF + steps + session estimate for Thursday would
+    // be a second implementation of the burn model, which scripts/test-single-home.mjs fails.
+    // `plan.estMaintenanceKcal` is deliberately NOT the fallback: it is RMR × 1.5 and METHOD.md
+    // forbids putting it on the same axis as the decomposed model (audit F-57, ~2,618 kcal/week).
+    energy: weekEnergy({
+      days: allDays.map((d) => ({
+        date: d.date,
+        weekday: weekdayKey(d.date),
+        burnKcal: d.burnKcal,
+        energyComplete: d.energyComplete,
+        targetKcal: d.targetKcal,
+      })),
+      observed: observedDailyBurn(energy),
+      weekdayBudget: plan.kcalByWeekday,
+      kcalPerLbFat: plan.kcalPerLbFat,
+    }),
   }
 }
 

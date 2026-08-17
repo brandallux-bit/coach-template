@@ -1,19 +1,73 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { kgFromLb, sessionCost } from './aggregate.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 const CHART = join(ROOT, 'athlete', 'constants.json')
-const TEMPLATE = join(ROOT, 'athlete', 'constants.template.json')
 
-/** True on the template repo, before any chart has been started. */
+/** True once intake has written a chart. False on the pristine template. */
 export const hasChart = existsSync(CHART)
 
-export const constants = JSON.parse(readFileSync(hasChart ? CHART : TEMPLATE, 'utf8'))
+/**
+ * What every script says when it is asked about an athlete who does not exist yet.
+ *
+ * Greppable on purpose: `scripts/test-cold-start.mjs` asserts this exact sentence comes back
+ * instead of a stack trace, and `scripts/check-all.mjs` skips the chart-dependent steps rather
+ * than printing it thirteen times.
+ */
+export const NO_CHART_MESSAGE =
+  'No athlete/constants.json — run intake first (SETUP.md §2). '
+  + 'Nothing in scripts/ or src/ may say anything about an athlete until intake has written one.'
 
-export const LB_PER_KG = 2.20462
-export const kg = (lb) => lb / LB_PER_KG
+/**
+ * The chart's constants — or, before intake, a value that throws `NO_CHART_MESSAGE` the moment
+ * anybody reads a field off it.
+ *
+ * ⚠ **THE FALLBACK THIS REPLACES DID NOT EXIST.** Until 2026-08-14 this line read
+ * `readFileSync(hasChart ? CHART : TEMPLATE)` against `athlete/constants.template.json`, **a file
+ * that is not in this repository** — it exists only on `upstream/main`. So any chart forked from
+ * *this* repo died on `readFileSync` in five scripts the moment `constants.json` was absent, with a
+ * raw ENOENT naming a file the reader had never heard of. `validate-data.mjs` printed its friendly
+ * "template repo with no chart yet" line and the pipeline stack-traced on the very next step
+ * (audit F-17).
+ *
+ * **Why a proxy rather than an eager throw.** Importing this module must stay free: `schema.mjs`,
+ * `rowwrite.mjs` and `validate-data.mjs` all import it at module scope, and `validate-data.mjs`'s
+ * whole job on a chart-less repo is to exit 0 with an explanation. An eager throw would fire before
+ * that early exit could run, which is the same defect one layer up. Reading a field, on the other
+ * hand, is a claim that an athlete exists — and that is exactly what must fail, loudly, with a
+ * sentence that says what to do (X-7).
+ */
+export const constants = hasChart
+  ? JSON.parse(readFileSync(CHART, 'utf8'))
+  : new Proxy({}, {
+    // Symbols are how a runtime asks "what kind of thing is this?" — console.log, JSON.stringify,
+    // `await`. Those must answer, or the error itself becomes unprintable.
+    get: (_, key) => { if (typeof key === 'symbol') return undefined; throw new Error(NO_CHART_MESSAGE) },
+    has: () => { throw new Error(NO_CHART_MESSAGE) },
+    ownKeys: () => { throw new Error(NO_CHART_MESSAGE) },
+  })
+
+/**
+ * The athlete's current local date (YYYY-MM-DD), from `athlete.timezone` — never the caller's
+ * clock. A coaching session runs on UTC; the athlete does not. Added 2026-08-11 after a snack got
+ * written to the wrong day twice (2026-08-08, repeated 2026-08-11) because a session read its own
+ * date instead of deriving this. Now the single implementation both validateRow() and
+ * validate-data.mjs check every written date against — see data/METHOD.md rule 6.
+ */
+export function localToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: constants.athlete.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
+/**
+ * Pounds to kilograms. Delegates — the constant lives in `scripts/lib/aggregate.mjs` beside the
+ * session formula that also needs it, rather than existing here as a second `2.20462` divisor.
+ */
+export const kg = kgFromLb
 
 /**
  * Mifflin-St Jeor. The sex term is the whole reason `sex` exists in constants.json:
@@ -21,14 +75,37 @@ export const kg = (lb) => lb / LB_PER_KG
  */
 const SEX_TERM = { male: 5, female: -161 }
 
+/**
+ * Mifflin-St Jeor's published coefficients, named rather than inlined.
+ *
+ * They are named because `scripts/lib/method-version.mjs` fingerprints them: a change to any one
+ * of these changes every historical `rmr_kcal` under the same `method_version`, which is the thing
+ * that column exists to prevent (audit F-64). Naming them is what lets a check see them.
+ */
+export const RMR_COEFFICIENTS = { perKg: 10, perCm: 6.25, perYear: -5, sexTerm: SEX_TERM }
+
 export function rmrKcal(weightLb, onDate) {
   const { sex, heightIn } = constants.athlete
   const term = SEX_TERM[sex]
   if (term === undefined) {
     throw new Error(`athlete.sex must be "male" or "female" for Mifflin-St Jeor, got "${sex}"`)
   }
-  return 10 * kg(weightLb) + 6.25 * (heightIn * 2.54) - 5 * ageOn(onDate) + term
+  const { perKg, perCm, perYear } = RMR_COEFFICIENTS
+  return perKg * kg(weightLb) + perCm * (heightIn * 2.54) + perYear * ageOn(onDate) + term
 }
+
+/**
+ * Thermic effect of food, as a share of intake. Digestion has a real, non-trivial cost, and it
+ * falls as intake falls — part of why deficits decay.
+ *
+ * Here rather than in `compute-energy.mjs` because it is a term in the burn model, and the model's
+ * terms have to be reachable by `scripts/lib/method-version.mjs` for the version tripwire to see
+ * them. Same for `NEAT_OTHER_RATE`.
+ */
+export const TEF_RATE = 0.10
+
+/** Non-step movement — standing, fidgeting, carrying things — as a share of RMR. */
+export const NEAT_OTHER_RATE = 0.10
 
 /** Derived from dob, never stored — so it cannot go stale mid-block. */
 export function ageOn(isoDate) {
@@ -43,17 +120,190 @@ export function ageOn(isoDate) {
  */
 export const rmrFloorKcal = (weightLb, onDate) => Math.round(rmrKcal(weightLb, onDate))
 
-// Standard compendium values. Walking is 0 on purpose — already counted in steps_kcal.
-const DEFAULT_MET = {
-  strength: 5.0, circuit: 6.0, bjj: 10.0, peloton: 8.5, walk: 0, rest: 0, other: 4.0,
+/**
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ * THE SESSION-TYPE REGISTRY (audit F-15, F-07, F-70 · INVARIANTS.md X-11)
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ *
+ * **The list of session types is the athlete's, not the system's.** It lives in
+ * `athlete/constants.json` under `sessionTypes`, the way `metrics` already does, and everything
+ * downstream is derived from it: `scripts/lib/schema.mjs`'s `training.csv` type enum, the MET
+ * table, and the set of types that count toward the sessions/week floor.
+ *
+ * WHAT IT REPLACES, AND WHY IT HAD TO. The enum was `strength | circuit | bjj | peloton | walk |
+ * rest | other` — **this athlete's activity list, hardcoded as system code in three files**. A new
+ * athlete who runs had exactly one legal value, `other`, which was not in `COUNTS_TOWARD_FLOOR`,
+ * so **every session they logged was invisible to the adherence count**: "sessions this week: 0
+ * against a floor of 3" for someone training six days a week — and `CLAUDE.md` §7 then routes
+ * their coach to behaviour-change counselling. The consequence is a coaching decision, not a
+ * display bug.
+ *
+ * It also closes F-07 on this chart: `rehab` had a MET here, was documented in `data/METHOD.md`,
+ * drove ~400 kcal/week of the Next 7 Days forecast, and **could not be written to `training.csv`**
+ * because the enum lived somewhere else. Two lists of the same thing in two files is what produced
+ * it, so there is now one list.
+ *
+ * EACH ENTRY NAMES THREE THINGS:
+ *   `met`                a whole-session MET, sourced. Per-tier values are separate (below)
+ *   `countsTowardFloor`  whether a completed session of this type counts against the floor
+ *   `domain`             the `goals.md` domain it serves — CLAUDE.md §1.1: an activity no domain
+ *                        needs is a chore the coach invented. `metrics` carries the same field
+ *                        for the same reason
+ *
+ * THE TWO UNIVERSAL TYPES BELOW ARE NOT IN THE REGISTRY, and that is deliberate. They are
+ * structural rather than athletic: `rest` records the absence of a session and `other` is the
+ * fallback for an activity nobody registered. Neither serves a domain, so requiring one would
+ * force every chart to invent an attribution for two rows of bookkeeping. They are always legal
+ * and are always appended after the chart's own types, so the enum can never be empty and a
+ * mid-intake chart can still record a rest day.
+ *
+ * ⚠ `other` deliberately does NOT count toward the floor: an unclassified session cannot be graded
+ * against a floor whose composition the athlete defined in terms of named activities. The fix for
+ * a chart logging real work as `other` is to register the type — which is what
+ * `unregistered-session-type` in `scripts/lib/findings.mjs` says, rather than this table guessing.
+ */
+/** The names of the two structural types, for docs and validation. See below. */
+export const UNIVERSAL_TYPES = ['rest', 'other']
+
+const UNIVERSAL_SESSION_TYPES = {
+  rest: { met: 0, countsTowardFloor: false, note: 'No session burn.' },
+  other: {
+    met: 4.0,
+    countsTowardFloor: false,
+    note: 'Fallback for an activity with no registry entry of its own. Does not count toward the '
+      + 'sessions floor — register the type instead.',
+  },
 }
 
-export const metFor = (type) => ({
-  ...DEFAULT_MET,
-  ...Object.fromEntries(
-    Object.entries(constants.metOverrides ?? {}).filter(([k]) => !k.startsWith('_')),
-  ),
-}[type] ?? DEFAULT_MET.other)
+/** The registry entries this chart wrote, `_`-prefixed documentation keys removed. */
+const chartSessionTypes = () =>
+  Object.fromEntries(
+    Object.entries(constants.sessionTypes ?? {}).filter(([k]) => !k.startsWith('_')),
+  )
+
+/**
+ * Every legal session type on this chart: the athlete's, then the two universal ones.
+ *
+ * Order matters only for rendering — `scripts/lib/method-version.mjs` sorts before digesting, so
+ * re-ordering the registry cannot churn `method_version`.
+ */
+export const sessionTypes = () => ({ ...chartSessionTypes(), ...UNIVERSAL_SESSION_TYPES })
+
+/**
+ * The legal values of `training.csv`'s `type` column. `scripts/lib/schema.mjs` reads this; nothing
+ * else may restate it.
+ */
+export const sessionTypeEnum = () => Object.keys(sessionTypes())
+
+/**
+ * Session types that count against `goals.md`'s sessions/week floor.
+ *
+ * ⚠ **ONE HOME, and it took two moves to get here** (audit F-70). It was declared identically in
+ * `rollup.ts` and `forecast.ts`, mirrored a third time in `test-views.mjs`, and the drift guard
+ * regex-parsed `rollup.ts` only. W5 moved it to `src/lib/data.ts` so both view libs imported it;
+ * W7 moved it here, because a hardcoded list of one athlete's activities in shared TypeScript was
+ * still X-11 whichever file it sat in. The dashboard reads the resolved set out of the bundle.
+ */
+export const countsTowardFloorSet = () => new Set(
+  Object.entries(sessionTypes()).filter(([, t]) => t.countsTowardFloor === true).map(([k]) => k),
+)
+
+/**
+ * The MET table as documentation: value plus what it is, in registry order.
+ *
+ * ⚠ **The notes are the CHART's, not this file's, and that is the fix rather than an oversight.**
+ * They used to live here in a `MET_NOTES` map carrying a comment reading *"Keep these notes
+ * GENERIC … nothing here may name this athlete's sessions, sports or injuries (X-11)"* — five lines
+ * above `bjj: 'Grappling …'`. A one-line description of an activity is unavoidably about that
+ * activity, so the note belongs beside the activity, in the chart that registered it.
+ */
+export const metTableDoc = () =>
+  Object.entries(sessionTypes()).map(([type, t]) => ({ type, met: t.met, note: t.note ?? '' }))
+
+/**
+ * The per-tier tables as documentation: the value and the citation, both from the registry entry.
+ *
+ * The citation is a sibling `_tier_sources` key rather than a second table, so a tier's value and
+ * the compendium line it came from cannot end up describing different things.
+ */
+export const metByIntensityDoc = () =>
+  Object.entries(sessionTypes()).flatMap(([type, t]) =>
+    Object.entries(t.metByIntensity ?? {}).map(([tier, met]) => {
+      const [code, ...rest] = String(t._tier_sources?.[tier] ?? '').split(' — ')
+      return { type, tier, met, code: rest.length ? code : '', label: rest.join(' — ') }
+    }))
+
+/**
+ * The resolved flat MET table, keyed by session type.
+ *
+ * Exported so the dashboard's forward-looking views read the SAME numbers `compute-energy.mjs`
+ * uses for history, rather than keeping a second copy in TypeScript. Two copies of a number is
+ * the defect this repo has already hit three times (data/METHOD.md rule 1).
+ *
+ * Was `DEFAULT_MET` spread over `constants.metOverrides`, which is retired: an override map beside
+ * a hardcoded default is two homes for one number, and the registry is the one home.
+ */
+export const metTable = () =>
+  Object.fromEntries(Object.entries(sessionTypes()).map(([type, t]) => [type, t.met]))
+
+export const metFor = (type) => metTable()[type] ?? UNIVERSAL_SESSION_TYPES.other.met
+
+/** kcal per step per lb of bodyweight. ~0.045 kcal/step at 181 lb, i.e. ~100 kcal/mile. */
+export const KCAL_PER_STEP_PER_LB = 0.00025
+
+/**
+ * The conventional energy density of a pound of body fat, for converting between a calorie
+ * deficit and a rate of weight loss.
+ *
+ * It lives here rather than being typed into whichever file needs it, because data/METHOD.md
+ * already uses it in the 2026-08-27 recalibration method (`Δweight_lb × 3,500 ≈ Σ deficit_kcal`)
+ * and `src/app/history/page.tsx` already computes a planned weekly deficit off the same idea.
+ * A second literal 3500 somewhere else is X-8 (a number with two homes), which is the largest
+ * defect class in this repo's own audit.
+ *
+ * It is a modelling constant, not a measurement and not anything the athlete chose: it is the
+ * standard figure the whole field uses, accurate enough for "is the plan aimed at the goal" and
+ * not accurate enough to argue about a tenth of a pound with.
+ */
+export const KCAL_PER_LB_FAT = 3500
+
+/**
+ * Per-tier MET, for a session logged with `light_min`/`moderate_min`/`hard_min` instead of one flat
+ * `duration_min` (data/METHOD.md). A flat MET over the whole session assumes uniform intensity,
+ * which overestimates any session that was not uniformly at its hardest.
+ *
+ * Falls back to the type's flat MET for any tier the chart has not sourced a value for, so logging
+ * a split for a type with no table is harmless — the same result as `duration_min` alone — rather
+ * than wrong.
+ */
+export const metForIntensity = (type, tier) =>
+  sessionTypes()[type]?.metByIntensity?.[tier] ?? metFor(type)
+
+/** The per-tier tables, for views that project a session logged with an intensity split. */
+export const metByIntensityTable = () => Object.fromEntries(
+  Object.entries(sessionTypes())
+    .filter(([, t]) => t.metByIntensity)
+    .map(([type, t]) => [type, t.metByIntensity]),
+)
+
+/**
+ * This chart's MET resolver, in the shape `sessionCost` takes: a tier when the row carries an
+ * intensity split, `null` for the flat lookup.
+ */
+export const chartMetOf = (type, tier) => (tier ? metForIntensity(type, tier) : metFor(type))
+
+/**
+ * What one `training.csv` row cost, on this chart's MET tables.
+ *
+ * The precedence itself lives in `scripts/lib/aggregate.mjs` (`sessionCost`) so the property suite
+ * runs the same code the ledger and the dashboard run. This is the thin binding that supplies the
+ * tables — nothing decided here, so there is nothing here to drift.
+ *
+ * `scripts/compute-energy.mjs` (the ledger) and `scripts/build-data-json.mjs` (the per-session
+ * figure the dashboard renders) both call this, which is what makes the two agree. They disagreed
+ * by 554 kcal on 2026-08-10 for exactly as long as they did not. See `sessionCost`.
+ */
+export const sessionCostFor = (row, weightLb) => sessionCost(row, weightLb, chartMetOf)
 
 /** Strips the `_comment` / `_note` documentation keys before the values reach the app. */
 export function stripNotes(obj) {

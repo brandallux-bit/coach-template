@@ -1,12 +1,19 @@
 import { Card, Empty, Masthead, Nav, Shell, TableView, Tile } from '@/components/ui'
 import { LineChart } from '@/components/charts'
-import { body, daysBetween, fmt, plan, prettyDate, series, today, trend } from '@/lib/data'
-import { allWeeks } from '@/lib/rollup'
+import FindingsCard from '@/components/FindingsCard'
+import MetricsCard from '@/components/metrics-card'
+import {
+  MIN_READINGS_FOR_PROJECTION, body, daysBetween, fmt, plan, prettyDate, series, today, trend,
+} from '@/lib/data'
+import { viewFindings } from '@/lib/findings'
+import { allWeeks, missingBurnLabels } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
 
-/** A projection needs a trend, and a trend needs readings. Below this it is noise. */
-const MIN_READINGS_FOR_PROJECTION = 7
+// A projection needs a trend, and a trend needs readings. The threshold is `trend()`'s own default
+// in src/lib/data.ts, imported rather than restated here — this page and that default were two
+// separate `7`s, so lowering one would have left the page saying "needs 7 weigh-ins" while every
+// other caller projected from fewer (audit F-71).
 
 export default function GoalsPage() {
   const now = today()
@@ -23,10 +30,14 @@ export default function GoalsPage() {
   const lostLb = latestWeight ? plan.baselineWeightLb - latestWeight.value : null
   // These triggers exist only if a domain defines them. A chart measuring something else
   // has no waist trigger, and this page renders without one rather than assuming it.
-  const toWeightTrigger =
-    latestWeight && plan.weightTriggerLb != null ? latestWeight.value - plan.weightTriggerLb : null
+  const toWeightCheckpoint =
+    latestWeight && plan.weightCheckpointLb != null ? latestWeight.value - plan.weightCheckpointLb : null
   const toWaistTrigger =
     latestWaist && plan.waistTriggerIn != null ? latestWaist.value - plan.waistTriggerIn : null
+  // A chart with neither a waist trigger nor a waist reading has no waist domain, and this page
+  // renders without one rather than asserting one.
+  const waistIsPrimary = plan.waistTriggerIn != null
+  const showWaist = waistIsPrimary || waistPoints.length > 0
 
   // Events are per-chart. Count down to whichever is nearest, whatever it's called.
   const nextEvent = Object.entries(plan.events ?? {})
@@ -38,9 +49,9 @@ export default function GoalsPage() {
   const daysToPhaseEnd = plan.phaseEndDate ? daysBetween(now, plan.phaseEndDate) : null
 
   // Only ever project from a real slope, and only downward-moving weight reaches the trigger.
-  const weeksToWeightTrigger =
-    weightTrend && weightTrend.perWeek < 0 && toWeightTrigger != null && toWeightTrigger > 0
-      ? toWeightTrigger / -weightTrend.perWeek
+  const weeksToWeightCheckpoint =
+    weightTrend && weightTrend.perWeek < 0 && toWeightCheckpoint != null && toWeightCheckpoint > 0
+      ? toWeightCheckpoint / -weightTrend.perWeek
       : null
 
   return (
@@ -48,21 +59,32 @@ export default function GoalsPage() {
       <Masthead title="Goals & Progress" sub={prettyDate(now)} />
       <Nav current="/" />
 
+      {/* Above the tiles on purpose. A `critical` finding is the reason to read every number
+          below it differently — a stale build, for instance, means all of them are yesterday's —
+          so it cannot sit underneath them. */}
+      <FindingsCard findings={viewFindings(now)} />
+
       <div className="grid cols-4" style={{ marginBottom: 20 }}>
-        <Tile
-          primary
-          badge="primary"
-          label="Waist at navel"
-          value={fmt(latestWaist?.value, 2)}
-          unit="in"
-          foot={
-            !latestWaist
-              ? 'no morning-protocol reading yet'
-              : toWaistTrigger != null
-                ? <>{fmt(toWaistTrigger, 2)}″ to the {plan.waistTriggerIn}″ trigger</>
-                : 'no trigger set for this metric'
-          }
-        />
+        {/* Waist is THIS chart's primary metric, not the system's. It renders when the chart has
+            either a reading or a trigger, and it carries the `primary` badge only when the chart
+            actually declared it a goal — a new athlete with no waist domain used to get a
+            primary-badged "Waist at navel" tile reading TBD (audit F-31). */}
+        {showWaist && (
+          <Tile
+            primary={waistIsPrimary}
+            badge={waistIsPrimary ? 'primary' : undefined}
+            label={plan.copy?.waistTileLabel ?? 'Waist'}
+            value={fmt(latestWaist?.value, 2)}
+            unit="in"
+            foot={
+              !latestWaist
+                ? 'no reading yet'
+                : toWaistTrigger != null
+                  ? <>{fmt(toWaistTrigger, 2)}″ to the {plan.waistTriggerIn}″ goal</>
+                  : 'no trigger set for this metric'
+            }
+          />
+        )}
         <Tile
           label="Weight"
           value={fmt(latestWeight?.value, 1)}
@@ -73,14 +95,14 @@ export default function GoalsPage() {
               : 'no weigh-in recorded'
           }
         />
-        {plan.weightTriggerLb != null && (
+        {plan.weightCheckpointLb != null && (
           <Tile
-            label={`To ${plan.weightTriggerLb} lb trigger`}
-            value={fmt(toWeightTrigger, 1)}
+            label={`To ${plan.weightCheckpointLb} lb checkpoint`}
+            value={fmt(toWeightCheckpoint, 1)}
             unit="lb"
             foot={
-              weeksToWeightTrigger
-                ? `~${weeksToWeightTrigger.toFixed(1)} weeks at the current trend`
+              weeksToWeightCheckpoint
+                ? `~${weeksToWeightCheckpoint.toFixed(1)} weeks at the current trend — review, not phase end`
                 : `TBD — needs ${MIN_READINGS_FOR_PROJECTION} weigh-ins, have ${weightPoints.length}`
             }
           />
@@ -109,17 +131,18 @@ export default function GoalsPage() {
                 : '.'}
             </p>
             <p>
-              {weeksToWeightTrigger
-                ? <>At that rate the {plan.weightTriggerLb} lb demotion trigger arrives in about{' '}
-                    <strong>{weeksToWeightTrigger.toFixed(1)} weeks</strong>.
-                    {plan.phaseEndDate && <> The phase cap ({plan.phaseEndDate}) binds independently,
-                    whichever comes first.</>}</>
-                : <>The trend is not moving toward the trigger, so no date is projected.</>}
+              {weeksToWeightCheckpoint
+                ? <>At that rate the {plan.weightCheckpointLb} lb review checkpoint arrives in about{' '}
+                    <strong>{weeksToWeightCheckpoint.toFixed(1)} weeks</strong>.
+                    {plan.phaseEndDate && <> The {plan.phaseEndDate} checkpoint is the other one.
+                    Neither ends the phase on its own — both mean stop and decide.</>}</>
+                : <>The trend is not moving toward the checkpoint, so no date is projected.</>}
             </p>
             {plan.waistTriggerIn != null && (
               <p className="footnote">
-                Waist is the primary metric and it is not yet projectable — it needs repeated
-                morning-protocol readings, not scale weight.
+                Waist is the primary metric and the only thing that ends Phase 1 — and it is not yet
+                projectable. It needs repeated morning-protocol readings, not scale weight. The weight
+                lines below are checkpoints to stop and re-decide at, not end conditions.
               </p>
             )}
           </div>
@@ -135,7 +158,9 @@ export default function GoalsPage() {
       <Card
         title="Weight"
         caption={`Baseline ${plan.baselineWeightLb} lb locked ${plan.baselineDate}.${
-          plan.weightTriggerLb ? ` The ${plan.weightTriggerLb} lb line is a demotion trigger, not a goal.` : ''
+          plan.weightCheckpointLb ? ` The ${plan.weightCheckpointLb} lb line is a review checkpoint, not a goal and not a phase end.` : ''
+        }${
+          plan.weightFloorLb ? ` The ${plan.weightFloorLb} lb line is the floor: the deficit stops there regardless of waist.` : ''
         }`}
       >
         {weightPoints.length ? (
@@ -144,8 +169,11 @@ export default function GoalsPage() {
               series={[{ name: 'Weight', color: 'var(--series-1)', points: weightPoints }]}
               refLines={[
                 { value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` },
-                ...(plan.weightTriggerLb != null
-                  ? [{ value: plan.weightTriggerLb, label: `trigger ${plan.weightTriggerLb}`, tone: 'good' as const }]
+                ...(plan.weightCheckpointLb != null
+                  ? [{ value: plan.weightCheckpointLb, label: `checkpoint ${plan.weightCheckpointLb}` }]
+                  : []),
+                ...(plan.weightFloorLb != null
+                  ? [{ value: plan.weightFloorLb, label: `floor ${plan.weightFloorLb}`, tone: 'critical' as const }]
                   : []),
               ]}
               unit=" lb"
@@ -168,20 +196,25 @@ export default function GoalsPage() {
         ) : <Empty>No weigh-ins recorded.</Empty>}
       </Card>
 
+      {/* Title and caption come from `athlete/constants.json`'s `copy`, not from here: a
+          measurement protocol and the reason a historical reading is excluded are facts about one
+          athlete's body and one athlete's chart (INVARIANTS.md X-11, audit F-31). A chart that
+          wrote neither gets the plain heading and no caption, which is a correct chart. */}
+      {showWaist && (
       <Card
-        title="Waist — the primary metric"
-        caption="Morning, fasted, at navel. The 36.5″ intake figure is deliberately excluded: it was taken mid-day, off prednisone, and is not comparable to a morning reading."
+        title={plan.copy?.waistCardTitle ?? 'Waist'}
+        caption={plan.copy?.waistCardCaption}
       >
         {waistPoints.length ? (
           <>
             <LineChart
               series={[{ name: 'Waist', color: 'var(--series-1)', points: waistPoints }]}
               refLines={[
-                ...(plan.waistTriggerIn != null
-                  ? [{ value: plan.waistTriggerIn, label: `trigger ${plan.waistTriggerIn}″`, tone: 'good' as const }]
+                ...(plan.waistWorkingBaselineIn != null
+                  ? [{ value: plan.waistWorkingBaselineIn, label: `baseline ${plan.waistWorkingBaselineIn}″` }]
                   : []),
-                ...(plan.waistAmbitionIn != null
-                  ? [{ value: plan.waistAmbitionIn, label: `ambition ${plan.waistAmbitionIn}″` }]
+                ...(plan.waistTriggerIn != null
+                  ? [{ value: plan.waistTriggerIn, label: `Phase 1 goal ${plan.waistTriggerIn}″`, tone: 'good' as const }]
                   : []),
               ]}
               decimals={2}
@@ -189,20 +222,30 @@ export default function GoalsPage() {
             />
             <p className="footnote">
               {waistPoints.length === 1
-                ? 'One reading is a point, not a trend. The 10-day measurement hold is running.'
-                : `${waistPoints.length} morning-protocol readings on record.`}
+                ? 'One reading is a point, not a trend.'
+                : `${waistPoints.length} readings on record.`}
             </p>
           </>
-        ) : <Empty>No morning-protocol waist readings yet.</Empty>}
+        ) : <Empty>No waist readings yet.</Empty>}
       </Card>
+      )}
 
-      <Card title="Weekly averages" caption="Completed weeks. This week is shown day by day below.">
+      <MetricsCard />
+
+      <Card
+        title="Weekly averages"
+        caption="Weeks that have finished. This week is shown day by day below. A week that started mid-block holds fewer days than seven, so every row states how many days its totals cover."
+      >
         {priorWeeks.length ? (
           <div className="scroll-x">
             <table>
               <thead>
+                {/* "Days" was missing entirely here while History's equivalent table carried it,
+                    so the Aug 3 row rendered four days of data under a caption reading "Completed
+                    weeks" with nothing marking it (audit F-63). It is the denominator Intake,
+                    Burn and Deficit are all summed over. */}
                 <tr>
-                  <th className="text">Week of</th><th>Avg weight</th><th>Waist</th><th>Avg steps</th>
+                  <th className="text">Week of</th><th>Days</th><th>Avg weight</th><th>Waist</th><th>Avg steps</th>
                   <th>Sessions</th><th>Intake</th><th>Burn</th><th>Deficit</th>
                 </tr>
               </thead>
@@ -210,19 +253,27 @@ export default function GoalsPage() {
                 {[...priorWeeks].reverse().map((w) => (
                   <tr key={w.start}>
                     <td className="text">{w.label}</td>
+                    <td>{w.balanceDays} / {w.days.length}</td>
                     <td>{fmt(w.avgWeightLb, 1)}</td>
                     <td>{fmt(w.lastWaistIn, 2)}</td>
                     <td>{fmt(w.avgSteps)}</td>
                     <td>{w.sessions}{plan.sessionsPerWeekFloor ? ` / ${plan.sessionsPerWeekFloor}` : ''}</td>
                     <td>{fmt(w.intakeKcal)}</td>
-                    <td>{fmt(w.burnKcal)}</td>
-                    <td>{fmt(w.deficitKcal)}</td>
+                    <td>{fmt(w.burnKcal)}{w.partialDays > 0 ? <span className="tbd">~</span> : null}</td>
+                    <td>{fmt(w.deficitKcal)}{w.partialDays > 0 ? <span className="tbd">~</span> : null}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : <Empty>No completed weeks yet — the block opened {plan.baselineDate}.</Empty>}
+        {priorWeeks.some((w) => w.partialDays > 0) && (
+          <p className="footnote">
+            <span className="tbd">~</span> Burn is a floor: a finished day in that week never
+            received one of its components, so the real burn is higher and the deficit shown is
+            lower than the truth.
+          </p>
+        )}
       </Card>
 
       <Card
@@ -249,8 +300,23 @@ export default function GoalsPage() {
                   <td>{fmt(d.intakeKcal)}</td>
                   <td>{fmt(d.targetKcal)}</td>
                   <td>{fmt(d.proteinG)}</td>
-                  <td>{fmt(d.burnKcal)}</td>
-                  <td>{fmt(d.deficitKcal)}</td>
+                  {/* Accrued, not energy.csv's whole-day projection — today's row would
+                      otherwise claim a full 24 h of RMR before lunch. See rollup.rollDay.
+                      Two markers, two different things: * = the day is not finished; ~ = the day
+                      IS finished and a component never arrived, so the figure is a floor and the
+                      deficit is understated (audit F-16). A day in progress never gets ~ — its
+                      step total is not due until tomorrow, and a marker that is on every day is
+                      one nobody reads. */}
+                  <td>
+                    {fmt(d.burnToDateKcal)}
+                    {d.inProgress ? <span className="tbd">*</span> : null}
+                    {d.burnUnderstated && d.burnToDateKcal != null ? <span className="tbd">~</span> : null}
+                  </td>
+                  <td>
+                    {fmt(d.deficitToDateKcal)}
+                    {d.inProgress ? <span className="tbd">*</span> : null}
+                    {d.burnUnderstated && d.deficitToDateKcal != null ? <span className="tbd">~</span> : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -258,7 +324,23 @@ export default function GoalsPage() {
         </div>
         <p className="footnote">
           Sessions this week: <strong>{thisWeek.sessions}</strong> against a floor of {plan.sessionsPerWeekFloor}.
-          {' '}Protein floor ({plan.proteinFloorG} g) hit on {thisWeek.proteinDaysHit} of {thisWeek.proteinDaysLogged} logged days.
+          {/* Floor AND aim, never one merged "protein days hit" (audit F-29). This line used to
+              report only the floor while goals.md graded him on the aim, so a 155 g day was a hit
+              here and a miss there and neither surface named its line. Both figures render from
+              athlete/constants.json; nothing here decides which one counts. */}
+          {' '}Protein: floor ({plan.proteinFloorG} g) cleared on {thisWeek.proteinFloorDays} of{' '}
+          {thisWeek.proteinDaysLogged} logged days
+          {plan.proteinAimG != null && <>, aim ({plan.proteinAimG} g) on {thisWeek.proteinAimDays}</>}.
+          {' '}Burn and deficit marked <span className="tbd">*</span> are accrued so far today, not
+          the whole day — resting and non-step burn are prorated to the part of the day that has
+          actually happened. Targets stay whole-day, so the gap is what remains, not a shortfall.
+          {thisWeek.days.some((d) => d.burnUnderstated) && (
+            <> Marked <span className="tbd">~</span>:{' '}
+              {thisWeek.days.filter((d) => d.burnUnderstated)
+                .map((d) => `${d.date} has no ${missingBurnLabels(d).join(' and no ')}`)
+                .join('; ')}
+              , so that day&rsquo;s burn is a floor and its deficit is understated.</>
+          )}
         </p>
       </Card>
 

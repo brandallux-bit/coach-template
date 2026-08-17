@@ -23,8 +23,26 @@ look structurally identical and share none of these domains.
 - **Primary metric:** waist at navel (inches, down is better) — chosen by the athlete over
   scale weight, explicitly: *"much more important than weight."*
 - **Baseline:** 35.25″ on 2026-08-07, morning and fasted, per `photos/PROTOCOL.md`.
-- **Demotion trigger:** waist ≤ 34.5″, *or* below 175 lb, *or* −5 to −8 lb — whichever
-  comes first.
+- **Demotion trigger:** waist ≤ 33″. Weight figures (175 lb, −5 to −8 lb) are **review
+  checkpoints**, not end conditions.
+
+> ⚠ **Worked lesson, added 2026-08-11 from a real failure on this chart.** This trigger
+> originally read *"waist ≤ 34.5″, or below 175 lb, or −5 to −8 lb — whichever comes first."*
+> Two defects, both worth checking for on any new chart:
+>
+> 1. **The number was the coach's, not the athlete's.** 34.5″ began as arithmetic off a
+>    measurement baseline later found to be defective, and was then retro-justified as a
+>    clinical cut-point (WHtR 0.500). It read as rigorous. The athlete's actual stated target,
+>    33″, sat in the file labelled an "ambition" that nothing acted on. **A defensible number
+>    is not the same as the athlete's goal.**
+> 2. **"Whichever comes first" made the real goal unreachable.** At ~3–4 lb per inch of waist,
+>    33″ lands near 170–174 lb — *below* both weight conditions. They would have fired first
+>    every time, ending the phase with the goal unmet. **Before writing "whichever comes
+>    first," check that the primary metric's condition can actually be the one that fires.**
+>    If it can't, the secondary conditions are checkpoints, not end conditions.
+>
+> When a phase's end conditions are demoted this way, something must still bound the downside:
+> here, a lower bodyweight floor written into the Health domain's promotion trigger.
 - **What it gives up:** muscle gain is subordinated while this runs. Fat loss wins every
   tiebreak.
 
