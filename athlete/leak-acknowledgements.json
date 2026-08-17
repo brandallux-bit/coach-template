@@ -1,0 +1,12 @@
+{
+  "_comment": "Leak exemptions for THIS chart — see scripts/check-no-athlete-leak.mjs. Empty is the correct state for a new chart, and for the template: an exemption belonging to one athlete resolves to 'matching nothing' on every other chart, where it would sit on top of a live check it can no longer justify. Add an entry only when the scanner reports a leak that genuinely cannot move yet — then pin it with `node scripts/check-no-athlete-leak.mjs --pin`, because an unpinned entry covers nothing, deliberately.",
+  "_shape": {
+    "path": "the file, repo-relative",
+    "lines": "[1-indexed line numbers the exemption covers]",
+    "digest": "from --pin; changes when those lines change, so the exemption stops applying",
+    "since": "YYYY-MM-DD",
+    "owner": "who has to resolve it",
+    "reason": "why it cannot move yet — a placement or design question, never 'not worth fixing'"
+  },
+  "entries": []
+}

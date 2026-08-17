@@ -65,7 +65,8 @@
  */
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { dirname, join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // -------------------------------------------------------------------------------------------
 // Scope
@@ -415,7 +416,7 @@ export function scanForLeaks(root, denylist = denylistFrom(root)) {
 
 /**
  * Leaks that are real, known, and not this workstream's to remove — each pinned to the exact set of
- * lines it covers.
+ * lines it covers. Read from `athlete/leak-acknowledgements.json`.
  *
  * ⚠ **THIS LIST IS A WORKLIST, NOT A SETTLEMENT.** Every entry names an owner and a date, and the
  * digest means it cannot silently cover a line nobody has read. Removing one is the definition of
@@ -424,37 +425,27 @@ export function scanForLeaks(root, denylist = denylistFrom(root)) {
  * `owner` is who can actually discharge the obligation. Where that is the head coach or the
  * athlete, this check must never be the thing that forces the decision — INVARIANTS.md, "a check
  * that cannot go green without inventing data must not be written".
+ *
+ * ⚠ **PER-CHART DATA, WHICH IS WHY IT IS NOT A LITERAL IN THIS FILE.** An acknowledgement says
+ * "these lines name THIS athlete, and here is why they cannot move yet". Shipping one chart's
+ * entries inside shared code meant the template carried them too, so a freshly forked chart's
+ * first `check-all` went red over four exemptions belonging to somebody else — and, worse, an
+ * entry that resolves to *matching nothing* is an exemption sitting on a check it can no longer
+ * justify. Same shape as F-30, one layer up. Found by `scripts/test-cold-start.mjs` during the
+ * W8 template sync.
+ *
+ * Keeping it in `athlete/` also means `scripts/` and `src/` are byte-identical between a chart
+ * and the template, so a template merge never conflicts here.
+ *
+ * A missing file is the normal state for a new chart: no exemptions, nothing suppressed.
  */
-/**
- * ⚠ **EMPTY IN THE TEMPLATE, AND IT MUST STAY THAT WAY UNTIL A CHART EXISTS.**
- *
- * An acknowledgement is a statement about ONE chart's leaks: "these lines name this athlete, here
- * is why they cannot move yet." The template has no athlete, so every entry it could carry would
- * resolve to *matching nothing* on whatever chart is forked from it — and `verdict()` fails on a
- * stale acknowledgement precisely so a dead exemption cannot sit there suppressing a live check.
- * Shipping the source chart's four entries did exactly that: a fresh chart's first `check-all`
- * went red over exemptions belonging to somebody else. Same shape as F-30, one layer up.
- *
- * The four entries this list carried before the W8 sync were resolved rather than carried:
- *   - `.claude/agents/MANIFEST.md` — the template's manifest is blank by construction, so the
- *     "per-athlete file in a shared directory" problem it described does not exist here. The
- *     entry itself said the placement decision "belongs with W8's template sync"; this is it,
- *     and the answer is that the roster stays in `.claude/agents/` because the agent runtime
- *     reads that path, while the template ships it empty.
- *   - `skills/daily-dashboard/SKILL.md` — the worked output example and the F-35 narrative were
- *     rewritten against a placeholder session rather than a real one.
- *   - `skills/program-design/SKILL.md` — the injury section named one athlete's sites; it now
- *     points at `athlete/injury-history.md` and describes the two patterns generically.
- *   - `skills/intake/reference/worked-example.md` — de-identified and kept. It is deliberately
- *     one completed chart shown as a model, behind its own "do not read during Session 1 or 2"
- *     warning, because replacing it with an invented athlete would teach the shape of an
- *     invention. If a future athlete's own domains collide with the example's, the scanner
- *     SHOULD flag it — that is the check working, not a false positive to pre-exempt.
- *
- * A chart adds its own entries here as it finds leaks it cannot move yet. Pin every one
- * (`--pin`); an unpinned entry covers nothing, by design.
- */
-export const ACKNOWLEDGED = []
+const acknowledgementsFile = join(
+  dirname(fileURLToPath(import.meta.url)), '..', '..', 'athlete', 'leak-acknowledgements.json',
+)
+
+export const ACKNOWLEDGED = existsSync(acknowledgementsFile)
+  ? (JSON.parse(readFileSync(acknowledgementsFile, 'utf8')).entries ?? [])
+  : []
 
 /**
  * The digest an acknowledgement pins: the exact lines it covers, read straight out of the file.
