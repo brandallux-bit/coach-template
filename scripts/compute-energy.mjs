@@ -12,13 +12,25 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readCsv, num, toCsv } from './lib/csv.mjs'
 import {
-  KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, TEF_RATE, localToday, rmrKcal, sessionCostFor,
+  KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, TEF_RATE, hasChart, localToday, NO_CHART_MESSAGE,
+  rmrKcal, sessionCostFor,
 } from './lib/athlete.mjs'
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
 import { METHOD_VERSION } from './lib/method-version.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
+
+// No chart, no ledger to derive — and this has to exit BEFORE `localToday()`, which reads
+// `athlete.timezone` at module scope and throws the intake message. `validate-data.mjs` already
+// exits cleanly here, so without this guard `npm run build` passed validation and then crashed
+// one command later: a fresh fork deployed before intake failed the build outright instead of
+// serving an empty dashboard. `test-cold-start.mjs` deliberately does not cover the build (see
+// its header), which is why this survived to be found by running it.
+if (!hasChart) {
+  console.log(`no energy ledger to compute — ${NO_CHART_MESSAGE}`)
+  process.exit(0)
+}
 
 const TODAY_LOCAL = localToday()
 // Every model constant this file used to declare privately now lives beside the rest of the burn

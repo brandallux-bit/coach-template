@@ -2,11 +2,11 @@
   "name": "coach-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "Web dashboard over the coaching chart. Reads data/*.csv, and writes rows back through /log via the GitHub API (see src/lib/log-write.ts). Said 'never writes to it' until 2026-08-14 — audit F-66.",
+  "description": "Web dashboard over the coaching chart. Reads data/*.csv, and writes rows back through /log via the GitHub API (see src/lib/log-write.ts). Said 'never writes to it' until 2026-08-14 \u2014 audit F-66.",
   "scripts": {
     "predev": "npm run data",
     "dev": "next dev",
-    "prebuild": "npm run data",
+    "prebuild": "node scripts/check-chart-for-build.mjs && npm run data",
     "build": "next build",
     "start": "next start",
     "data": "node scripts/validate-data.mjs && node scripts/compute-energy.mjs > /dev/null && node scripts/build-data-json.mjs",

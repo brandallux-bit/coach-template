@@ -66,7 +66,14 @@ const training = readCsv(join(DATA, 'training.csv')).map((row) => {
 
 // Nothing here is a literal. Every athlete-specific value comes from athlete/constants.json,
 // so forking this repo for a second athlete is a data change, not a code change.
-const c = stripNotes(constants)
+// An empty skeleton before intake, rather than a throw. This file already guards the DERIVED
+// figures on `hasChart` ("Null on the template repo", below) — but `stripNotes(constants)` reads
+// the proxy's keys, so it threw before any of those guards could run and took `npm run build`
+// down with it. The sections are named so the `c.baseline.x` reads below resolve to undefined
+// rather than dereferencing undefined; every consumer already renders a missing value as TBD.
+const c = hasChart
+  ? stripNotes(constants)
+  : { athlete: {}, baseline: {}, plan: {}, triggers: {}, program: {}, events: {} }
 const latestWeightLb =
   body.map((r) => num(r.weight_lb)).filter((v) => v != null).at(-1) ?? c.baseline.weightLb
 const asOf = body.at(-1)?.date
@@ -135,7 +142,11 @@ const bundle = {
    * made at request time, in src/lib/findings.ts, which is the only place "now" and "when this was
    * built" are two different values.
    */
-  generatedAt: { localDate: localToday(), at: new Date().toISOString() },
+  // `localDate` is null before intake, and deliberately not defaulted to a UTC date: without
+  // `athlete.timezone` there is no such thing as the athlete's local day, and guessing one is the
+  // exact failure `localToday()` throws to prevent (data/METHOD.md rule 6). A null here means
+  // "unknown", which the staleness comparison in src/lib/findings.ts must treat as "cannot say".
+  generatedAt: { localDate: hasChart ? localToday() : null, at: new Date().toISOString() },
   body,
   steps,
   targets: readCsv(join(DATA, 'targets.csv')),
@@ -151,7 +162,10 @@ const bundle = {
   // dashboard has one too — the athlete should not have to wait for a coaching session to be told
   // his loss rate is above the ceiling. See scripts/lib/findings.mjs for why this reports rather
   // than blocks.
-  findings: buildFindings({
+  // Empty before intake: every finding is a comparison against a threshold in `constants.json`,
+  // so with no chart there is nothing to compare and nothing to report. Not an error state — a
+  // chart-less repo genuinely has no findings.
+  findings: !hasChart ? [] : buildFindings({
     // The RAW constants, not the stripped `c`. Provenance markers live in `_provenance`, which
     // stripNotes() removes — and it should, since no view may render them. But passing the
     // stripped copy here made this bundle's findings a strict subset of data/findings.json's,

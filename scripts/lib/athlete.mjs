@@ -175,11 +175,22 @@ const UNIVERSAL_SESSION_TYPES = {
   },
 }
 
-/** The registry entries this chart wrote, `_`-prefixed documentation keys removed. */
+/**
+ * The registry entries this chart wrote, `_`-prefixed documentation keys removed.
+ *
+ * **Empty before intake, rather than a throw.** A repo with no chart has registered no session
+ * types, and that is a fact this function can state — it is not a question it has to refuse. The
+ * `constants` proxy throws on field access by design (so nothing can silently read a default
+ * athlete), but reaching *through* it here made every downstream caller — `sessionTypes`,
+ * `metTable`, `countsTowardFloorSet`, `SPEC`'s `type` enum — throw as well, which is what took
+ * `npm run build` down on a fresh fork. Guarding once here beats guarding at each call site.
+ */
 const chartSessionTypes = () =>
-  Object.fromEntries(
-    Object.entries(constants.sessionTypes ?? {}).filter(([k]) => !k.startsWith('_')),
-  )
+  (hasChart
+    ? Object.fromEntries(
+      Object.entries(constants.sessionTypes ?? {}).filter(([k]) => !k.startsWith('_')),
+    )
+    : {})
 
 /**
  * Every legal session type on this chart: the athlete's, then the two universal ones.
