@@ -43,7 +43,7 @@
  * is *correct*, and a check that rewrote it would destroy the only evidence of what the plan used
  * to be. `logs/TEMPLATE-*.md` is in scope: a template is an instruction for the future.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -75,6 +75,11 @@ const code = (p) => src(p)
 function walk(dirs, re, skip = /node_modules|src\/generated/) {
   const out = []
   const rec = (dir) => {
+    // A directory that does not exist contributes no files — it is not an error. `nutrition/`,
+    // `program/` and `docs/` are all provisioned per-chart (README, "Nothing exists by default"),
+    // so a chart without one is valid. Before this guard the scan crashed with a raw ENOENT on
+    // any chart that had not been given the same directories as the chart it was written on.
+    if (!existsSync(join(ROOT, dir))) return
     for (const e of readdirSync(join(ROOT, dir))) {
       const rel = `${dir}/${e}`
       if (skip.test(rel)) continue
