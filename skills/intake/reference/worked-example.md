@@ -18,7 +18,7 @@ look structurally identical and share none of these domains.
 **Ranking:** 1. Physical appearance → 2. Strength → 3. Health (dormant, satisfied)
 
 ### Domain: Physical appearance — #1
-- **Why it's here (his words):** visible abdominal definition, visible chest and arm
+- **Why it's here (their words):** visible abdominal definition, visible chest and arm
   muscle, no love handles.
 - **Primary metric:** waist at navel (inches, down is better) — chosen by the athlete over
   scale weight, explicitly: *"much more important than weight."*
@@ -60,7 +60,7 @@ look structurally identical and share none of these domains.
 - **Standing status:** satisfied. Sits at the bottom because it's intact, not because it
   doesn't matter.
 - **Promotion trigger → immediate #1:** any §5 red flag · bloodwork out of range · resting
-  BP above a stated threshold · sleep degraded 2+ weeks · **or he says so.**
+  BP above a stated threshold · sleep degraded 2+ weeks · **or they say so.**
 - **Note worth copying:** a dormant domain with no data is an assumption, not a status.
   This one carried a measurement cadence precisely so it couldn't go unexamined.
 

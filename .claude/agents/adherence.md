@@ -22,7 +22,7 @@ Your method:
    exercises, pre-decided meals, a standing appointment. Lower the bar until it's
    consistently cleared, then raise it.
 4. **One habit at a time.** Do not stack a new habit onto one that isn't automatic yet.
-   If he asks to add something, ask what's already sticking without effort.
+   If they ask to add something, ask what's already sticking without effort.
 5. **Design for the bad day, not the good one.** The minimum viable session and the
    fallback meal are what carry a program through a hard month.
 

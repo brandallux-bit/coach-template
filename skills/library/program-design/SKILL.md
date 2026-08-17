@@ -1,6 +1,6 @@
 ---
 name: program-design
-description: Build or rebuild a training block. Use when starting a new mesocycle, when the current block ends, after a deload or layoff, when equipment or schedule changes, when an injury requires restructuring, or whenever the athlete asks for a new program or wants to change what he's doing. Also use before agreeing to any requested change in training volume or frequency.
+description: Build or rebuild a training block. Use when starting a new mesocycle, when the current block ends, after a deload or layoff, when equipment or schedule changes, when an injury requires restructuring, or whenever the athlete asks for a new program or wants to change what they're doing. Also use before agreeing to any requested change in training volume or frequency.
 ---
 
 # Program Design
@@ -24,13 +24,13 @@ Read, in this order:
 2. **`athlete/injury-history.md` — mandatory gate. Back and knee rules are standing
    constraints at every phase.** Pull the contraindicated list into the block before
    selecting a single exercise, not after.
-3. `athlete/profile.md` — training age, equipment, what he'll actually do
+3. `athlete/profile.md` — training age, equipment, what they'll actually do
 4. `athlete/constraints.md` — real available days, and any scheduled big meals or travel
-5. `program/current-block.md` — what he's coming off
+5. `program/current-block.md` — what they're coming off
 
-Then find the number of days he has genuinely sustained before, from the intake question
-about his longest streak. **Program that number, not one more.** The most common
-programming error is prescribing the frequency he aspires to.
+Then find the number of days they have genuinely sustained before, from the intake question
+about their longest streak. **Program that number, not one more.** The most common
+programming error is prescribing the frequency they aspire to.
 
 ## Structure
 
@@ -52,7 +52,7 @@ programming error is prescribing the frequency he aspires to.
 - **Steps are the primary tool.** Set a daily target and treat it as a process goal.
   More sustainable and less recovery-costly than programmed cardio, and NEAT is what
   silently collapses during a diet. Also the most knee-friendly option available.
-- 2–3 low-intensity sessions of 20–40 min if he'll do them.
+- 2–3 low-intensity sessions of 20–40 min if they'll do them.
 - Keep HIIT minimal. It competes directly with lifting for recovery, and in a deficit
   recovery is the scarce resource.
 - Never program cardio as punishment for eating, and don't accept it framed that way.
@@ -72,25 +72,33 @@ Work around, never through. Modify range of motion, then load, then pattern — 
 order. Pain that changes gait or movement pattern stops the session and gets referred
 out (CLAUDE.md section 5).
 
-Specific to this athlete, at every phase and every ranking:
-- **Back:** load earned through progression, never assumed from historical numbers.
-  Position quality outranks load on every hinge and squat. Deadlift variation chosen for
-  spinal tolerance. Any radiating pain, numbness, or leg weakness stops everything and
-  gets referred out same day.
-- **Knees:** modify range before reducing load. Track next-day response, not just
-  in-session pain — tendons are quiet during the session and loud the following morning.
-- **A resolved injury in a deficit deserves more caution, not less.** Reduced recovery
-  and reduced tissue tolerance arrive together.
+**`athlete/injury-history.md` is the list, and it is per-athlete — this file must never carry
+one.** Read it before selecting a single exercise and pull its constraints into the block. They
+are standing at every phase and every ranking, not situational.
+
+Two patterns worth writing into that file in the athlete's own terms, because they recur and are
+easy to under-specify:
+
+- **A joint or spinal site with a history:** say what "load earned through progression, never
+  assumed from historical numbers" means for it — which pattern, which variation, what quality
+  outranks load — and what symptom stops everything and gets referred out same day (radiating
+  pain, numbness, or distal weakness always qualifies).
+- **A tendon site:** modify range before reducing load, and track **next-day** response rather
+  than in-session pain. Tendons are quiet during the session and loud the following morning, so
+  a session that felt fine is not evidence.
+
+**A resolved injury in a deficit deserves more caution, not less.** Reduced recovery and reduced
+tissue tolerance arrive together.
 
 ## Output — `data/` first, prose second, in this order
 
 **A block that exists only as a markdown table has not been prescribed.** `data/METHOD.md`
 names this failure mode in one line — *"a rehab block that exists in a markdown file and
-never reaches the athlete"* — and this chart has already paid for it with **three knee
-flares while a rehab block called for at intake sat unwritten** (audit F-13). The Today
-tab resolves from `data/prescriptions.csv`; with no rows it renders "no prescription for
-today", and since 2026-08-14 `skills/daily-dashboard` no longer falls back to prose, so a
-block written only here reaches him **nowhere at all**. That is the improvement, not a
+never reaches the athlete"* — and a chart has already paid for it with **repeated flares
+while a rehab block called for at intake sat unwritten** (audit F-13). The Today tab
+resolves from `data/prescriptions.csv`; with no rows it renders "no prescription for
+today", and `skills/daily-dashboard` no longer falls back to prose, so a block written
+only here reaches the athlete **nowhere at all**. That is the improvement, not a
 regression: a blank is honest and a stale table is not.
 
 Do these in order. Do not do them in parallel, and do not write the prose first "and
@@ -104,8 +112,8 @@ transcribe it after" — that is the same order failure with a promise attached.
   rule 6). Rows are **effective-dated**: a session resolves to its newest dated set, so a
   revision is a new full set of rows for that session on today's date, not an edit.
 - **A new set supersedes the whole session.** Write every exercise, including warm-up and
-  cooldown rows — an omitted row is a deleted prescription, which is how Session B lost its
-  warm-up (audit F-48).
+  cooldown rows — an omitted row is a deleted prescription, which is how one chart's session
+  silently lost its warm-up (audit F-48).
 - `load` and `reps` are what a strength marker in `athlete/goals.md` will be read against.
   If a marker fires at a load or a dose the block does not prescribe, the guardrail cannot
   be read at all and the marker is noise — check `markerAudit`'s output in
@@ -132,8 +140,8 @@ entry, live prescription row or `program/exercise-library.md` substitution may n
 the active block suspends. If the new block suspends something, say so in a sentence the
 check can read — *"Not in Phase 1: …"*, *"Still not in Phase 2: …"*, *"X is out"* — and then
 run `node scripts/build-docs.mjs` so the library's ⛔ banner regenerates. Mark any
-substitution that is now out with ⛔ in the library itself, so he reads it in the file he
-opens rather than in a second file he has to remember to open.
+substitution that is now out with ⛔ in the library itself, so they read it in the file they
+opens rather than in a second file they have to remember to open.
 
 **4 · Then write the prose**, and write it *from the rows*, never beside them.
 `program/current-block.md`: dates, block goal, frequency, the progression rule, the weekly

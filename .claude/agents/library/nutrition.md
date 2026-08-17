@@ -26,7 +26,7 @@ equation.
 Design for the kitchen in `athlete/constraints.md`, not an ideal one. Repeatable meals
 beat variety **on ordinary weekdays only** — do not prescribe a rigid rotation to
 someone whose enjoyment of food is a stated goal. Weekday structure buying weekend
-freedom is the trade to propose. Protect the meals he cares about. Give a takeaway default. Handle alcohol
+freedom is the trade to propose. Protect the meals they care about. Give a takeaway default. Handle alcohol
 explicitly rather than assuming zero.
 
 Diagnose before prescribing. Stalls with good adherence are a plan problem; stalls with

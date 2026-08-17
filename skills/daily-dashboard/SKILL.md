@@ -1,6 +1,6 @@
 ---
 name: daily-dashboard
-description: Render today's meal-plan progress and today's workout as two compact charts, no prose. Use whenever the athlete asks to see his "dashboard," "daily dashboard," "today," or "what's left" — and automatically as the last thing in the response whenever a session opens on a new calendar day.
+description: Render today's meal-plan progress and today's workout as two compact charts, no prose. Use whenever the athlete asks to see their "dashboard," "daily dashboard," "today," or "what's left" — and automatically as the last thing in the response whenever a session opens on a new calendar day.
 ---
 
 # Daily Dashboard
@@ -11,13 +11,13 @@ response. This skill's own output stands alone.
 
 ## When to render it
 
-- **On demand, any time during the day:** he asks to see the dashboard, "today," "my
+- **On demand, any time during the day:** they ask to see the dashboard, "today," "my
   day," "what's left," etc. → reply with *only* the two charts below. Nothing before,
   nothing after.
 - **At day start:** the first response in a new calendar day (per the session's current
   date) → render it as the **last** block of that response, after whatever else the
   session needed to say (trigger checks, weigh-in reaction, questions). Don't render it a
-  second time later the same session unless he asks again — a mid-day ask always gets a
+  second time later the same session unless they ask again — a mid-day ask always gets a
   freshly recomputed version, since the numbers will have moved.
 
 ## 1. Meals chart
@@ -27,7 +27,7 @@ Source, in this order — **all of it from `data/`, never from the prose log** (
 1. **Target** — today's row in `data/targets.csv`. If there isn't one yet, derive it from
    `nutrition/plan.md`'s weekly budget (weekday vs. weekend split, travel protocol if
    traveling), **write the row to `data/targets.csv` first**, then render it — don't show
-   him a blank target, and don't render a target that isn't recorded.
+   them a blank target, and don't render a target that isn't recorded.
 2. **So far** — sum `kcal` / `protein_g` / `fat_g` / `fibre_g` across every row in
    `data/meals.csv` for today. Recompute from the item rows every time. An empty cell is
    "not estimated" and must not be summed as zero — if a column has no values at all for
@@ -70,39 +70,38 @@ Source, in this order — **all of it machine-readable. There is no prose fallba
    fall back to a table in `program/`.
 
    > **This was the bug.** The skill used to fall back to `program/current-block.md`'s
-   > "weekly template" — and the section carrying that heading is the **preserved,
-   > not-live, BJJ-anchored** one, kept deliberately for the Phase 4 revert. So a Monday
-   > with no row surfaced *"BJJ (6pm), 90 min"*: the single activity the active rehab
-   > block suspends, rendered as today's plan (audit F-35). **A fallback to a stale table
-   > is worse than "no session written yet"** — the blank is obviously a blank, and the
-   > stale table is indistinguishable from the plan.
+   > "weekly template" — and on the chart where this was found, the section carrying that
+   > heading was a **preserved, not-live** one, kept deliberately for a planned revert. So a
+   > weekday with no row surfaced the one activity the active rehab block had suspended,
+   > rendered as today's plan (audit F-35). **A fallback to a stale table is worse than
+   > "no session written yet"** — the blank is obviously a blank, and the stale table is
+   > indistinguishable from the plan.
    >
    > The same reasoning kills the old "write it into `data/prescriptions.csv` and render
    > from there" instruction: transcribing a preserved table into the live file is how a
    > superseded prescription becomes the current one. **A prescription row is written by
    > `skills/program-design`, in a session, on purpose — never by a rendering skill.**
 
-4. **Anything ⛔ in `program/exercise-library.md` is out.** If he asks for a substitution
-   mid-session, that banner — generated from the active block — is the answer, not the
-   substitution table under it.
+4. **Anything ⛔ in `program/exercise-library.md` is out**, where the chart has one. If the
+   athlete asks for a substitution mid-session, that banner — generated from the active
+   block — is the answer, not the substitution table under it.
 5. **Progress** — count today's rows in `data/sets.csv` **for this session** against the
    prescribed `sets`. Scope on session as well as exercise name: two sessions on one day
    share exercises, and matching on name alone renders an evening session's rows "done"
    because the morning logged them (audit F-53). Match on the base exercise name before
    any parenthetical, so "Push-up (feet elevated)" and "Push-up (flat)" both count toward
    the prescribed push-up.
-6. Skip warm-up and cooldown rows — they aren't "exercises" in the sense he's asking
-   for. Keep everything else, in order.
+6. Skip warm-up and cooldown rows — they aren't "exercises" in the sense the athlete is
+   asking for. Keep everything else, in order.
+
+The shape of the block, with this chart's own session name and its own rows from
+`data/prescriptions.csv`:
 
 ```
-WORKOUT — Session B (Upper Push/Pull + Core)
-Push-ups (feet-elevated)          3 x AMRAP-2
-Single-arm KB overhead press      3 x 6-10 @ 35 lb
-Bent-over row                     3 x 8-12 @ 50 lb DB
-Band face-pulls                   2 x 15
-KB curls + band curls             2 x 10-15
-Suitcase carry                    3 x 40-55s/side @ 50 lb
-Plank / dead bug                  2 x 30-45s
+WORKOUT — <session name>
+<exercise>                        <sets> x <reps> @ <load>
+<exercise>                        <sets> x <reps>
+...
 ```
 
 > **The shape is the example; the numbers are not.** Recompute every one from
@@ -110,7 +109,7 @@ Plank / dead bug                  2 x 30-45s
 > 2026-08-14 — both were re-anchored to **50 lb** on 08-11 at the athlete's own
 > instruction, and the carry's 30-40 s dose sat entirely below the fire line of the
 > strength marker it feeds, so a coach following this file verbatim rendered a
-> superseded prescription into the chart he was shown (audit F-35, F-50).
+> superseded prescription into the chart they were shown (audit F-35, F-50).
 > `scripts/test-single-home.mjs` §2b now fails on any load stated here that disagrees
 > with the live row, which is why the example is kept rather than deleted: a rule with
 > nothing to check certifies whatever happens next.

@@ -1,6 +1,6 @@
 ---
 name: photo-assessment
-description: Assess uploaded body photos — both progress photos and aspirational "target physique" reference images. Use whenever the athlete uploads any image of a body, his own or someone else's, including when he asks "how am I looking," "am I making progress," "what body fat am I," or "can I look like this." Also use when translating a visual goal into numeric targets and a realistic timeline.
+description: Assess uploaded body photos — both progress photos and aspirational "target physique" reference images. Use whenever the athlete uploads any image of a body, their own or someone else's, including when they ask "how am I looking," "am I making progress," "what body fat am I," or "can I look like this." Also use when translating a visual goal into numeric targets and a realistic timeline.
 ---
 
 # Photo Assessment
@@ -40,11 +40,11 @@ Say this once, clearly, the first time. Don't re-litigate it every upload.
 ## Target physique decomposition
 
 This is the highest-value thing this skill does, and the place a sycophantic coach fails
-worst. When he uploads a physique he wants to look like, do not say "achievable with
+worst. When they upload a physique they want to look like, do not say "achievable with
 hard work." Decompose it.
 
 **1. What's changeable**
-- **Lean mass required.** Estimate the difference between his current lean mass and what
+- **Lean mass required.** Estimate the difference between their current lean mass and what
   the reference carries. Then convert to time using realistic rates:
   - Novice (<1 yr training): ~0.9–1.1 kg/month
   - Intermediate (1–3 yrs): ~0.4–0.5 kg/month
@@ -59,38 +59,38 @@ hard work." Decompose it.
 
 **2. What isn't changeable**
 Clavicle width, hip width, limb-length ratios, muscle belly length and insertion points,
-height, and where his body preferentially stores fat. These set the shape. Training sets
-the size. Name the specific structural differences you can see between him and the
-reference — kindly, once, factually. He needs this to set a goal he can actually hit.
+height, and where their body preferentially stores fat. These set the shape. Training sets
+the size. Name the specific structural differences you can see between them and the
+reference — kindly, once, factually. They need this to set a goal they can actually hit.
 
 **3. What isn't real**
 - Lighting, oil, tan, camera angle, lens
 - Pump and pre-shoot dehydration and carb manipulation
 - Editing
 - **Pharmacology.** If the reference physique is plausibly enhanced, say so directly. Do
-  not describe, recommend, or help plan PED use — but do not let him chase a natural
+  not describe, recommend, or help plan PED use — but do not let them chase a natural
   timeline toward a target that isn't natural. Silence here is the more harmful choice:
-  he'll conclude the gap is his effort.
+  they'll conclude the gap is their effort.
 
 **4. Convert to a number**
 End with: target bodyweight, target waist, target lean mass, a date, and the phase
 structure to get there. A photo goal that hasn't been converted to numbers can never be
 achieved, only approached indefinitely.
 
-**5. Then ask what he actually wants**
-Often the reference physique is a proxy. Ask what specifically he's responding to in the
+**5. Then ask what they actually wants**
+Often the reference physique is a proxy. Ask what specifically they're responding to in the
 image — the shoulders, the waist-to-shoulder ratio, the leanness, looking good in a
 particular shirt. Frequently the real goal is 60% of the reference and reachable in a
 quarter of the time, and naming that is a gift rather than a downgrade.
 
 ## Tone
 
-Clinical and kind. Never flattering, never cruel. He asked for an assessment, so assess
-— but remember he's showing you something he's self-conscious about. Lead with what the
-data says, not with reassurance and not with a critique he didn't ask for.
+Clinical and kind. Never flattering, never cruel. They asked for an assessment, so assess
+— but remember they're showing you something they're self-conscious about. Lead with what the
+data says, not with reassurance and not with a critique they didn't ask for.
 
-If body image distress shows up in how he talks about the photos — not dissatisfaction,
-which is normal, but distress, self-disgust, or a gap between what he describes and what
+If body image distress shows up in how they talk about the photos — not dissatisfaction,
+which is normal, but distress, self-disgust, or a gap between what they describe and what
 the image shows — stop the assessment. Say what you're noticing, plainly and without
-alarm, and suggest he talk it through with a professional. Don't produce numbers or
+alarm, and suggest they talk it through with a professional. Don't produce numbers or
 targets while that's open.

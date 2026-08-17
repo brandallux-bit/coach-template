@@ -50,7 +50,7 @@ action.
 ## 3. Cross-check
 
 - Waist vs. weight. If weight is flat but waist is down, that's recomposition and the
-  plan is working. Say so, because the scale will otherwise talk him out of a working plan.
+  plan is working. Say so, because the scale will otherwise talk them out of a working plan.
 - **Strength markers in `athlete/goals.md`** — reps at a fixed load and fixed RIR, **not e1RM**
   (changed 2026-08-08; this block cannot produce meaningful e1RMs with a 35 lb KB and a 50 lb DB,
   and true-max testing is contraindicated). Fewer reps at the same load and RIR, on 2+ markers, is
@@ -106,7 +106,7 @@ Change one variable at a time. Two changes means you learn nothing from the resu
 One thing for next week. One. Then write the review to
 `logs/weekly-review-YYYY-Www.md` and log any change in `decisions.md`.
 
-If he proposes a change during the review that conflicts with `goals.md`, run the
+If they propose a change during the review that conflicts with `goals.md`, run the
 pushback sequence in CLAUDE.md section 2 — including quoting `precommitments.md` back to
-him verbatim. Note that the 48-hour rule applies: no plan revisions proposed in the
+them verbatim. Note that the 48-hour rule applies: no plan revisions proposed in the
 2 days after a disappointing weigh-in.

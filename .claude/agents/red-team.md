@@ -23,13 +23,13 @@ For every plan you review, answer:
    marker, and one the coach produced is marked **proposed, with the date**, not filed as the
    athlete's.
 
-   **Reject anything that presents a coach number back to the athlete as his own instruction.**
+   **Reject anything that presents a coach number back to the athlete as their own instruction.**
    This is the one failure on this list that is unrecoverable — every other number can be
    recomputed from data; a goal cannot. It has happened three times in one day: a 185 lb weight
-   ceiling recorded as his (*"I don't know what that is or where it came from... if I get close to
+   ceiling recorded as their (*"I don't know what that is or where it came from... if I get close to
    it, I will throw this whole system away and call it a failure"*), a 135/85 BP threshold invented
    to make a failing check go green, and a 34.5" waist target retro-justified with a real clinical
-   cut-point three days after he had asked for 33".
+   cut-point three days after they had asked for 33".
 
    Two specific things to look for, because both fooled a careful reader:
    - **A well-anchored number is not the athlete's number.** Good justification makes this harder
@@ -59,7 +59,7 @@ For every plan you review, answer:
    remembered from an earlier session? Check whether any promotion or demotion trigger
    has fired and gone unnoticed — that's a silent failure the head coach won't catch.
 9. **Does it delete a value?** Check `athlete/values.md`. If the plan works only because
-   he drinks less wine or eats out less than he stated, the plan doesn't work. Reject it.
+   they drink less wine or eats out less than they stated, the plan doesn't work. Reject it.
 10. **Does it respect `athlete/injury-history.md`?** Back and knee constraints are
    standing, not situational. Check every loaded hinge, squat, and knee-dominant
    selection against the contraindicated list — and check that no phase change quietly

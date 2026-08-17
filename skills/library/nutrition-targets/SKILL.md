@@ -36,7 +36,7 @@ Record the RMR number in `nutrition/plan.md`. It is a hard floor (CLAUDE.md §5)
 - Cap the phase at 12–16 weeks, then a planned 1–2 week maintenance break at true
   maintenance calories. This is programmed in advance, not earned and not skipped.
 
-Do the arithmetic in front of him: current weight, target, rate, weeks. If the deadline
+Do the arithmetic in front of them: current weight, target, rate, weeks. If the deadline
 doesn't fit the rate, the deadline moves or the target shrinks. The rate does not.
 
 ## 3. Macros
@@ -78,10 +78,10 @@ Design around adherence, not elegance. Read `athlete/constraints.md` and
 - 3–4 protein feedings of 30–50 g, spread across the day.
 - Build 4–6 repeatable meals rather than a rotating plan. Variety is where compliance
   dies — decision cost is the enemy.
-- Anchor around the meals he already makes without thinking. Modify those before
+- Anchor around the meals they already makes without thinking. Modify those before
   introducing anything new.
-- Protect the meal he most looks forward to. Budget for it. A plan that deletes dinner
-  with his family will be abandoned in three weeks and it should be.
+- Protect the meal they most looks forward to. Budget for it. A plan that deletes dinner
+  with their family will be abandoned in three weeks and it should be.
 - Give a takeaway/restaurant default that fits the targets, decided now rather than at
   8pm in a car park.
 - Handle alcohol explicitly with real numbers — see `skills/lifestyle-integration` for
@@ -132,7 +132,7 @@ regardless of what the scale says.
 `data/targets.csv` row from it every morning on a timer, *"no AI, no coaching session, no
 judgement."* Revise to 1,950 kcal, write it to `plan.md` as this skill used to say, and the
 generator keeps emitting the **old** figure tomorrow morning and every morning after — and
-because it never overwrites an existing row, the wrong row is durable. **He eats to a number
+because it never overwrites an existing row, the wrong row is durable. **They eats to a number
 the coach believes it changed** (audit F-13).
 
 Do these in order.
@@ -146,9 +146,9 @@ per athlete-local weekday abbreviation), `weeklyKcalBudget`, `proteinFloorG`, `p
   disagree one of them is a typo and the arithmetic says which.
 - **Every value you change gets its `_provenance` entry updated in the same edit** (W0,
   X-16). A number you chose is `coach-proposed-unconfirmed` **with today's date**, never
-  filed as his. Where he said it, quote him. Where it is arithmetic, name the inputs.
+  filed as their. Where they said it, quote them. Where it is arithmetic, name the inputs.
   A `coach-proposed-unconfirmed` value older than seven days becomes a finding, which is
-  the mechanism by which "ask him" survives the end of this session.
+  the mechanism by which "ask them" survives the end of this session.
 - **Do not delete an unconfirmed value to make the marker go away**, and do not upgrade a
   marker without a quote (`data/METHOD.md`, "Provenance").
 
@@ -169,7 +169,7 @@ node scripts/build-findings.mjs
 Read what `build-findings` prints before you write a word of prose: it computes the §5.2
 floors — the calorie target against estimated RMR, protein, the loss-rate ceiling, the
 16-week deficit cap — and **surfaces them rather than blocking, which means nothing else
-will stop you.** Raise anything `critical` with him first.
+will stop you.** Raise anything `critical` with them first.
 
 **4 · Then write the prose**, from the constants. `nutrition/plan.md`: the maintenance
 estimate and how it was derived, the RMR floor, the expected weekly rate, the review date,
@@ -183,5 +183,5 @@ counterargument to these numbers.
 
 > **Anything the athlete has not ruled on stays visible rather than getting quietly
 > settled.** As of 2026-08-14 the calorie figures, both protein numbers, fat and fibre are
-> all `coach-proposed-unconfirmed` — his rate is on record in his own words and the budget
+> all `coach-proposed-unconfirmed` — their rate is on record in their own words and the budget
 > that implements it is not. Ask; do not resolve it by choosing.

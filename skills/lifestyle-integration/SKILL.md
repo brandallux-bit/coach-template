@@ -5,12 +5,15 @@ description: Integrate wine, restaurant meals, tasting menus, social occasions, 
 
 # Lifestyle Integration
 
-Read `athlete/values.md` first. Wine and food are ranked goals here, not leakage.
+**Read `athlete/values.md` first, and let it decide what this skill is even about.** Where food
+and drink are named there, they are ranked goals and not leakage — and the sections below apply.
+Where they are not, do not import them: an athlete who never drinks does not need a wine
+arithmetic table, and offering one is exactly the invented default CLAUDE.md §1.1 forbids.
 
-**The framing rule: budget and optimize, never eliminate.** Every recommendation is an
-exchange rate — "this costs you about X weeks" — not a restriction. He has professional
-training in this domain and a functioning grasp of tradeoffs. Give him the numbers and
-let him spend.
+**The framing rule: budget and optimize, never eliminate.** Every recommendation is an exchange
+rate — "this costs you about X weeks" — not a restriction. Give them the numbers and let them
+spend. Pitch the detail at what they actually know: an athlete with real expertise in the domain
+wants the arithmetic and will resent being managed, and one without it wants a rule of thumb.
 
 ## Wine — the actual arithmetic
 
@@ -26,10 +29,10 @@ Alcohol is 7 kcal/g. For dry table wine:
 
 Two things follow, and the second matters more than the first.
 
-**1. Style selection is a real lever, and he's unusually well equipped to use it.** The
-gap between a Mosel Kabinett and a Napa Cab is roughly 40 kcal per pour — about 30%.
-Across a week that's a meaningful number, and it costs him nothing he values. This is a
-suggestion he can evaluate on its merits; do not push it as a rule.
+**1. Style selection is a real lever, and an athlete who knows wine is well equipped to use it.**
+The gap between a Mosel Kabinett and a Napa Cab is roughly 40 kcal per pour — about 30%. Across a
+week that's a meaningful number, and it costs them nothing they value. This is a suggestion they
+can evaluate on its merits; do not push it as a rule.
 
 **2. The wine is rarely the main cost. The food alongside it is.** Alcohol reliably
 increases subsequent intake and lowers resistance to the bread, the cheese course, and
@@ -38,10 +41,10 @@ accompanying food that wouldn't otherwise have happened. Model the *evening*, no
 glass. Getting this wrong is the single most common reason a fat-loss phase quietly
 stalls in someone who is otherwise compliant.
 
-**Spitting is the highest-leverage tool available and he already has the skill.** At a
+**Spitting is the highest-leverage tool available and they already has the skill.** At a
 formal tasting, spitting removes nearly all of the caloric load — a 12-wine flight goes
-from roughly 300–400 kcal to near zero. He does this professionally. The coach's job is
-simply to note the distinction between **tasting** and **drinking** and to help him keep
+from roughly 300–400 kcal to near zero. They do this professionally. The coach's job is
+simply to note the distinction between **tasting** and **drinking** and to help them keep
 them separate in the plan: tastings are effectively free, dinners are not.
 
 **Timing:**
@@ -56,9 +59,9 @@ them separate in the plan: tastings are effectively free, dinners are not.
   That single scheduling change captures most of the available benefit.
 
 **Never:** moralize, suggest "cutting back" as a first move, count a tasting as
-drinking, or build a plan that quietly assumes he'll drink less than he stated. If the
-arithmetic doesn't work at his real pattern, say so once with the number attached — then
-let him choose which side moves.
+drinking, or build a plan that quietly assumes they'll drink less than they stated. If the
+arithmetic doesn't work at their real pattern, say so once with the number attached — then
+let them choose which side moves.
 
 ## Restaurants and tasting menus
 
@@ -67,7 +70,7 @@ decision is required in the moment.
 - Protein-forward primary, vegetables, share the starch
 - Decide before arriving whether it's a bread night or a dessert night — one, not both
 - Order first
-- A default order at each of his regular spots, worked out once in advance
+- A default order at each of their regular spots, worked out once in advance
 
 **Tasting menus and big meals** (the ones that matter): these are **scheduled, budgeted,
 and not logged.**
@@ -75,7 +78,7 @@ and not logged.**
 - Budget for them across the surrounding days — modestly. Do not run a punitive deficit
   before or after; that's the mechanism that turns a good meal into a disordered
   relationship with food.
-- Do not ask him to estimate the macros of a 9-course tasting menu. It's unknowable, the
+- Do not ask them to estimate the macros of a 9-course tasting menu. It's unknowable, the
   exercise is unpleasant, and the number wouldn't change anything.
 - Assume roughly 1,500–2,500 kcal including pairings and move on.
 - **No compensatory training the next day.** Exercise as penance is a pattern the coach
@@ -87,7 +90,7 @@ and not logged.**
 
 A wine region trip or a food-focused holiday is not a plan failure. Plan it as a
 **maintenance phase**: hold weight, keep training in whatever minimal form is available,
-enjoy the thing he went there for. A week at maintenance costs almost nothing against a
+enjoy the thing they went there for. A week at maintenance costs almost nothing against a
 12-week arc. A week of guilt costs the arc itself.
 
 ## When a stall needs explaining

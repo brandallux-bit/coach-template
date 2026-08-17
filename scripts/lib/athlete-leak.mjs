@@ -425,63 +425,36 @@ export function scanForLeaks(root, denylist = denylistFrom(root)) {
  * athlete, this check must never be the thing that forces the decision — INVARIANTS.md, "a check
  * that cannot go green without inventing data must not be written".
  */
-export const ACKNOWLEDGED = [
-  {
-    path: '.claude/agents/MANIFEST.md',
-    lines: [20, 21],
-    digest: '41fe402dcbd4bb67',
-    since: '2026-08-14',
-    owner: 'head coach',
-    reason:
-      'THE FILE DECLARES ITSELF PER-ATHLETE IN ITS OWN FIRST LINE, and `CLAUDE.md` §7 agrees — '
-      + '"the roster is per-athlete and is not listed here". So this is an instance file living in '
-      + 'a shared directory, which is a placement question rather than a leak: the agent runtime '
-      + 'reads `.claude/agents/`, so the manifest cannot simply move to `athlete/` without the '
-      + 'roster becoming unreadable. Deciding where a per-athlete manifest belongs is a system '
-      + 'design call, and it belongs with W8\'s template sync rather than inside a sweep.',
-  },
-  {
-    path: 'skills/daily-dashboard/SKILL.md',
-    lines: [75, 98],
-    digest: 'b006eab66a401fb9',
-    since: '2026-08-14',
-    owner: 'head coach',
-    reason:
-      'Two lines: a worked OUTPUT example built from this chart\'s session names, and a paragraph '
-      + 'narrating the F-35 defect (a stale template surfacing a suspended activity as today\'s '
-      + 'plan). The narrative is the same class as a code comment and is why the fallback was '
-      + 'removed — generalising it would delete the reason. The worked example is the harder '
-      + 'question: W6 made `test-single-home.mjs` §2b check its LOADS against the live '
-      + '`prescriptions.csv`, so a generic example would silently stop being checked. Resolving '
-      + 'that means deciding what a worked example is for, which is a coaching call.',
-  },
-  {
-    path: 'skills/intake/reference/worked-example.md',
-    lines: [18, 20, 23],
-    digest: 'cab98ccf2eba071f',
-    since: '2026-08-14',
-    owner: 'head coach',
-    reason:
-      'The whole file is one chart\'s domains shown as a model, deliberately, behind its own '
-      + '"do not read during Session 1 or 2" warning — the point being that a real elicited chart '
-      + 'looks nothing like a template. Replacing it with an invented athlete would teach the '
-      + 'shape of an invention. Whether the example should be a DIFFERENT athlete\'s chart '
-      + '(`CLAUDE.md` §1\'s own example is a symptom-control chart) is the right question and it '
-      + 'is a decision about how intake teaches, not a sweep.',
-  },
-  {
-    path: 'skills/program-design/SKILL.md',
-    lines: [107],
-    digest: '0b8ea075277f5bf8',
-    since: '2026-08-14',
-    owner: 'head coach',
-    reason:
-      'One line, narrating how a real session lost its warm-up rows when a skill wrote prose '
-      + 'instead of `prescriptions.csv` (audit F-13/F-48). Same class as the daily-dashboard '
-      + 'narrative: the incident is why the rule above it exists, and a version with the name '
-      + 'removed is a rule with no evidence behind it.',
-  },
-]
+/**
+ * ⚠ **EMPTY IN THE TEMPLATE, AND IT MUST STAY THAT WAY UNTIL A CHART EXISTS.**
+ *
+ * An acknowledgement is a statement about ONE chart's leaks: "these lines name this athlete, here
+ * is why they cannot move yet." The template has no athlete, so every entry it could carry would
+ * resolve to *matching nothing* on whatever chart is forked from it — and `verdict()` fails on a
+ * stale acknowledgement precisely so a dead exemption cannot sit there suppressing a live check.
+ * Shipping the source chart's four entries did exactly that: a fresh chart's first `check-all`
+ * went red over exemptions belonging to somebody else. Same shape as F-30, one layer up.
+ *
+ * The four entries this list carried before the W8 sync were resolved rather than carried:
+ *   - `.claude/agents/MANIFEST.md` — the template's manifest is blank by construction, so the
+ *     "per-athlete file in a shared directory" problem it described does not exist here. The
+ *     entry itself said the placement decision "belongs with W8's template sync"; this is it,
+ *     and the answer is that the roster stays in `.claude/agents/` because the agent runtime
+ *     reads that path, while the template ships it empty.
+ *   - `skills/daily-dashboard/SKILL.md` — the worked output example and the F-35 narrative were
+ *     rewritten against a placeholder session rather than a real one.
+ *   - `skills/program-design/SKILL.md` — the injury section named one athlete's sites; it now
+ *     points at `athlete/injury-history.md` and describes the two patterns generically.
+ *   - `skills/intake/reference/worked-example.md` — de-identified and kept. It is deliberately
+ *     one completed chart shown as a model, behind its own "do not read during Session 1 or 2"
+ *     warning, because replacing it with an invented athlete would teach the shape of an
+ *     invention. If a future athlete's own domains collide with the example's, the scanner
+ *     SHOULD flag it — that is the check working, not a false positive to pre-exempt.
+ *
+ * A chart adds its own entries here as it finds leaks it cannot move yet. Pin every one
+ * (`--pin`); an unpinned entry covers nothing, by design.
+ */
+export const ACKNOWLEDGED = []
 
 /**
  * The digest an acknowledgement pins: the exact lines it covers, read straight out of the file.
