@@ -110,7 +110,7 @@ export function auditProvenance(constants) {
       // nothing, which is worse than an honest `coach-proposed-unconfirmed`.
       if (m.class === 'athlete-stated' || m.class === 'athlete-confirmed') {
         if (!isText(m.quote) && !isText(m.measured)) {
-          flag(section, key, `${m.class} requires a quote (his words about THIS number) or measured (the row and protocol it was read from)`)
+          flag(section, key, `${m.class} requires a quote (their words about THIS number) or measured (the row and protocol it was read from)`)
         }
       }
       if (m.class === 'derived' && !isText(m.inputs)) {

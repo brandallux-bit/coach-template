@@ -109,11 +109,12 @@ Every threshold, target and trigger gets a provenance marker — `athlete-stated
 `data/METHOD.md`, "Provenance". Anything you supplied is **`coach-proposed-unconfirmed`** with the
 date, and it stays that way until they rule on it in words you can quote.
 
-> **This is not hypothetical.** On 2026-08-11 a coach proposed a 170 lb floor and a 185 lb ceiling
-> in one commit and recorded both as the athlete's. Two days later: *"I don't know what that is or
-> where it came from. I never provided that weight and if I get close to it, I will throw this
-> whole system away and call it a failure."* He had genuinely set the floor. Same commit, same
-> author, same file — and nothing on the page distinguished them.
+> **This is not hypothetical.** On one chart a coach proposed a weight floor and a weight ceiling
+> in a single commit and recorded both as the athlete's. Two days later, about the ceiling: *"I
+> don't know what that is or where it came from. I never provided that weight and if I get close
+> to it, I will throw this whole system away and call it a failure."* The floor in that same commit
+> was genuinely theirs. Same commit, same author, same file — and nothing on the page
+> distinguished the two.
 
 Three failure modes, all of which have happened:
 
@@ -182,9 +183,10 @@ agent, is checked against that file before it is spoken.
 ### Injuries — only as deep as the athlete has them
 
 If the PAR-Q+ or Session 1 surfaced an injury or pain history, fill
-`athlete/injury-history.md` properly; it takes its own conversation. If there is genuinely
-no injury history, write that, and **do not create a programming constraint that doesn't
-exist.**
+`athlete/injury-history.md` properly — the form renamed in at setup carries the headings and the
+elicitation prompts, including the ones people under-specify. It takes its own conversation. If
+there is genuinely no injury history, write that in the file, and **do not create a programming
+constraint that doesn't exist.**
 
 Where a history does exist, get: what it was, when, how it resolved, what imaging exists,
 when the last flare was and what caused it, and — most importantly — **the early warning

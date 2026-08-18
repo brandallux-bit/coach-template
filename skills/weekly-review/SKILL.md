@@ -51,9 +51,11 @@ action.
 
 - Waist vs. weight. If weight is flat but waist is down, that's recomposition and the
   plan is working. Say so, because the scale will otherwise talk them out of a working plan.
-- **Strength markers in `athlete/goals.md`** — reps at a fixed load and fixed RIR, **not e1RM**
-  (changed 2026-08-08; this block cannot produce meaningful e1RMs with a 35 lb KB and a 50 lb DB,
-  and true-max testing is contraindicated). Fewer reps at the same load and RIR, on 2+ markers, is
+- **Strength markers in `athlete/goals.md`** — reps at a fixed load and fixed RIR, **not e1RM**.
+  An e1RM formula extrapolates from a heavy single; where the available implements top out well
+  below the athlete's working strength, or where true-max testing is contraindicated by
+  `athlete/injury-history.md`, the estimate is a number about the equipment rather than about the
+  athlete. Check both before using one. Fewer reps at the same load and RIR, on 2+ markers, is
   the strength guardrail firing — the deficit may be too aggressive. **Also watch same-reps-but-
   harder**: rising RIR-difficulty at unchanged load and reps is the earlier signal, and it is
   invisible unless RIR is being logged.

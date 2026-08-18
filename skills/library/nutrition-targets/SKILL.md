@@ -78,7 +78,7 @@ Design around adherence, not elegance. Read `athlete/constraints.md` and
 - 3–4 protein feedings of 30–50 g, spread across the day.
 - Build 4–6 repeatable meals rather than a rotating plan. Variety is where compliance
   dies — decision cost is the enemy.
-- Anchor around the meals they already makes without thinking. Modify those before
+- Anchor around the meals they already make without thinking. Modify those before
   introducing anything new.
 - Protect the meal they most looks forward to. Budget for it. A plan that deletes dinner
   with their family will be abandoned in three weeks and it should be.
@@ -132,7 +132,7 @@ regardless of what the scale says.
 `data/targets.csv` row from it every morning on a timer, *"no AI, no coaching session, no
 judgement."* Revise to 1,950 kcal, write it to `plan.md` as this skill used to say, and the
 generator keeps emitting the **old** figure tomorrow morning and every morning after — and
-because it never overwrites an existing row, the wrong row is durable. **They eats to a number
+because it never overwrites an existing row, the wrong row is durable. **They eat to a number
 the coach believes it changed** (audit F-13).
 
 Do these in order.
@@ -146,7 +146,7 @@ per athlete-local weekday abbreviation), `weeklyKcalBudget`, `proteinFloorG`, `p
   disagree one of them is a typo and the arithmetic says which.
 - **Every value you change gets its `_provenance` entry updated in the same edit** (W0,
   X-16). A number you chose is `coach-proposed-unconfirmed` **with today's date**, never
-  filed as their. Where they said it, quote them. Where it is arithmetic, name the inputs.
+  filed as theirs. Where they said it, quote them. Where it is arithmetic, name the inputs.
   A `coach-proposed-unconfirmed` value older than seven days becomes a finding, which is
   the mechanism by which "ask them" survives the end of this session.
 - **Do not delete an unconfirmed value to make the marker go away**, and do not upgrade a

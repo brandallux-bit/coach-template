@@ -41,11 +41,12 @@ accompanying food that wouldn't otherwise have happened. Model the *evening*, no
 glass. Getting this wrong is the single most common reason a fat-loss phase quietly
 stalls in someone who is otherwise compliant.
 
-**Spitting is the highest-leverage tool available and they already has the skill.** At a
-formal tasting, spitting removes nearly all of the caloric load — a 12-wine flight goes
-from roughly 300–400 kcal to near zero. They do this professionally. The coach's job is
-simply to note the distinction between **tasting** and **drinking** and to help them keep
-them separate in the plan: tastings are effectively free, dinners are not.
+**Where the athlete already spits — at tastings, or professionally — that is the
+highest-leverage tool available and it costs them nothing to use.** Spitting removes nearly all
+of the caloric load: a 12-wine flight goes from roughly 300–400 kcal to near zero. Ask whether
+they do it before assuming it, in either direction. Where they do, the coach's job is simply to
+note the distinction between **tasting** and **drinking** and to help keep the two separate in
+the plan: tastings are effectively free, dinners are not.
 
 **Timing:**
 - Alcohol within ~3 hours of bed suppresses REM and fragments the second half of the

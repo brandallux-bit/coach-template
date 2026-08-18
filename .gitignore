@@ -15,3 +15,6 @@ src/generated/
 # Derived from data/ + today's date on demand. Not committed: it would churn daily and
 # conflict on every concurrent session. Regenerate with `node scripts/build-findings.mjs`.
 data/findings.json
+
+# Local env files of any name — .env.example is already tracked and stays so.
+.env*
