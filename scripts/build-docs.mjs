@@ -27,6 +27,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { metTableDoc, metByIntensityDoc, UNIVERSAL_TYPES, hasChart, NO_CHART_MESSAGE } from './lib/athlete.mjs'
+import { SPEC } from './lib/schema.mjs'
 import { PROGRAM_DIR, readChartDocs } from './lib/chart-docs.mjs'
 import { OFFER_MARK, extractSuspensions, reportableSuspensions } from './lib/suspensions.mjs'
 
@@ -36,7 +37,44 @@ const CHECK = process.argv.includes('--check')
 /** The one place a MET value is turned into text. `5` not `5.0` — JSON numbers, rendered plainly. */
 const met = (v) => String(v)
 
+/**
+ * A file's constraints, as one sentence, from `SPEC` and nothing else.
+ *
+ * Deliberately terse and deliberately incomplete: it renders what `SPEC` can be *held to* — the
+ * things `validate-data.mjs` actually enforces. A constraint that lives in prose rather than in
+ * `SPEC` is not listed here, because listing it would be the same hand-typing this block exists
+ * to abolish, one level down.
+ */
+const constraintsDoc = (spec) => [
+  spec.uniqueDate ? 'uniqueDate' : null,
+  spec.uniqueKey ? `warns on duplicate ${spec.uniqueKey.join('+')}` : null,
+  spec.required?.length ? `requires ${spec.required.join(', ')}` : null,
+  // `\\|` because these land inside a Markdown table cell, where a bare pipe starts a new column.
+  ...Object.entries(spec.enums ?? {}).map(([k, v]) => `${k} \u2208 ${v.join('\\|')}`),
+  ...Object.entries(spec.ranges ?? {}).map(([k, [lo, hi]]) => `${k} ${lo}\u2013${hi}`),
+].filter(Boolean).join(' \u00b7 ')
+
 const BLOCKS = {
+  /**
+   * Every file's columns and enforced constraints, from `SPEC`.
+   *
+   * WHY THIS EXISTS, and it is the MET table's story with a different table. `body.csv` lost two
+   * columns on 2026-08-16; `data/METHOD.md` was updated by hand in the same commit and the other
+   * two documents carrying the same schema were not. One of them compiles into the shareable PDF,
+   * so the artifact handed to other people declared a schema the code had stopped using — and it
+   * would have gone on declaring it, because nothing reads a table to check it.
+   *
+   * `SPEC` is the single home (INVARIANTS.md X-8). Anything a document says about the schema that
+   * `SPEC` does not know is either prose that belongs beside this block, or a constraint that
+   * belongs IN `SPEC`. There is no third case, and that is the point.
+   */
+  'schema-table': () => [
+    '| File | Columns | Enforced constraints |',
+    '|---|---|---|',
+    ...Object.entries(SPEC).map(([file, spec]) =>
+      `| \`${file}\` | ${spec.header.join(', ')} | ${constraintsDoc(spec) || '\u2014'} |`),
+  ].join('\n'),
+
   /** The flat table, with what each value is. For a document that has room for a table. */
   'met-table': () => [
     '| Session type | MET | |',
