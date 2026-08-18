@@ -135,9 +135,11 @@ export const SPEC = {
     ranges: { order: [1, 40], sets: [1, 20] },
     required: ['session', 'order', 'exercise'],
   },
-  // A measurement: it records what the coach said, on the day they said it. `latestOnOrBefore`
-  // then keeps it in force until a newer one replaces it, which is a read-side rule, not a licence
-  // to date one ahead.
+  // A measurement: it records what the coach said, on the day they said it. `allOnOrBefore` then
+  // shows every row still on file as its own dismissible box (src/components/CoachNotes.tsx) until
+  // the athlete clicks it away — at which point `removeRow` deletes it from this file outright, no
+  // history kept. That deletion is the one write in this repo that isn't append-only (data/METHOD.md
+  // rule 2), because a coach note is editorial rather than a fact about what happened.
   'coach-notes.csv': {
     records: 'measurement',
     header: ['date', 'headline', 'note'],

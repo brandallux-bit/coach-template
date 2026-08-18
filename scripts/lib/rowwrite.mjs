@@ -274,3 +274,35 @@ export function insertRow(text, file, row) {
   body.splice(at < 0 ? body.length : at, 0, line)
   return [header, ...body].join('\n') + '\n'
 }
+
+/**
+ * Drop a `uniqueDate` file's row for `date`, permanently — no tombstone, no history kept.
+ *
+ * Built for the dismiss button on `data/coach-notes.csv` notes (`src/components/CoachNotes.tsx`):
+ * the athlete asked for dismissal to make a note disappear for good, explicitly rejecting a
+ * historical record of what was dismissed. Every other write in this file only ever inserts or
+ * replaces a row (data/METHOD.md rule 2, append-only wherever possible) because those rows are
+ * measurements — deleting one would falsify the log. A coach note is editorial (DATA-D-18), so a
+ * dismissed one leaving no trace is the intended behaviour, not an exception to the rule.
+ *
+ * Idempotent, like `insertRow`: calling it again once the row is already gone is a no-op, which is
+ * what lets `commitRemoval`'s retry loop re-apply this against a freshly re-read file.
+ *
+ * Restricted to `uniqueDate` files on purpose — a file where a date can hold several rows (meals,
+ * sets) has no way to name which one a click meant, and nothing in this chart needs that yet.
+ */
+export function removeRow(text, file, date) {
+  const spec = specFor(file)
+  if (!spec.uniqueDate) throw new Error(`removeRow: ${file} is not uniqueDate — which row?`)
+
+  const trimmed = text.replace(/\n$/, '')
+  const lines = trimmed.split('\n')
+  const header = lines[0]
+  const body = lines.slice(1)
+  const dateOf = (l) => l.slice(0, 10)
+
+  const next = body.filter((l) => dateOf(l) !== date)
+  if (next.length === body.length) return text // already gone — not an error
+
+  return [header, ...next].join('\n') + '\n'
+}

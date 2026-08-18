@@ -486,6 +486,19 @@ export function latestOnOrBefore(rows, date) {
 }
 
 /**
+ * Every row dated on or before `date` — *what is outstanding*, not *what is newest*.
+ *
+ * Built for `data/coach-notes.csv` once the Today tab moved from "the newest note replaces the
+ * rest" to "every note stands on its own until dismissed" (`src/components/CoachNotes.tsx`).
+ * `latestOnOrBefore` picking a single winner is right for a value that is IN FORCE — a plan or a
+ * target, where two rows can't both be true at once. A note is not that: two standing notes can
+ * both be true and both still need saying, so collapsing them to one silently drops the other.
+ */
+export function allOnOrBefore(rows, date) {
+  return rows.filter((r) => r.date <= date)
+}
+
+/**
  * The tiers a session's duration can be split across, in the order the model adds them.
  * Order is fixed so `explain` reads the same way every time.
  */

@@ -199,6 +199,14 @@ const DEFINITIONS = [
       + 'second with a comment saying it matched the first',
   },
   {
+    name: 'allOnOrBefore — "every outstanding row, not just the newest"',
+    home: 'scripts/lib/aggregate.mjs',
+    pattern: /function allOnOrBefore/,
+    why: 'the dismissible coach-notes surface (src/components/CoachNotes.tsx) is the one caller; a '
+      + 'second copy of "every row on or before this date" is how it would quietly start '
+      + 'disagreeing with allOf/latestOnOrBefore about which rows exist',
+  },
+  {
     name: 'the reserved session names',
     home: 'scripts/lib/sessions.mjs',
     // The literal declaration, not the identifiers: `RESERVED_SESSIONS` imported and used is

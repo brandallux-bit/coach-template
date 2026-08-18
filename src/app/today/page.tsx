@@ -1,8 +1,9 @@
 import { Card, Empty, Masthead, Meter, Nav, Shell, Tile } from '@/components/ui'
+import CoachNotes from '@/components/CoachNotes'
 import FindingsCard from '@/components/FindingsCard'
 import UnitToggle from '@/components/unit-toggle'
 import {
-  addDays, allOf, coachNotes, fmt, fractionOfDayElapsed, latestOnOrBefore, meals, plan, prettyDate,
+  addDays, allOf, allOnOrBefore, coachNotes, fmt, fractionOfDayElapsed, meals, plan, prettyDate,
   sets, today, weekdayKey, weekStart,
 } from '@/lib/data'
 import { viewFindings } from '@/lib/findings'
@@ -16,15 +17,14 @@ export const dynamic = 'force-dynamic'
 export default function TodayPage() {
   const now = today()
   const d = rollDay(now)
-  // Most-recent-on-or-before, not an exact-date match. A note stands until the next one replaces
-  // it; with `oneOf` each of the three notes in the file was visible on exactly one day. Its own
-  // date is stamped below whenever it is not today's, so a note about Friday's dinner cannot read
-  // as advice about today.
+  // Every note on or before today, not just the newest — each is its own dismissible box
+  // (`CoachNotes`) rather than one note that a newer one silently buries. Its own date is stamped
+  // whenever it is not today's, so a note about Friday's dinner cannot read as advice about today.
   // The week he is standing in, Monday-anchored, truncated at today — so `days.length` is days
   // ELAPSED, never seven. See src/lib/rollup.ts and scripts/lib/aggregate.mjs `weekIntake`.
   const wk = rollWeek(weekStart(now), now)
   const wi = wk.intake
-  const note = latestOnOrBefore(coachNotes, now)
+  const notes = allOnOrBefore(coachNotes, now)
   const logged = allOf(sets, now)
   const todaysMeals = allOf(meals, now)
   const stepGoal = plan.stepsPerDayTarget
@@ -89,20 +89,7 @@ export default function TodayPage() {
       {/* Ahead of the coach's note and the tiles. See the same comment on src/app/page.tsx. */}
       <FindingsCard findings={viewFindings(now)} />
 
-      {note && (
-        <Card
-          title="From your coach"
-          // A note stands until it is replaced, so an older one still renders — but it says so.
-          // An undated older note reads as today's advice, which is how "tonight is budgeted"
-          // would have followed him into the next week.
-          caption={note.date === now ? undefined : `Written ${prettyDate(note.date)}`}
-        >
-          <div className="note-block">
-            <p><strong>{note.headline}</strong></p>
-            {note.note && <p>{note.note}</p>}
-          </div>
-        </Card>
-      )}
+      <CoachNotes notes={notes as { date: string; headline: string; note: string }[]} today={now} />
 
       <div className="grid cols-4" style={{ marginBottom: 20 }}>
         <Tile label="Eaten" value={fmt(d.intakeKcal)} unit="kcal"

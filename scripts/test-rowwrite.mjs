@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { insertRow, mergeIntoExisting, validateRow, toLine } from './lib/rowwrite.mjs'
+import { insertRow, mergeIntoExisting, removeRow, validateRow, toLine } from './lib/rowwrite.mjs'
 import { parseCsv } from './lib/csv.mjs'
 import { localToday, sessionTypeEnum, metTable } from './lib/athlete.mjs'
 import { SPEC } from './lib/schema.mjs'
@@ -52,6 +52,11 @@ const FIXTURE = {
 2026-08-05,strength,Session A,completed,7,40,n,,,,,
 2026-08-11,strength,Session B,completed,7,55,n,,,,,
 2026-08-12,walk,Flat walk,completed,,50,n,,,,,
+`,
+  'coach-notes.csv': `${header('coach-notes.csv')}
+2026-08-06,"Protein is the day's only real dial","Day closed at 149.7 g."
+2026-08-08,"Three dials, and the walk is the only knee input today","Hold the ceiling and the floor."
+2026-08-14,"Ice is comfort, not treatment","Asked whether to ice the sore left knee."
 `,
 }
 
@@ -111,6 +116,30 @@ const check = (name, cond, detail = '') => {
   check('dates remain non-decreasing', dates.every((d, i) => i === 0 || d >= dates[i - 1]),
     dates.join(' '))
   check('backfilled row is present', dates.filter((d) => d === '2026-08-07').length >= 1)
+}
+
+// --- removeRow: dismissing a coach note deletes it permanently, no trace kept -------------------
+{
+  const before = FIXTURE['coach-notes.csv']
+  const after = removeRow(before, 'coach-notes.csv', '2026-08-08')
+  const dates = () => parseCsv(after).slice(1).map((r) => r[0])
+  check('the dismissed row is gone', !dates().includes('2026-08-08'), dates().join(' '))
+  check('the other two rows are untouched',
+    dates().length === 2 && dates().includes('2026-08-06') && dates().includes('2026-08-14'),
+    dates().join(' '))
+  check('no tombstone or dismissed-marker column is left behind',
+    !after.includes('dismiss') && !after.includes('deleted'), after)
+
+  const again = removeRow(after, 'coach-notes.csv', '2026-08-08')
+  check('removing an already-gone row is a no-op, not an error', again === after)
+
+  const untouched = removeRow(before, 'coach-notes.csv', '2099-01-01')
+  check('removing a date that was never there changes nothing', untouched === before)
+
+  let threw = false
+  try { removeRow(FIXTURE['sets.csv'], 'sets.csv', '2026-08-11') } catch { threw = true }
+  check('removeRow refuses a file with more than one row per date', threw,
+    'sets.csv can hold several rows for the same date — deleting "the" row for a date is ambiguous')
 }
 
 // --- validation catches what CI would later reject ----------------------------------------------

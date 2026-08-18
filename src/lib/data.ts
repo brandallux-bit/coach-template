@@ -1,7 +1,7 @@
 import bundle from '@/generated/data.json'
 import {
-  dayFraction, latestOnOrBefore as latestRowOnOrBefore, meanOrNull as meanOfValues, n as nValue,
-  sumOrNull as sumValues,
+  allOnOrBefore as allRowsOnOrBefore, dayFraction, latestOnOrBefore as latestRowOnOrBefore,
+  meanOrNull as meanOfValues, n as nValue, sumOrNull as sumValues,
 } from './aggregate'
 
 export type Row = Record<string, string>
@@ -217,6 +217,16 @@ export const allOf = (rows: Row[], date: string) => rows.filter((r) => r.date ==
  * this date" was three expressions that happened to agree.
  */
 export const latestOnOrBefore: (rows: Row[], date: string) => Row | undefined = latestRowOnOrBefore
+
+/**
+ * Every row dated on or before `date` — every note still outstanding, not just the newest.
+ *
+ * Coach notes moved off `latestOnOrBefore` (one note replaces the last) to this (every note
+ * stands until its own dismiss button removes it) — see `src/components/CoachNotes.tsx`. Nothing
+ * else in the chart uses this: a target or a plan value is IN FORCE, one row wins; a note is an
+ * editorial aside, and two of them can both still be true.
+ */
+export const allOnOrBefore: (rows: Row[], date: string) => Row[] = allRowsOnOrBefore
 
 /** Today in the athlete's timezone, not the server's. */
 export function today(): string {

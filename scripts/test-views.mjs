@@ -737,31 +737,51 @@ console.log('\nthe kcal ⇄ % toggle')
     : fail('globals.css must hide the inactive form', 'otherwise every figure renders twice')
 }
 
-console.log('\ndata — a coach note stands until it is replaced')
+console.log('\ndata — every coach note stands until it is dismissed, not until a newer one arrives')
 
 {
-  // Mirror of data.latestOnOrBefore. `oneOf` is an exact-date match, so every note in
-  // coach-notes.csv was visible on exactly one day: three notes written, none of them readable
-  // the morning after.
-  const latestOnOrBefore = (rows, date) => rows.filter((r) => r.date <= date)
-    .reduce((best, r) => (best == null || r.date > best.date ? r : best), undefined)
+  // Mirror of aggregate.allOnOrBefore — an arrow function on purpose, not `function
+  // allOnOrBefore`, so test-single-home.mjs's one-definition-site check does not need an `allow`
+  // entry for this file (the same arrangement its latestOnOrBefore mirror above used to use).
+  const allOnOrBefore = (rows, date) => rows.filter((r) => r.date <= date)
   const notes = [{ date: '2026-08-06' }, { date: '2026-08-08' }, { date: '2026-08-14' }]
 
-  eq('today\'s note is today\'s note', latestOnOrBefore(notes, '2026-08-14')?.date, '2026-08-14')
-  eq('a day with no note of its own reads the most recent one before it',
-    latestOnOrBefore(notes, '2026-08-11')?.date, '2026-08-08')
-  eq('a future note is invisible until its date', latestOnOrBefore(notes, '2026-08-07')?.date, '2026-08-06')
-  eq('before the first note there is nothing', latestOnOrBefore(notes, '2026-08-05'), undefined)
+  eq('today shows every outstanding note through today, not just the newest',
+    allOnOrBefore(notes, '2026-08-14').map((n) => n.date),
+    ['2026-08-06', '2026-08-08', '2026-08-14'])
+  eq('a day with no note of its own still shows every note written before it',
+    allOnOrBefore(notes, '2026-08-11').map((n) => n.date), ['2026-08-06', '2026-08-08'])
+  eq('a future note is invisible until its date',
+    allOnOrBefore(notes, '2026-08-07').map((n) => n.date), ['2026-08-06'])
+  eq('before the first note there is nothing', allOnOrBefore(notes, '2026-08-05').length, 0)
 
-  // The stamp is what stops an old note reading as today's advice — "tonight is budgeted, eat it
-  // without arithmetic" is a sentence that must never follow him into the next week undated.
-  const page = src('src/app/today/page.tsx')
-  ;(/note\.date === now \? undefined :/.test(page))
-    ? ok('the Today tab stamps a note that is not today\'s with its own date')
-    : fail('an older note must render its date', 'undated, it reads as advice about today')
+  // `oneOf` was the original defect (F-60): an exact-date match makes every note visible on
+  // exactly one day. `latestOnOrBefore` was the fix that followed it, and was itself replaced —
+  // picking one "current" note meant writing a new one silently buried whatever was still showing,
+  // which is not the same thing as the athlete having seen and dismissed it (CoachNotes.tsx).
+  const page = code('src/app/today/page.tsx')
+  ;(/allOnOrBefore\(coachNotes, now\)/.test(page) && /<CoachNotes notes=/.test(page))
+    ? ok('the Today tab passes every outstanding note into CoachNotes, not just the newest')
+    : fail('today/page.tsx must feed CoachNotes from allOnOrBefore',
+      'a single latestOnOrBefore pick silently buries every older outstanding note')
   !/oneOf\(coachNotes/.test(page)
     ? ok('the Today tab no longer looks a note up by exact date')
     : fail('today/page.tsx still uses oneOf for the coach note', 'F-60')
+
+  // The stamp is what stops an old note reading as today's advice — "tonight is budgeted, eat it
+  // without arithmetic" is a sentence that must never follow him into the next week undated.
+  const notesComponent = code('src/components/CoachNotes.tsx')
+  ;(/n\.date !== today &&/.test(notesComponent))
+    ? ok('CoachNotes stamps a note that is not today\'s with its own date')
+    : fail('an older note must render its date', 'undated, it reads as advice about today')
+
+  // Dismissal has to be permanent — the athlete explicitly asked for no historical record of what
+  // was dismissed, so the write path must delete the row rather than mark it read/hidden.
+  const rowwrite = code('scripts/lib/rowwrite.mjs')
+  ;(/export function removeRow/.test(rowwrite))
+    ? ok('coach notes are dismissed by deleting the row, not by a hidden/read flag')
+    : fail('no removeRow found in rowwrite.mjs',
+      'dismissal must reach data/coach-notes.csv permanently, not just hide the box in the browser')
 }
 
 // =================================================================================================

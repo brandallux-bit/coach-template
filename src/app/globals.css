@@ -264,6 +264,19 @@ details.table-view[open] > summary { margin-bottom: 10px; }
 .note-block p:last-child { margin-bottom: 0; }
 .note-block strong { color: var(--text-primary); font-weight: 600; }
 
+/* --- Dismissible coach notes (src/components/CoachNotes.tsx) ------------------------ */
+
+.note-card { position: relative; padding-right: 44px; }
+.note-dismiss {
+  position: absolute; top: 14px; right: 14px; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font: inherit; font-size: 17px; line-height: 1; cursor: pointer;
+  background: none; color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px;
+}
+.note-dismiss:hover { color: var(--text-primary); border-color: var(--text-muted); }
+.note-dismiss:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+.note-error { color: var(--critical); font-size: 12.5px; margin: 10px 0 0; }
+
 .empty {
   color: var(--text-muted); font-size: 13.5px; padding: 18px 0; text-align: center;
 }

@@ -19,3 +19,5 @@ export const coverIntensitySplit: (file: string, row: Row) => Row = rowwrite.cov
 export const insertRow: (text: string, file: string, row: Row) => string = rowwrite.insertRow
 export const mergeIntoExisting: (text: string, file: string, row: Row) => Row = rowwrite.mergeIntoExisting
 export const toLine: (file: string, row: Row) => string = rowwrite.toLine
+/** Drops a uniqueDate file's row for `date`, permanently. See rowwrite.mjs for why no trace is kept. */
+export const removeRow: (text: string, file: string, date: string) => string = rowwrite.removeRow

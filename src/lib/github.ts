@@ -1,5 +1,7 @@
 import 'server-only'
-import { coverIntensitySplit, insertRow, mergeIntoExisting, validateRow, type Row } from './log-write'
+import {
+  coverIntensitySplit, insertRow, mergeIntoExisting, removeRow, validateRow, type Row,
+} from './log-write'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - plain ESM, shared with scripts/ on purpose: ONE definition of "stray branch".
 // This filter used to be `b.name !== 'main'` while absorb-branches.yml exempted `keep/**`, so a
@@ -98,6 +100,46 @@ export async function commitRow(file: string, row: Row, message: string): Promis
   }
 
   throw new LogError('Could not save after 4 attempts — another write kept winning the race.')
+}
+
+/**
+ * Read → drop the row for `date` → write, with the same retry-on-race behaviour as `commitRow`.
+ *
+ * Permanent, not a soft delete: no tombstone row, no separate "dismissed" log. The athlete asked
+ * for a dismissed coach note to disappear for good rather than be kept anywhere — see
+ * `removeRow` in `scripts/lib/rowwrite.mjs` for why that is a deliberate exception to this repo's
+ * usual append-only-and-keep-everything rule (data/METHOD.md rule 2) rather than an oversight.
+ */
+export async function commitRemoval(file: string, date: string, message: string): Promise<void> {
+  if (!writesConfigured()) {
+    throw new LogError(
+      'Dismissing is not configured: set GITHUB_REPO and GITHUB_TOKEN (contents:write) in Vercel.',
+    )
+  }
+
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const { text, sha } = await readFile(file)
+    const next = removeRow(text, file, date)
+    if (next === text) return // already gone — someone else's dismiss (or a stale click) won first
+
+    const res = await gh(`/repos/${repo()}/contents/data/${file}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message,
+        content: Buffer.from(next, 'utf8').toString('base64'),
+        sha,
+        branch: BRANCH,
+      }),
+    })
+
+    if (res.ok) return
+    if (res.status !== 409 && res.status !== 422) {
+      throw new LogError(`GitHub rejected the removal (${res.status}): ${await res.text()}`)
+    }
+    await new Promise((r) => setTimeout(r, 300 * attempt))
+  }
+
+  throw new LogError('Could not dismiss after 4 attempts — another write kept winning the race.')
 }
 
 /** Does a training.csv row exist for this date? sets.csv rows are invalid without one. */

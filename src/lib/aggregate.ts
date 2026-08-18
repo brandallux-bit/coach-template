@@ -236,6 +236,9 @@ export const latestOnOrBefore = agg.latestOnOrBefore as (
   rows: Row[], date: string,
 ) => Row | undefined
 
+/** Every row dated on or before `date` — what is outstanding, not just the newest. */
+export const allOnOrBefore = agg.allOnOrBefore as (rows: Row[], date: string) => Row[]
+
 /** Percent of a target, or null when the target is zero or either side is unknown. */
 export const pctOfTarget: (
   actual: number | null, target: number | null,
