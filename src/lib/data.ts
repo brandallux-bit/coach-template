@@ -1,4 +1,4 @@
-import bundle from '@/generated/data.json'
+import raw from '@/generated/data.json'
 import {
   allOnOrBefore as allRowsOnOrBefore, dayFraction, latestOnOrBefore as latestRowOnOrBefore,
   meanOrNull as meanOfValues, n as nValue, sumOrNull as sumValues,
@@ -130,7 +130,50 @@ export type TemplateDay = {
  * still do not count on this chart — their energy and their credit both live in `steps.csv` — but
  * that is now the chart saying so, not the code.
  */
-export const COUNTS_TOWARD_FLOOR = new Set((bundle.plan as Plan).countsTowardFloor ?? [])
+/**
+ * The shape `scripts/build-data-json.mjs` writes — **declared here, not inferred from the file it
+ * happens to have written.**
+ *
+ * ⚠ **WHY THIS IS ONE `as unknown as` AND NOT TWENTY `as T`s.** Every export below used to cast
+ * its own slice of the imported JSON. That reads like type safety and is not: TypeScript infers
+ * the literal type of whatever `src/generated/data.json` is on disk, so each cast only ever
+ * compared the artifact to itself. A generator that dropped a field would produce a bundle
+ * *missing* it, TypeScript would infer the narrower shape, and the cast would go on passing —
+ * while a page rendered `undefined`. `JSON.stringify` drops `undefined` keys silently, so that is
+ * not hypothetical: any `constants.json` key that goes missing takes its bundle field with it.
+ *
+ * It also made the typecheck depend on which repo you ran it in. The chart's artifact matched
+ * `Plan`; the template's chart-less skeleton did not, so `tsc --noEmit` was red there and green
+ * here for reasons that had nothing to do with either being correct.
+ *
+ * JSON has no compile-time contract. This is the one place the untyped world meets the typed one,
+ * so it is declared once, in the open. **What actually enforces it is
+ * `scripts/build-data-json.mjs`**, which asserts every required field is present and non-null
+ * before writing — a check, not an inference (INVARIANTS.md, the operating rule).
+ */
+type Bundle = {
+  plan: Plan
+  generatedAt: GeneratedAt
+  body: Row[]
+  steps: Row[]
+  targets: Row[]
+  meals: Row[]
+  training: Row[]
+  sets: Row[]
+  prescriptions: Row[]
+  metrics: Row[]
+  metricsRegistry: Record<
+    string,
+    { label: string; unit: string; direction: 'up' | 'down'; domain: string }
+  >
+  coachNotes: Row[]
+  energy: Row[]
+  findings: Finding[]
+}
+
+const bundle = raw as unknown as Bundle
+
+export const COUNTS_TOWARD_FLOOR = new Set(bundle.plan.countsTowardFloor ?? [])
 
 /**
  * Readings needed before a least-squares projection means anything.
@@ -141,23 +184,20 @@ export const COUNTS_TOWARD_FLOOR = new Set((bundle.plan as Plan).countsTowardFlo
  */
 export const MIN_READINGS_FOR_PROJECTION = 7
 
-export const plan = bundle.plan as Plan
-export const body = bundle.body as Row[]
-export const steps = bundle.steps as Row[]
-export const targets = bundle.targets as Row[]
-export const meals = bundle.meals as Row[]
-export const training = bundle.training as Row[]
-export const sets = bundle.sets as Row[]
-export const prescriptions = bundle.prescriptions as Row[]
+export const plan = bundle.plan
+export const body = bundle.body
+export const steps = bundle.steps
+export const targets = bundle.targets
+export const meals = bundle.meals
+export const training = bundle.training
+export const sets = bundle.sets
+export const prescriptions = bundle.prescriptions
 
 /** Long-format store for anything the fixed columns don't cover. See data/METHOD.md. */
-export const metrics = bundle.metrics as Row[]
-export const metricsRegistry = bundle.metricsRegistry as Record<
-  string,
-  { label: string; unit: string; direction: 'up' | 'down'; domain: string }
->
-export const coachNotes = bundle.coachNotes as Row[]
-export const energy = bundle.energy as Row[]
+export const metrics = bundle.metrics
+export const metricsRegistry = bundle.metricsRegistry
+export const coachNotes = bundle.coachNotes
+export const energy = bundle.energy
 
 /**
  * Something the system noticed, computed rather than remembered.
@@ -185,10 +225,19 @@ export type Finding = {
  * Findings as of the last build. `src/lib/findings.ts` is what a page should import — it adds the
  * ones that can only be computed at request time, and this list on its own is missing them.
  */
-export const bundledFindings = bundle.findings as Finding[]
+export const bundledFindings = bundle.findings
 
-/** When src/generated/data.json was built. See scripts/build-data-json.mjs for why it is here. */
-export const generatedAt = bundle.generatedAt as { localDate: string; at: string }
+/**
+ * When `src/generated/data.json` was built. See `scripts/build-data-json.mjs` for why it is here.
+ *
+ * **`localDate` is nullable and the reason matters.** Before intake there is no
+ * `athlete.timezone`, so there is no such thing as the athlete's local day, and the generator
+ * writes `null` rather than guessing a UTC one — the same refusal `localToday()` throws to make
+ * (data/METHOD.md rule 6). `buildFreshness` in `src/lib/findings.ts` already treats it as "cannot
+ * say"; this type said `string` and made that guard look like dead code.
+ */
+export type GeneratedAt = { localDate: string | null; at: string }
+export const generatedAt = bundle.generatedAt
 
 /**
  * Empty means "not measured" and must never collapse to zero.

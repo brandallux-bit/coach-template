@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { buildFindings } from './lib/findings.mjs'
 import { readChartDocs } from './lib/chart-docs.mjs'
 import { readCsv, num } from './lib/csv.mjs'
+import { missingPlanFields } from './lib/schema.mjs'
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
 import { ageOn, constants, hasChart, rmrFloorKcal, sessionCostFor, stripNotes, metTable,
   KCAL_PER_STEP_PER_LB, KCAL_PER_LB_FAT, metByIntensityTable, localToday, sessionTypeEnum,
@@ -183,6 +184,25 @@ const bundle = {
     energy: readCsv(join(DATA, 'energy.csv')),
     today: localToday(),
   }),
+}
+
+// The contract `Plan` in `src/lib/data.ts` declares, checked before the artifact is written.
+// Only when there IS a chart: before intake the skeleton is deliberately incomplete, and
+// `scripts/check-chart-for-build.mjs` refuses the dashboard build long before any of it renders.
+//
+// A HARD ERROR rather than a finding, and that is X-12-consistent rather than an exception to it:
+// this does not judge whether a number is wise, it says the generator's own output contradicts the
+// contract its consumer is written against. That is what `data/` is entitled to refuse.
+if (hasChart) {
+  const missing = missingPlanFields(plan)
+  if (missing.length) {
+    console.error(
+      `::error::src/generated/data.json would ship without ${missing.join(', ')} — `
+      + 'every page reads these without a guard (`Plan` in src/lib/data.ts). '
+      + 'They come from athlete/constants.json: check athlete.*, baseline.* and plan.*.',
+    )
+    process.exit(1)
+  }
 }
 
 mkdirSync(OUT, { recursive: true })

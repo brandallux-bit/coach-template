@@ -25,6 +25,7 @@ import {
   KG_PER_LB, dayFractionDomain, partialBurnFrom, pctOfTarget, sessionKcal,
 } from './lib/aggregate.mjs'
 import { DAILY, SUPPLEMENTS, RESERVED_SESSIONS } from './lib/sessions.mjs'
+import { REQUIRED_PLAN_FIELDS, missingPlanFields } from './lib/schema.mjs'
 import { REAL_DATA, modeBanner } from './lib/test-mode.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -989,6 +990,76 @@ if (REAL_DATA) {
   week.every((d) => d.rx === 0 || d.session)
     ? ok('live: no prescription is attached to a day with no session')
     : fail('live: prescriptions only attach to named sessions', '')
+}
+
+// =================================================================================================
+// the bundle contract — `Plan` in src/lib/data.ts, enforced by build-data-json.mjs
+// =================================================================================================
+//
+// The defect these are shown to catch: `JSON.stringify` drops `undefined` keys, so a
+// `constants.json` missing `athlete.name` emitted a bundle with no `name` — and the dashboard's
+// `bundle.plan as Plan` still passed, because TypeScript infers the literal type of the artifact
+// on disk and was therefore only ever comparing the file to itself.
+console.log('\nthe bundle contract — a field that goes missing must not ship silently')
+{
+  const complete = Object.fromEntries(REQUIRED_PLAN_FIELDS.map((k) => [k, 'x']))
+
+  eq('a complete plan is missing nothing', missingPlanFields(complete), [])
+
+  // The exact shape the old casts let through: the key is simply absent.
+  const { name, ...noName } = complete
+  eq('a dropped field is caught', missingPlanFields(noName), ['name'])
+
+  eq('several dropped fields are all named, not just the first',
+    missingPlanFields({ ...complete, timezone: undefined, heightIn: undefined }),
+    ['timezone', 'heightIn'])
+
+  // `undefined` and `null` are not interchangeable here, and the split is the point.
+  eq('null is allowed where the value is derived and its inputs can be absent',
+    missingPlanFields({ ...complete, age: null, rmrFloorKcal: null }), [])
+  eq('null is NOT allowed where the value is copied from constants.json',
+    missingPlanFields({ ...complete, timezone: null }), ['timezone'])
+
+  // A falsy-but-real value is a value. `heightIn: 0` is wrong, but it is `validate-data.mjs`'s
+  // wrong to report — this check is about presence, not plausibility (INVARIANTS.md X-12).
+  eq('a falsy but present value is present', missingPlanFields({ ...complete, heightIn: 0 }), [])
+
+  eq('an absent plan fails every field rather than throwing',
+    missingPlanFields(undefined).length, REQUIRED_PLAN_FIELDS.length)
+
+  // ⚠ THE TWO LISTS MUST NOT DRIFT, and without this they are exactly the two-homes defect
+  // (INVARIANTS.md X-8) one level up from the one they were written to close. `Plan` says which
+  // fields a page may read unguarded; `REQUIRED_PLAN_FIELDS` says which the generator enforces.
+  // Add a required field to `Plan` and forget the other list, and the guard silently stops
+  // covering it — the same silence the casts used to provide.
+  //
+  // `Plan` is a plain type literal, so "required" is readable off the source: a top-level key
+  // with no `?`. Nested braces are tracked, because `metByIntensity?: Record<string, { … }>`
+  // puts a `{` on a line that is not a new field.
+  const planBody = (() => {
+    const text = code('src/lib/data.ts')
+    const start = text.indexOf('export type Plan = {')
+    const from = text.indexOf('{', start)
+    let depth = 0
+    for (let i = from; i < text.length; i++) {
+      if (text[i] === '{') depth++
+      else if (text[i] === '}' && --depth === 0) return text.slice(from + 1, i)
+    }
+    return ''
+  })()
+
+  const declaredRequired = []
+  let depth = 0
+  for (const line of planBody.split('\n')) {
+    const m = depth === 0 && line.match(/^\s{2}([A-Za-z_$][\w$]*)(\??):/)
+    if (m && !m[2]) declaredRequired.push(m[1])
+    for (const ch of line) { if (ch === '{') depth++; else if (ch === '}') depth-- }
+  }
+
+  eq('every field Plan requires is a field the generator enforces',
+    declaredRequired.filter((f) => !REQUIRED_PLAN_FIELDS.includes(f)), [])
+  eq('and nothing is enforced that Plan does not require',
+    REQUIRED_PLAN_FIELDS.filter((f) => !declaredRequired.includes(f)), [])
 }
 
 console.log(failed ? `\nviews: ${failed} FAILED.` : '\nviews: all checks passed.')

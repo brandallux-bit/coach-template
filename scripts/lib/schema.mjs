@@ -57,6 +57,40 @@ const trainingEnums = {
   pain_flag: ['y', 'n'],
 }
 
+/**
+ * The bundle fields `Plan` in `src/lib/data.ts` declares as required — the ones every page reads
+ * without a guard — and which of them may legitimately be null.
+ *
+ * ⚠ **NOTHING ENFORCED THIS UNTIL 2026-08-17, and the way it failed is instructive.** The
+ * dashboard cast the generated JSON slice by slice (`bundle.plan as Plan`). That looks like type
+ * safety and is not: TypeScript infers the literal type of whatever artifact is on disk, so each
+ * cast only ever compared the file to itself. `JSON.stringify` drops `undefined` keys silently, so
+ * a `constants.json` that lost `athlete.name` would emit a bundle with no `name`, TypeScript would
+ * infer the narrower shape, every cast would still pass, and a page would render `undefined`.
+ *
+ * `age` and `rmrFloorKcal` are nullable because they are DERIVED and their inputs can be absent —
+ * a chart with no baseline date has no age to compute, and `null` says so. The rest are copied
+ * straight out of `athlete/constants.json`, where `validate-data.mjs` already requires them.
+ *
+ * Lives here rather than in `build-data-json.mjs` so it can be tested: a check with no test that
+ * fails against its own defect certifies whatever happens next (INVARIANTS.md X-10).
+ */
+export const REQUIRED_PLAN_FIELDS = [
+  'name', 'pronouns', 'timezone', 'heightIn', 'age', 'baselineDate', 'baselineWeightLb',
+  'rmrFloorKcal', 'estMaintenanceKcal', 'proteinFloorG', 'events',
+]
+
+const NULLABLE_PLAN_FIELDS = new Set(['age', 'rmrFloorKcal'])
+
+/** Which required fields a built `plan` would ship without. Empty means the contract holds. */
+export function missingPlanFields(plan) {
+  return REQUIRED_PLAN_FIELDS.filter((k) => {
+    const v = plan?.[k]
+    if (v === undefined) return true
+    return v === null && !NULLABLE_PLAN_FIELDS.has(k)
+  })
+}
+
 export const SPEC = {
   'body.csv': {
     records: 'measurement',
