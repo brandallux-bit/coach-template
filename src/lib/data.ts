@@ -134,22 +134,22 @@ export type TemplateDay = {
  * The shape `scripts/build-data-json.mjs` writes — **declared here, not inferred from the file it
  * happens to have written.**
  *
- * ⚠ **WHY THIS IS ONE `as unknown as` AND NOT TWENTY `as T`s.** Every export below used to cast
- * its own slice of the imported JSON. That reads like type safety and is not: TypeScript infers
- * the literal type of whatever `src/generated/data.json` is on disk, so each cast only ever
- * compared the artifact to itself. A generator that dropped a field would produce a bundle
- * *missing* it, TypeScript would infer the narrower shape, and the cast would go on passing —
+ * ⚠ **WHY ONE NARROWING HERE AND NOT TWENTY `as T`s BELOW.** Every export used to cast its own
+ * slice of the imported JSON. That reads like type safety and is not: with `resolveJsonModule`
+ * alone, TypeScript infers the *literal* type of whatever `src/generated/data.json` is on disk, so
+ * each cast only ever compared the artifact to itself. A generator that dropped a field produced a
+ * bundle *missing* it, TypeScript inferred the narrower shape, and every cast went on passing —
  * while a page rendered `undefined`. `JSON.stringify` drops `undefined` keys silently, so that is
  * not hypothetical: any `constants.json` key that goes missing takes its bundle field with it.
  *
- * It also made the typecheck depend on which repo you ran it in. The chart's artifact matched
- * `Plan`; the template's chart-less skeleton did not, so `tsc --noEmit` was red there and green
- * here for reasons that had nothing to do with either being correct.
+ * It also made the typecheck depend on which repo you ran it in, and on whether that repo had been
+ * built at all.
  *
- * JSON has no compile-time contract. This is the one place the untyped world meets the typed one,
- * so it is declared once, in the open. **What actually enforces it is
- * `scripts/build-data-json.mjs`**, which asserts every required field is present and non-null
- * before writing — a check, not an inference (INVARIANTS.md, the operating rule).
+ * `src/generated-data.d.ts` now types that module as `unknown`, so the crossing from untyped JSON
+ * to typed code has to be made once, deliberately, here — and cannot be made accidentally by
+ * inference anywhere. **What holds the generator to this shape is
+ * `scripts/build-data-json.mjs`**, which refuses to write a bundle missing any required field, with
+ * tests in `scripts/test-views.mjs` — a check, not an inference (INVARIANTS.md, the operating rule).
  */
 type Bundle = {
   plan: Plan
@@ -171,7 +171,7 @@ type Bundle = {
   findings: Finding[]
 }
 
-const bundle = raw as unknown as Bundle
+const bundle = raw as Bundle
 
 export const COUNTS_TOWARD_FLOOR = new Set(bundle.plan.countsTowardFloor ?? [])
 

@@ -94,10 +94,40 @@ jobs:
           node-version: '22'
           cache: npm
 
+      # ⚠ **A CHART-LESS REPO MUST GO GREEN HERE, for exactly the reason check-all.mjs does.**
+      # `npm run build` is REFUSED before intake, on purpose — scripts/check-chart-for-build.mjs,
+      # because a dashboard rendering an athlete who does not exist is worse than no dashboard.
+      # But this job ran it unconditionally, so the template repo and every chart's whole intake
+      # week carried a red X on GitHub. That is audit F-39 one layer up: the guard's own message
+      # says "`npm run validate` and `npm run check` are both green on this repo right now" while
+      # the commit beside it shows a failure. A red build that is the expected outcome teaches a
+      # new athlete that red is normal, which is how the one that matters gets ignored.
+      - name: Is there a chart yet?
+        id: chart
+        run: |
+          if [ -f athlete/constants.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "no athlete/constants.json — the dashboard build and route smoke test are"
+            echo "SKIPPED, not failed. They render an athlete; there is not one yet."
+            echo "The typecheck below still runs, and still has to pass."
+          fi
+
       - name: Clean install from the lockfile
         run: npm ci
 
+      # Runs with or without a chart, and that is the point of it existing separately from the
+      # build. `src/generated/data.json` is a gitignored build artifact, so before this repo has
+      # ever been built there is nothing for the JSON import to resolve to — which used to make
+      # `tsc` fail with TS2307 and say nothing about the code. `src/generated-data.d.ts` declares
+      # that module instead, so the typecheck answers the question it is actually being asked,
+      # on any repo, in any state.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
       - name: Build
+        if: steps.chart.outputs.present == 'true'
         run: npm run build
 
       # A green `next build` proves nothing about any page: every route is force-dynamic, so
@@ -112,6 +142,7 @@ jobs:
       # run was cancelled by hand, and a hang reads as "still running" rather than "failed" — the
       # exact plausible-not-loud failure X-7 forbids.
       - name: Smoke-test every route
+        if: steps.chart.outputs.present == 'true'
         timeout-minutes: 5
         env:
           AUTH_SECRET: ci-smoke-secret

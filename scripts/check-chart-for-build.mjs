@@ -5,8 +5,13 @@
  * Every view resolves an athlete — a name, a timezone, a baseline, a maintenance estimate — from
  * `athlete/constants.json`, and `src/lib/data.ts`'s `Plan` type declares those as required
  * because on a real chart they always are. Before intake the file does not exist, so the bundle
- * has none of them and the type check fails with three casts' worth of TS2352 that say nothing
- * about the actual problem.
+ * has none of them: every page would render `undefined` where the athlete should be.
+ *
+ * **The typecheck is no longer what catches this, and must not be relied on to.** It used to fail
+ * with three casts' worth of TS2352 — accidentally, because TypeScript was inferring the shape of
+ * whichever artifact was on disk rather than checking against a declared one. That is fixed
+ * (`src/generated-data.d.ts`), so `tsc --noEmit` is now green on a chart-less repo, correctly:
+ * the CODE is fine, there is simply no athlete. Refusing the build is this file's job alone.
  *
  * SETUP.md §5 already sequences this correctly — *"Dashboard — optional, and after intake... Do
  * this after intake, not before"* — so refusing here is the documented order enforced, not a new
