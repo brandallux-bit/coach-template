@@ -77,7 +77,13 @@ enforced, because a fabricated zero in a trend line is worse than a gap.
 npm run validate   # schema check — CI runs this on every push
 npm run energy     # regenerate data/energy.csv from the measured files
 npm run check      # the whole suite: validators, scanners and unit tests
+npm run parity     # what this chart's system layer has that the template doesn't
 ```
+
+`npm run parity` is the one that stops this chart and the template it was forked from silently
+drifting apart. It reports and never merges — read the diff and decide which way it crosses.
+It skips with a named reason on a repo with no `upstream` remote, which is every fresh chart
+before setup finishes, and the template itself.
 
 `scripts/` is dependency-free Node — `npm install` is only needed for the dashboard. In a repo
 where intake has not run yet, the chart-dependent steps skip themselves and say so.

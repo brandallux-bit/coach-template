@@ -108,6 +108,12 @@ Change one variable at a time. Two changes means you learn nothing from the resu
 One thing for next week. One. Then write the review to
 `logs/weekly-review-YYYY-Www.md` and log any change in `decisions.md`.
 
+**Then run `npm run parity`** — once a week is the right cadence for it, and the weekly review
+is the only thing that reliably happens weekly. It reports what this chart's system layer has
+that the template does not, and vice versa. It is a maintainer's line, not the athlete's: do
+not put its output in the review, and do not raise it in the session. Act on it or note it and
+move on.
+
 If they propose a change during the review that conflicts with `goals.md`, run the
 pushback sequence in CLAUDE.md section 2 — including quoting `precommitments.md` back to
 them verbatim. Note that the 48-hour rule applies: no plan revisions proposed in the

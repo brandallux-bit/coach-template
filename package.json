@@ -14,7 +14,8 @@
     "energy": "node scripts/compute-energy.mjs",
     "check-steps": "node scripts/check-steps-gap.mjs",
     "smoke": "node scripts/smoke-routes.mjs",
-    "check": "node scripts/check-all.mjs"
+    "check": "node scripts/check-all.mjs",
+    "parity": "node scripts/check-template-parity.mjs"
   },
   "dependencies": {
     "next": "^16.3.0",
