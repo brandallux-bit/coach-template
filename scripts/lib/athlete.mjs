@@ -18,7 +18,7 @@ export const hasChart = existsSync(CHART)
  * than printing it thirteen times.
  */
 export const NO_CHART_MESSAGE =
-  'No athlete/constants.json — run intake first (SETUP.md §2). '
+  'No athlete/constants.json — run intake first (SETUP.md §3). '
   + 'Nothing in scripts/ or src/ may say anything about an athlete until intake has written one.'
 
 /**

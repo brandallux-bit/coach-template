@@ -26,7 +26,7 @@ import { hasChart, NO_CHART_MESSAGE } from './lib/athlete.mjs'
 
 if (!hasChart) {
   console.error(`\ncannot build the dashboard — ${NO_CHART_MESSAGE}\n`)
-  console.error('  The dashboard renders an athlete. Run intake first (SETUP.md §2-3), then')
+  console.error('  The dashboard renders an athlete. Run intake first (SETUP.md §3), then')
   console.error('  deploy (SETUP.md §5). Everything else in scripts/ runs fine without a chart:')
   console.error('  `npm run validate` and `npm run check` are both green on this repo right now.\n')
   process.exit(1)

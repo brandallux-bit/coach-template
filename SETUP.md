@@ -104,18 +104,35 @@ git remote -v
 ## 2. Rename the blanks
 
 The template ships forms named `TEMPLATE-goals.md` and so on. This drops the prefix so
-they become the chart's real files, and makes a working copy of the constants file:
+they become the chart's real files:
 
 ```bash
 cd athlete
 for f in TEMPLATE-*.md; do mv "$f" "${f#TEMPLATE-}"; done
-cp constants.template.json constants.json
 cd ..
 git add -A && git commit -m "Rename templates for this athlete" && git push
 ```
 
 **Leave the files empty.** Filling anything in before intake is the one thing that breaks
 the design.
+
+> ### ⚠ Do NOT copy `constants.template.json` yet
+>
+> That copy is **the last step of intake**, not a setup step, and `skills/intake/SKILL.md`
+> carries the same warning at the point where it is finally due.
+>
+> Everything in `scripts/` keys off one test — `hasChart`, which is just "does
+> `athlete/constants.json` exist". While it does not, `check-all.mjs` **skips** every
+> chart-dependent step and says which and why, so an intake spread across several sessions is
+> green the whole way through. Creating the file early flips that switch with nothing behind it:
+> the validator wants eight fields nobody has been asked for yet, `test-provenance` wants three
+> `_provenance` maps, and the scheduled `generate-targets` job starts failing every morning on a
+> `plan.kcalByWeekday` that intake has not written.
+>
+> This document used to say "copy it in now, then leave the files empty", and the result was a
+> **red build on every push for the athlete's entire first week** — teaching someone brand new
+> that a failing build is the normal state of their chart. That is the exact outcome the no-chart
+> guard exists to prevent, defeated by the setup instructions (audit F-39).
 
 ## 3. Run intake
 

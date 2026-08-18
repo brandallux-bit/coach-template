@@ -1,52 +1,117 @@
 {
-  "_README": "Copy to athlete/constants.json and fill during intake. Every athlete-specific number the code needs lives here — nothing in scripts/ or src/ may hardcode a value about the athlete. The validator requires the fields marked REQUIRED and will fail the build without them.",
+  "_README": "Copy to athlete/constants.json at the END of intake, not before — see the warning in SETUP.md §2 and the one in skills/intake/SKILL.md. Every athlete-specific number the code needs lives here; nothing in scripts/ or src/ may hardcode a value about the athlete (docs/INVARIANTS.md X-11). The validator requires the fields marked REQUIRED and will fail the build without them. Fill only what this athlete's domains actually need: a key nobody's goals need is a chore the coach invented (CLAUDE.md §1.1), and an unused section is better deleted than filled with a plausible number.",
 
   "athlete": {
     "name": "",
     "pronouns": "they/them",
+    "_pronouns_note": "The athlete's own, asked for at intake. they/them is the default until they say otherwise — never inferred from a name.",
     "sex": "",
     "_sex_REQUIRED": "\"male\" or \"female\". Input to the Mifflin-St Jeor RMR equation ONLY: male adds +5, female subtracts 161 — a 166 kcal/day difference that is invisible on screen if wrong. It is used for nothing else. If no domain needs energy expenditure, it still must be set for the validator; the number simply goes unused.",
     "dob": "",
     "_dob_REQUIRED": "YYYY-MM. Year-month is enough — age moves RMR by 5 kcal/year, so day precision would be false precision. Age is derived, never stored, so it cannot go stale.",
     "heightIn": 0,
-    "timezone": "America/Los_Angeles"
+    "timezone": "America/Los_Angeles",
+    "_timezone_note": "An IANA zone, and it must be the ATHLETE's. Every row's date is derived from it (data/METHOD.md rule 6); the coaching session runs UTC, so leaving someone else's zone here silently mis-dates every evening entry."
   },
 
   "baseline": {
     "_comment": "Set once, at intake, from the protocol in skills/intake Session 6. weightLb is REQUIRED by the validator even on charts with no body-composition domain — RMR needs it.",
     "date": "",
-    "weightLb": 0
+    "weightLb": 0,
+    "_provenance": {
+      "_comment": "REQUIRED once this file exists: one entry per real key above, checked by scripts/test-provenance.mjs. Vocabulary and rules are in data/METHOD.md under 'Provenance'. Shape: { \"class\": \"athlete-stated|athlete-confirmed|coach-proposed-unconfirmed|derived|external\", \"asOf\": \"YYYY-MM-DD\", \"source\": \"where the reasoning is written down\", \"note\": \"whose number this is, in prose\" } — plus \"quote\" or \"measured\" for the athlete- classes, and \"inputs\" for derived. Never add a marker to a value you did not trace; an unmarked value is honest, a wrongly-marked one is not."
+    }
   },
 
   "plan": {
-    "_comment": "Current phase parameters. Only fill what this athlete's domains actually need — a chart with no energy domain does not need a calorie budget, and inventing one is the failure CLAUDE.md 1.1 exists to prevent. estMaintenanceKcal and proteinFloorG are validator-required.",
+    "_comment": "Current phase parameters. Only fill what this athlete's domains actually need — a chart with no energy domain does not need a calorie budget, and inventing one is the failure CLAUDE.md §1.1 exists to prevent. estMaintenanceKcal and proteinFloorG are validator-required. Optional keys the code reads if present, and ignores if absent: fatTargetG and fibreTargetG (written into each generated targets.csv row), weeklyAlcoholKcalBudget (subtracted from weeklyKcalBudget to give the food allowance — it sits INSIDE the calorie budget, never on top of it).",
     "estMaintenanceKcal": 0,
     "proteinFloorG": 0,
     "proteinAimG": 0,
     "weeklyKcalBudget": 0,
+    "kcalByWeekday": {
+      "_comment": "REQUIRED wherever a calorie target exists, and the reason it is a weekday map rather than one daily figure is that the unevenness is usually the plan — a bigger day parked where the athlete actually wants it. scripts/generate-targets.mjs writes one targets.csv row per day from this and EXITS NON-ZERO on any weekday it has no entry for, because a day without a target is the failure CLAUDE.md §0.3 and data/METHOD.md both call out by name. Seven entries, keyed exactly: mon, tue, wed, thu, fri, sat, sun. The validator additionally checks they sum to weeklyKcalBudget — a total that disagrees with its parts is a record contradicting itself. No example figures are given here on purpose: a calorie target is a decision about a person, and a plausible-looking placeholder is how one gets inherited. If this chart has no energy domain, delete this key and the daily-rollover workflow with it."
+    },
     "targetRateLbPerWk": [0, 0],
     "maxRatePctBwPerWk": 1.0,
-    "_max_rate_note": "CLAUDE.md section 5 hard floor. Do not raise it.",
+    "_max_rate_note": "CLAUDE.md §5.2 hard floor. Do not raise it.",
+    "adherenceRoutingPct": 80,
+    "_adherenceRoutingPct_note": "Not the athlete's number and not the coach's — it is CLAUDE.md §7's routing rule, so it ships filled in and its provenance class is `external`. Below this, a week routes to the adherence agent instead of the domain specialists, because a plan that is not being followed is not a programming problem. scripts/test-single-home.mjs checks that every document stating this figure states the same one; leave the value here and cite the key elsewhere rather than retyping 80.",
     "stepsPerDayTarget": 0,
     "sessionsPerWeekFloor": 0,
     "sessionsPerWeekTarget": 0,
-    "phaseEndDate": ""
+    "phaseEndDate": "",
+    "_provenance": {
+      "_comment": "REQUIRED once this file exists — see baseline._provenance above for the shape. A target the athlete is asked to hit is `coach-proposed-unconfirmed` until they have ruled on it in words about that number; adherence is not confirmation. Never invent a marker to clear the check, and never delete a value to make one go away. The two entries below ship filled in because their provenance is a fact about this system rather than about any athlete — they are also the worked example of the shape.",
+      "maxRatePctBwPerWk": {
+        "class": "external",
+        "asOf": "2026-08-17",
+        "source": "CLAUDE.md §5.2, 'No sustained loss rate above 1.0% of bodyweight per week'",
+        "note": "The charter's safety floor, not this athlete's preference and not the coach's judgement. It ships with the template at 1.0 and is enforced against the athlete's own instruction; it is not negotiable downward by either party."
+      },
+      "adherenceRoutingPct": {
+        "class": "external",
+        "asOf": "2026-08-17",
+        "source": "CLAUDE.md §7, 'Route to adherence whenever completion falls below 80% for a week'",
+        "note": "The charter's routing rule. Nobody on this chart chose 80 — it ships with the template, and every document that states the figure is checked against this key by scripts/test-single-home.mjs so the four copies cannot drift apart."
+      }
+    }
   },
 
   "triggers": {
-    "_comment": "Machine-readable mirror of the trigger values in athlete/goals.md, so the dashboard can draw reference lines. goals.md is authoritative for the reasoning; if the two disagree, goals.md wins and this is the bug. Key names are per-athlete — whatever this chart's domains measure."
+    "_comment": "Machine-readable mirror of the trigger values in athlete/goals.md, so the dashboard can draw reference lines and the findings layer can fire. goals.md is authoritative for the reasoning; if the two disagree, goals.md wins and this is the bug. ONLY the keys named below are recognised — scripts/lib/findings.mjs and src/app/page.tsx read them by name, so a trigger invented under a different key renders nowhere and fires never. Every one is optional; a chart that measures none of these carries none of them. If this athlete's domains need a trigger with no key here, it needs code, not a new key — raise it rather than writing one that silently does nothing.",
+    "_recognised": {
+      "waistTriggerIn": "Goal line on the waist chart; fires a finding at or past it.",
+      "waistWorkingBaselineIn": "Reference line the waist trend is read against.",
+      "weightCheckpointLb": "A review checkpoint — fires a finding at or past it. Not a goal and not a floor.",
+      "weightFloorLb": "The deficit stops here regardless of anything else. Fires below it.",
+      "weightCeilingLb": "Fires above it."
+    },
+    "_provenance": {
+      "_comment": "REQUIRED once this file exists — see baseline._provenance above. A threshold the athlete has not ruled on is `coach-proposed-unconfirmed`, and it stays live and marked rather than being deleted. Anything clinical belongs to their doctor: route it, never pick a number to close a gap."
+    }
+  },
+
+  "domains": {
+    "_comment": "The athlete/goals.md domain headings, VERBATIM, keyed by the role the code needs to name one for. This is the machine-readable pointer; goals.md holds the reasoning and the ranking. Without it, findings render with no domain label — which is honest, and is why there is no default: a default would be another chart's domain wearing this one's name. Roles the code asks for: `energyDeficit` (the domain a calorie deficit serves) and `health`. Add a key only when this chart actually has that domain.",
+    "_example": {
+      "energyDeficit": "<the goals.md heading, copied exactly>",
+      "health": "<the goals.md heading, copied exactly>"
+    }
+  },
+
+  "sessionTypes": {
+    "_comment": "WHAT THIS ATHLETE DOES, and what each activity costs, counts for, and serves. The list is the athlete's, not the system's: scripts/lib/schema.mjs derives training.csv's `type` enum from these keys, scripts/lib/athlete.mjs derives the MET table and the sessions-floor set, and the dashboard's /log form offers exactly these. AN ACTIVITY THAT IS NOT REGISTERED CAN ONLY BE LOGGED AS `other`, WHICH COUNTS TOWARD NOTHING — so an athlete who runs, and whose chart never registered running, trains six days a week and is invisible to the adherence count (audit F-15). `rest` and `other` are supplied by scripts/lib/athlete.mjs to every chart; do not register them, the validator rejects it. Required per entry: met (0-25), countsTowardFloor (true|false), domain (the goals.md heading it serves). Optional: note, metByIntensity ({light,moderate,hard} — used when a session logs its own minute split, so a long easy session is not priced at its hardest tier), energyCountedIn (name another column whose data already includes this activity's energy — then met MUST be 0, or it is counted twice).",
+    "_example": {
+      "<the athlete's word for it>": {
+        "met": 0,
+        "countsTowardFloor": true,
+        "domain": "<the goals.md heading this serves>",
+        "note": "<what it is, in one line>"
+      }
+    }
+  },
+
+  "program": {
+    "_comment": "The current block's weekly skeleton, so /today can show the planned session without waiting for a coaching session to hand-write a training.csv row. A real training.csv row ALWAYS wins over this. Rationale, exercise detail and autoregulation live in program/current-block.md; this is only the machine-readable outline, and a chart with no training domain does not need it at all. `weeklyTemplate` is keyed mon|tue|wed|thu|fri|sat|sun; `dailyRehabMin` is optional and only where a rehab block is running.",
+    "_example": {
+      "weeklyTemplate": {
+        "mon": { "session": "<session name>", "focus": "<what it is for>" }
+      },
+      "dailyRehabMin": 0
+    }
   },
 
   "events": {
     "_comment": "Dated things worth counting down to: a trip, a procedure, an event the plan is built around."
   },
 
-  "metOverrides": {
-    "_comment": "Optional per-athlete MET values overriding the defaults in scripts/lib/athlete.mjs. Walking must stay 0 — its energy is already counted in steps."
+  "copy": {
+    "_comment": "Sentences the dashboard renders that are about THIS athlete — their measurement history, their block, their protocol. One of the four homes for athlete-specific language (scripts/check-no-athlete-leak.mjs), and it exists because shared components used to carry these as string literals, so every new chart inherited the previous athlete's tile labels and caveats (audit F-31). Every key is optional: a page with no entry renders a generic sentence or renders nothing, and that is a correct chart rather than a gap. NOTHING HERE MAY CARRY A NUMBER that has a home elsewhere — scripts/test-single-home.mjs checks prose figures against this file, and this key is prose. Keys the pages read: waistTileLabel, waistCardTitle, waistCardCaption, bodyFormCaption, templateFlexNote."
   },
 
   "metrics": {
-    "_comment": "Registry for anything tracked in data/metrics.csv — the long-format file for measures the fixed columns of body.csv don't cover. Every entry must name its unit, its direction (up|down = which way is progress), and the goals.md domain it serves. The validator rejects an entry with no domain, because a metric no domain needs is a chore the coach invented.",
+    "_comment": "Registry for anything tracked in data/metrics.csv — the long-format file for measures the fixed columns of body.csv don't cover. This is where a symptom count, a medication, a lab value or a device reading goes, in the athlete's own vocabulary, so a new chart never needs code edited to record a new thing. Every entry must name its unit, its direction (up|down = which way is progress), and the goals.md domain it serves. The validator rejects an entry with no domain, because a metric no domain needs is a chore the coach invented.",
     "_example": {
       "reaction_severity": {
         "label": "Reaction severity",

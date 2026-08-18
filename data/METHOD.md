@@ -16,6 +16,15 @@
 2. **Append-only wherever possible.** `meals.csv`, `sets.csv` and `steps.csv` only ever gain rows.
    This matters: the athlete connects from several surfaces, and appended rows merge cleanly where
    rewritten files conflict (CLAUDE.md §0.1).
+
+   **⚠ One file is exempt, and only one: `coach-notes.csv`.** Dismissing a note on `/today`
+   deletes its row outright — no tombstone, no separate log of what was dismissed
+   (`removeRow` in `scripts/lib/rowwrite.mjs`, `commitRemoval` in `src/lib/github.ts`). This is
+   not a hole in the rule: every other row here is a **measurement**, and deleting one falsifies
+   the record of what happened. A coach note is **editorial** — something the coach said, which
+   the athlete has now read and finished with — so a dismissed one leaving no trace loses nothing
+   that was ever a fact. Nothing else may be deleted, and `removeRow` refuses any file that is
+   not `uniqueDate` because a click cannot name which of several rows on a date it meant.
 3. **Empty means unknown, not zero.** An empty cell is "not measured." A `0` is a measured zero.
    Breakfast skipped is `0` kcal. Never write `0` to mean "we didn't look."
 
