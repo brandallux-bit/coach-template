@@ -1,0 +1,11 @@
+{
+  "_comment": "Divergences between this chart's system layer and the template it was forked from that somebody has read and decided are correct. A fresh chart has none: it starts identical, and every entry here is a deliberate decision not to mirror something. Checked by scripts/check-template-parity.mjs. The digest is over the diff itself, so an entry covers the divergence that was actually read: the moment either side changes that file again the digest moves, the acknowledgement lapses, and the path comes back into the report. Regenerate an entry with `npm run parity -- --pin` and write a real reason — an entry whose reason is a shrug is an exemption sitting on a check it cannot justify.",
+  "_shape": {
+    "path": "repo-relative path, as check-template-parity.mjs prints it",
+    "digest": "sha256 of `git diff <ref> -- <path>`, first 16 hex chars — run --pin",
+    "since": "YYYY-MM-DD the divergence was read",
+    "owner": "who read it",
+    "reason": "why this difference is correct and should not be mirrored"
+  },
+  "entries": []
+}
