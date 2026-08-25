@@ -20,13 +20,24 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readCsv } from './lib/csv.mjs'
 import { constants, hasChart, localToday } from './lib/athlete.mjs'
-import { targetGaps } from './lib/targets.mjs'
+import { noDailyTargetReason, targetGaps } from './lib/targets.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
 
 if (!hasChart) {
   console.log('No athlete/constants.json — template repo with no chart yet. Nothing to check.')
+  process.exit(0)
+}
+
+// A chart may be built on NOT having daily calorie targets — see `noDailyTargetReason`. Skipping
+// here is not the 2026-08-15 failure repeating: that was a session deciding in the moment, this is
+// a policy written into the chart with a recorded reason, which is exactly where the charter says
+// judgement belongs.
+const optedOut = noDailyTargetReason(constants)
+if (optedOut) {
+  console.log('targets: this chart runs without daily calorie targets, by policy.')
+  console.log(`  ${optedOut.split('\n')[0]}`)
   process.exit(0)
 }
 

@@ -80,3 +80,40 @@ export function targetGaps(rows, throughDate) {
 /** The dates `generate-targets.mjs --fill-gaps` is entitled to write: the missing rows only. */
 export const fillableGaps = (rows, throughDate) =>
   targetGaps(rows, throughDate).filter((g) => g.reason === 'missing-row').map((g) => g.date)
+
+/**
+ * **Does this chart run on daily calorie targets at all?**
+ *
+ * Returns `null` when it does (the default, and the answer on any chart that has not said
+ * otherwise), or the recorded REASON when it deliberately does not.
+ *
+ * ⚠ **This is not a loophole in "a day may never lack a calorie target", and the difference is
+ * the whole point.** That rule exists because an automated job reasoned its way out of writing a
+ * target in the moment, wrote nothing, and the athlete woke up travelling with none. What it
+ * forbids is a SESSION deciding, ad hoc, that today is an exception. What it cannot sensibly
+ * forbid is a chart whose nutrition plan is *built* on not having one — a recomposition phase run
+ * on satiety, an eating-disorder history where a number on a screen is itself the risk, a chart
+ * whose domains have nothing to do with intake.
+ *
+ * Two safeguards keep it honest, and both are enforced by the caller:
+ *   1. It must be set in `athlete/constants.json` — written down, in the file a session reads
+ *      before it speaks, where it can be argued with. Never inferred from an empty budget.
+ *   2. It must carry a reason. A policy of "none" with no `_note` is an ERROR, not an opt-out:
+ *      the reason is the thing a future session has to be able to disagree with.
+ *
+ * `check-targets-gap.mjs` skips and says so; `generate-targets.mjs` refuses rather than writing
+ * numbers the plan does not want.
+ */
+export function noDailyTargetReason(constants) {
+  const plan = constants?.plan ?? {}
+  if (plan.dailyKcalTargetPolicy !== 'none') return null
+  const why = plan._dailyKcalTargetPolicy_note
+  if (!why || !String(why).trim()) {
+    throw new Error(
+      'athlete/constants.json: plan.dailyKcalTargetPolicy is "none" but '
+      + 'plan._dailyKcalTargetPolicy_note is empty. A chart may opt out of daily calorie targets, '
+      + 'but not silently — record why, and who confirmed it.',
+    )
+  }
+  return String(why).trim()
+}

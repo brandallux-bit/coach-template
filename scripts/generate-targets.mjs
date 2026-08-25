@@ -33,7 +33,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readCsv, toCsv } from './lib/csv.mjs'
 import { constants, hasChart } from './lib/athlete.mjs'
-import { fillableGaps } from './lib/targets.mjs'
+import { fillableGaps, noDailyTargetReason } from './lib/targets.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = join(ROOT, 'data', 'targets.csv')
@@ -43,6 +43,17 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 if (!hasChart) {
   console.log('No athlete/constants.json — template repo with no chart yet. Nothing to generate.')
   process.exit(0)
+}
+
+// Refuse rather than write numbers the chart's own plan does not want. A chart that opted out has
+// no `kcalByWeekday` to generate from, so the only way to produce a row here would be to CHOOSE a
+// figure — which is the one thing this generator exists to avoid doing.
+const optedOut = noDailyTargetReason(constants)
+if (optedOut) {
+  console.error('This chart runs without daily calorie targets, by policy:\n')
+  console.error(`  ${optedOut}\n`)
+  console.error('Change plan.dailyKcalTargetPolicy in athlete/constants.json if that is wrong.')
+  process.exit(1)
 }
 
 const { plan, athlete } = constants

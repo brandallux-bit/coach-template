@@ -133,6 +133,7 @@ very well were what when where whether which while whole will with within withou
 would year years your
 session sessions daily weekly supplements plan phase block target baseline morning evening light
 moderate hard completed planned skipped rest steps protocol depart intake deficit surplus
+short vacation trip travel week weekend
 `.trim().split(/\s+/))
 
 const isCollectable = (t) =>
@@ -336,6 +337,37 @@ const walk = (dir, out = []) => {
  * Returns `[{ path, mode, hits: [{ line, text, terms }], digest }]`, newest-scanned order. The
  * digest is over the matched line texts, which is what an acknowledgement pins.
  */
+/**
+ * **Is this file the chart's own instance of something the library also ships?**
+ *
+ * `CLAUDE.md` §7 and §8 say the agent roster and the skill set are per-athlete: intake copies what
+ * a domain needs up out of `.claude/agents/library/` and `skills/library/`, and the copy is then
+ * rewritten for THIS athlete. So a promoted file is an instance file that happens to live in a
+ * shared directory — it cannot move to `athlete/`, because the agent runtime reads
+ * `.claude/agents/` and the skill loader reads `skills/`.
+ *
+ * ⚠ **Scanning it reports the chart working as designed.** A promoted `strength.md` that did NOT
+ * name this athlete's domains would be the bug. On a chart whose domains are ordinary English —
+ * "Bone health", "Bloating" — it produced 27 hits across six files, every one of them a sentence
+ * the specialist is supposed to contain.
+ *
+ * **The library original is still scanned**, which is where the check has teeth: that IS shared,
+ * it ships to every future chart, and one athlete's domains appearing in it is a real leak.
+ *
+ * Per-line acknowledgements were the alternative and are worse: they pin to line numbers, so every
+ * one goes stale the first time a coach edits an agent, and a stale pin is an exemption sitting on
+ * top of a live check.
+ */
+const isChartInstance = (root, rel) => {
+  // The roster declares itself per-athlete in its own first line.
+  if (rel === '.claude/agents/MANIFEST.md') return true
+  const agent = rel.match(/^\.claude\/agents\/([^/]+)\.md$/)
+  if (agent) return existsSync(join(root, '.claude', 'agents', 'library', `${agent[1]}.md`))
+  const skill = rel.match(/^skills\/([^/]+)\//)
+  if (skill) return existsSync(join(root, 'skills', 'library', skill[1]))
+  return false
+}
+
 export function scanForLeaks(root, denylist = denylistFrom(root)) {
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   /** `\b` only where the phrase's own first/last character is a word character. */
@@ -367,6 +399,7 @@ export function scanForLeaks(root, denylist = denylistFrom(root)) {
     for (const full of walk(join(root, dir))) {
       const rel = relative(root, full)
       if (NEVER_SCANNED.some((n) => rel.startsWith(n.path))) continue
+      if (isChartInstance(root, rel)) continue
       const raw = readFileSync(full, 'utf8')
       const isCode = kind === 'code' && /\.(mjs|js|ts|tsx)$/.test(rel)
       const text = isCode ? stripComments(raw) : raw

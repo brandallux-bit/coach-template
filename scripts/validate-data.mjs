@@ -42,6 +42,8 @@ const { futureRowRejection, coverIntensitySplit } = await import('./lib/rowwrite
 // with the same stack trace as before, on a validator whose whole job is to fail in sentences.
 // Found by breaking it on purpose after the fix was written (INVARIANTS.md X-10).
 const tz = constants?.athlete?.timezone
+// See rule 3a below. A date, or null for "this rule has always applied to this chart".
+const MACRO_RULE_FROM = constants?.plan?.macroCompletenessFrom || null
 try {
   new Intl.DateTimeFormat('en-CA', { timeZone: tz })
 } catch {
@@ -342,8 +344,17 @@ meals.forEach((m, i) => {
   // silently biases the day downward. 2026-08-12 read as 36.7 g fat with one cell blank; the
   // true figure was 72.7 g, and both coach and athlete reasoned from the wrong number.
   // Estimate it — by difference, by build-up, from a photo — and put the method in the note.
+  //
+  // ⚠ **A chart ADOPTS this rule on a date, and rows before it are exempt.**
+  // `plan.macroCompletenessFrom` in `athlete/constants.json`, absent by default, which means
+  // "always" — the correct behaviour for a chart with no legacy rows. A chart that logged under
+  // the older permissive wording has rows that cannot be brought into compliance without
+  // fabricating macros nobody measured, and **rule 3 forbids inventing a number more strongly
+  // than 3a requires one.** Backfilling by real derivation (label, by difference, build-up) is
+  // always better and is what the date is there to make optional rather than blocking; move the
+  // date back as rows get filled in.
   for (const col of ['kcal', 'protein_g', 'fat_g', 'carb_g', 'fibre_g']) {
-    if (m[col] === '') {
+    if (m[col] === '' && (!MACRO_RULE_FROM || m.date >= MACRO_RULE_FROM)) {
       err('meals.csv', `row ${i + 2} (${m.date} "${(m.item || '').slice(0, 40)}"): ${col} is blank — METHOD.md rule 3a requires an estimate on every food row. A blank is read as 0 by every total. Derive it (label / by difference / build-up / photo) and state the method in the note.`)
     }
   }
