@@ -211,6 +211,48 @@ tr.now td { font-weight: 620; }
 .legend .key { display: inline-flex; align-items: center; gap: 7px; }
 .legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 .legend .swatch.line { height: 3px; border-radius: 2px; width: 16px; }
+/* The difference cap on a grouped-bar chart is DERIVED, not measured, so its key is hatched
+   rather than given a categorical colour — see `delta` in src/components/charts.tsx. */
+.legend .swatch.hatch {
+  background: repeating-linear-gradient(
+    45deg, var(--baseline) 0 1.6px, var(--gridline) 1.6px 4.2px
+  );
+  border: 1px solid var(--gridline);
+}
+
+/* --- Chart hover readout -------------------------------------------------------------
+   Asked for on 2026-08-24: point anywhere at a chart and it names the number under the
+   pointer. **This is the whole mechanism — there is no JavaScript behind it.** Each chart
+   lays a transparent `.hit-zone` over every column and parks a hidden `.tip` beside it;
+   the rules below are what reveal it, which is what keeps the chart components on the
+   server (src/components/charts.tsx). `:active` is there for touch, where `:hover` on a
+   never-moving pointer is unreliable; the table view under every chart is the answer for
+   anyone not using a pointer at all. */
+.chart .hit-zone { fill: var(--text-primary); fill-opacity: 0; pointer-events: all; }
+.chart .hit:hover .hit-zone, .chart .hit:active .hit-zone { fill-opacity: 0.05; }
+.chart .tip { opacity: 0; pointer-events: none; }
+.chart .hit:hover .tip, .chart .hit:active .tip { opacity: 1; }
+.chart .tip-bg {
+  fill: var(--surface); stroke: var(--baseline); stroke-width: 1;
+  filter: drop-shadow(0 2px 7px rgba(0, 0, 0, 0.22));
+}
+.chart .tip-head { font-size: 11.5px; font-weight: 640; fill: var(--text-primary); }
+.chart .tip-label { font-size: 11.5px; fill: var(--text-secondary); }
+.chart .tip-label.muted { fill: var(--text-muted); }
+.chart .tip-value {
+  font-size: 11.5px; font-weight: 620; fill: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The plan-vs-actual difference segment. Recessive on purpose: it is the gap between two
+   measurements, not a third measurement. */
+.chart .delta-cap { fill: url(#coach-delta-hatch); }
+.chart .delta-hatch-bg { fill: var(--gridline); }
+.chart .delta-hatch-line { stroke: var(--baseline); stroke-width: 1.6; fill: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .chart .tip { transition: opacity 90ms ease-out; }
+}
 
 details.table-view { margin-top: 16px; }
 details.table-view > summary {
@@ -282,6 +324,13 @@ details.table-view[open] > summary { margin-bottom: 10px; }
 }
 
 .footnote { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
+
+/* Sub-headings inside a card, for the proposed/recorded movement tables on Today. Same type
+   treatment as `.day-detail h4` on History, so a section heading reads the same everywhere. */
+.segments-head {
+  font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin: 22px 0 8px;
+}
 
 /* --- Login -------------------------------------------------------------------------- */
 

@@ -230,13 +230,26 @@ export function TableView({ children, label = 'Table view' }: { children: React.
   )
 }
 
-export function Legend({ items }: { items: { label: string; color: string; line?: boolean }[] }) {
+/**
+ * `hatch` marks a key that is DERIVED rather than measured — the plan-vs-actual difference cap on
+ * a grouped-bar chart. It takes no `color`, deliberately: the categorical slots are assigned in
+ * fixed order and never cycled, and handing one to a quantity nobody counted would put a third
+ * "thing that was measured" on a two-series chart.
+ */
+export function Legend({
+  items,
+}: {
+  items: { label: string; color?: string; line?: boolean; hatch?: boolean }[]
+}) {
   if (items.length < 2) return null
   return (
     <p className="legend">
       {items.map((it) => (
         <span className="key" key={it.label}>
-          <span className={`swatch${it.line ? ' line' : ''}`} style={{ background: it.color }} />
+          <span
+            className={`swatch${it.line ? ' line' : ''}${it.hatch ? ' hatch' : ''}`}
+            style={it.hatch ? undefined : { background: it.color }}
+          />
           {it.label}
         </span>
       ))}

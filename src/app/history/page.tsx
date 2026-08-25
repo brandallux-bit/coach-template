@@ -118,17 +118,24 @@ export default function HistoryPage() {
 
       <Card
         title="Calories in — actual vs plan"
-        caption={<>Weekly totals.{plan.weeklyKcalBudget != null && <> The plan is a weekly budget of ~{plan.weeklyKcalBudget.toLocaleString()} kcal, not a flat daily number — it is built to absorb the occasions in <code>values.md</code>.</>}</>}
+        caption={<>Weekly totals.{plan.weeklyKcalBudget != null && <> The plan is a weekly budget of ~{plan.weeklyKcalBudget.toLocaleString()} kcal, not a flat daily number — it is built to absorb the occasions in <code>values.md</code>.</>} The hatched section caps whichever bar is shorter and brings it level with the other, so <strong>its height is the gap between what you ate and what the plan asked for</strong> — point at the week to read it. <strong>That gap is not the same quantity as the energy balance two cards down:</strong> this one is eaten against <em>target</em>, that one is eaten against <em>estimated burn</em>.</>}
       >
         <Legend items={[
           { label: 'Eaten', color: 'var(--series-1)' },
           { label: 'Plan', color: 'var(--series-2)' },
+          { label: 'Difference', hatch: true },
         ]} />
         {weeks.length ? (
           <GroupedBars
             groups={intakeGroups}
             series={[{ name: 'Eaten', color: 'var(--series-1)' }, { name: 'Plan', color: 'var(--series-2)' }]}
             unit=" kcal"
+            // Asked for on 2026-08-24. `below`/`above` describe the FIRST series against the
+            // second — Eaten against Plan — which is the order `intakeGroups` already builds its
+            // values in, so the phrase cannot come out backwards. The words are "under/over plan"
+            // rather than "deficit/surplus" deliberately: eating 2,000 under target is not a
+            // 2,000 kcal deficit, and the card that owns that word is "Energy balance" below.
+            delta={{ label: 'Difference', below: 'under plan', above: 'over plan' }}
           />
         ) : <Empty>No weeks recorded.</Empty>}
       </Card>

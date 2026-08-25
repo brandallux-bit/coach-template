@@ -3,16 +3,41 @@ import CoachNotes from '@/components/CoachNotes'
 import FindingsCard from '@/components/FindingsCard'
 import UnitToggle from '@/components/unit-toggle'
 import {
-  addDays, allOf, allOnOrBefore, coachNotes, fmt, fractionOfDayElapsed, meals, plan, prettyDate,
-  sets, today, weekdayKey, weekStart,
+  addDays, allOf, allOnOrBefore, coachNotes, energy, fmt, fractionOfDayElapsed, meals, n, oneOf,
+  plan, prettyDate, sets, today, weekdayKey, weekStart,
 } from '@/lib/data'
 import { viewFindings } from '@/lib/findings'
 import {
-  DAILY, SUPPLEMENTS, effectiveRx, orderedSessions, primarySession, rxFor, setsForSession,
+  DAILY, SUPPLEMENTS, effectiveRx, orderedSessions, planDay, primarySession, rxFor, setsForSession,
 } from '@/lib/forecast'
 import { partialBurn, rollDay, rollWeek } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Why a recorded segment has no figure. **The reasons are not interchangeable**, which is the same
+ * rule History's `SessionKcal` holds one file over and for the same cause: printing one dash for
+ * all of them is how a table stops meaning anything. A walk is COMPLETE without a session figure —
+ * its energy is already in the step count — while a blank duration is a real cost nobody can
+ * compute, and a row that has not happened has not happened.
+ *
+ * `not-performed` splits on status, because `sessionBurns` is `status === 'completed'` and that
+ * one level therefore covers two opposite states: a **planned** session that may still happen
+ * today, and a **skipped** one that will not. Rendering "not performed yet" beside a `skipped`
+ * status is the table contradicting itself in adjacent cells.
+ */
+const recordedAbsence = (level: string, status: string): string => {
+  if (level === 'counted-elsewhere') return 'in steps'
+  if (level === 'unknown') return 'TBD'
+  if (level === 'not-performed') return status === 'skipped' ? 'skipped' : 'not performed yet'
+  return '—'
+}
+
+/** How a proposed segment says it has no figure. Same two absences `Next 7 Days` renders. */
+const PROPOSED_ABSENCE: Record<string, string> = {
+  'counted-elsewhere': 'in steps',
+  unknown: 'TBD',
+}
 
 export default function TodayPage() {
   const now = today()
@@ -59,11 +84,11 @@ export default function TodayPage() {
   // ⚠ It used to have one, and the special case was the bug (2026-08-13). `exact` was every
   // prescription row dated today, ACROSS ALL SESSIONS, and it beat the per-session lookup. So
   // defining any new session dated today hijacked the Today tab: on a walk day the caption read
-  // "Walk / optional Peloton" while the table rendered the brand-new "Session A (knee-free)".
+  // one session while the table rendered a different, brand-new one.
   // Reported by the athlete against the live dashboard. Scoping the lookup to the session name
   // fixes every case, and the resolver now lives in one place for all three surfaces —
-  // `rxFor` also bridges training.csv's descriptive names ("Session B — Upper Push/Pull + Core")
-  // to prescriptions.csv's ("Session B"). Regression test: scripts/test-prescriptions.mjs.
+  // `rxFor` also bridges training.csv's descriptive session names ("Session B — Upper Push/Pull")
+  // to the shorter ones prescriptions.csv uses ("Session B"). Test: scripts/test-prescriptions.mjs.
   const rx = sessionName && sessionName !== DAILY ? rxFor(sessionName, now) : []
   const daily = effectiveRx(DAILY, now)
   const stack = effectiveRx(SUPPLEMENTS, now)
@@ -80,6 +105,59 @@ export default function TodayPage() {
   const base = (s: string) => s.split(' (')[0].trim().toLowerCase()
   const loggedFor = (exercise: string) =>
     loggedHere.filter((s) => s.exercise === exercise || base(s.exercise) === base(exercise))
+
+  // =============================================================================================
+  // THE COST OF TODAY'S MOVEMENT, PROPOSED AND RECORDED
+  //
+  // Asked for on 2026-08-24: *"add the estimated calories that will be burned for proposed
+  // movement segments and for actual recorded movement segments so that I can see the numbers
+  // used for calculating my projected and recorded burn."*
+  //
+  // ⚠ **TWO TABLES, NOT ONE JOINED TABLE, AND THAT IS THE POINT RATHER THAN A COMPROMISE.** The
+  // two sides come from two different models with two different jobs: `planDay` is the FORWARD
+  // model (the same one Next 7 Days renders, MET × minutes over the block template) and the
+  // per-row `estKcalBurned` is the LEDGER (the same figure `energy.csv`'s `session_kcal` is summed
+  // from). Pairing them row-for-row would need a join, and the only join available is index
+  // order inside `planDay` — an implicit coupling that would silently mis-pair the day the
+  // forecast starts ordering its items differently. Rendering each side under its own heading,
+  // from its own one home, cannot mis-pair anything and says plainly which model produced which
+  // number. Nothing here computes a third figure.
+  const proposed = planDay(now, now)
+
+  // The ledger side. `estKcalBurned`, `kcalLevel` and `kcalBasis` are derived once in
+  // scripts/build-data-json.mjs through the SAME `sessionCost` precedence compute-energy.mjs uses
+  // — kcal_override, then the intensity split, then the flat MET — which is what stopped this
+  // surface reading 1,328 kcal for a session the ledger counted at 774 (audit F-02).
+  const recordedSteps = n(oneOf(energy, now)?.steps_kcal)
+  const recorded = [
+    ...sessions.map((sn) => ({
+      label: sn.session || sn.type,
+      detail: [sn.status, sn.duration_min ? `${sn.duration_min} min` : null].filter(Boolean).join(' · '),
+      kcal: sn.estKcalBurned ? Number(sn.estKcalBurned) : null,
+      absence: recordedAbsence(sn.kcalLevel, sn.status),
+      // An `unknown` cost is the only absence that makes the total SHORT of the truth. A planned
+      // row has not happened and a walk is already counted in steps; neither is a gap.
+      shortfall: sn.kcalLevel === 'unknown',
+      basis: sn.kcalBasis,
+    })),
+    {
+      label: 'Steps',
+      detail: d.steps == null ? 'not reported yet' : `${d.steps.toLocaleString()} steps`,
+      kcal: recordedSteps,
+      absence: 'TBD',
+      // Deliberately NOT a shortfall: the step feed lands the morning after by design, so marking
+      // today's blank as a gap would put the marker on this page every single day, which is how a
+      // marker stops being read (see DayRoll.burnUnderstated for the same argument).
+      shortfall: false,
+      basis: recordedSteps == null
+        ? 'the step feed writes yesterday\u2019s total each morning — nothing for today yet'
+        : `steps \u00d7 ${plan.kcalPerStepPerLb} kcal per step per lb of bodyweight, from the ledger`,
+    },
+  ]
+  const recordedKcal = recorded.reduce<number | null>(
+    (a, r) => (r.kcal == null ? a : (a ?? 0) + r.kcal), null,
+  )
+  const recordedIsPartial = recorded.some((r) => r.shortfall)
 
   return (
     <Shell>
@@ -148,17 +226,16 @@ export default function TodayPage() {
           <Meter name="Fat" actual={d.fatG} target={d.targetFatG} unit=" g" />
           <Meter name="Fibre" actual={d.fibreG} target={d.targetFibreG} unit=" g" />
           {/*
-            ⚠ **NO PER-DAY ALCOHOL ALLOWANCE IS INVENTED HERE, and the weekly budget existing does
-            not change that.** He set 1,400 kcal/week on 2026-08-14; dividing it by seven would put
-            200 kcal/day on this track, and that is a number nobody set. His drinking is uneven ON
-            PURPOSE — `nutrition/plan.md` schedules the big wine night at the weekend and away from
-            the BJJ evenings — so a flat daily line would mark an ordinary Tuesday glass as an
-            overage and a Saturday bottle as a catastrophe, neither of which is what the plan says.
+            ⚠ **NO PER-DAY ALCOHOL ALLOWANCE IS INVENTED HERE, and a weekly budget existing does
+            not change that.** Dividing a weekly allowance by seven puts a number on this track that
+            nobody set. Drinking is typically uneven ON PURPOSE — a plan schedules the big night at
+            the weekend and away from the hardest training evenings — so a flat daily line would
+            mark an ordinary midweek glass as an overage and a planned weekend bottle as a
+            catastrophe, neither of which is what the plan says.
 
             So the daily row shows what was DRUNK with no denominator, unless a coaching session
-            wrote a real allowance into that day's targets.csv row (2026-08-07 has one: 330 against
-            a logged 392). The denominator lives on the weekly card below, which is where the budget
-            actually is. A day with nothing logged renders nothing at all — an unlogged day is not a
+            wrote a real allowance into that day's targets.csv row. The denominator lives on the
+            weekly card below, which is where the budget actually is. A day with nothing logged renders nothing at all — an unlogged day is not a
             zero-alcohol day (INVARIANTS.md X-1).
           */}
           {d.targetAlcoholKcal != null ? (
@@ -472,6 +549,126 @@ export default function TodayPage() {
               : 'No prescription and no sets logged for today.'}
           </Empty>
         )}
+
+        {/* ---------------------------------------------------------------------------------
+            **WHAT TODAY'S MOVEMENT COSTS — PROPOSED, THEN RECORDED.** See the comment over
+            `proposed` and `recorded` above for why these are two tables rather than one.
+
+            ⚠ **BOTH TOTALS ARE MOVEMENT ONLY, and neither is comparable to the "Burned so far"
+            tile at the top of this page.** That tile is the whole decomposed model — resting
+            metabolism, the thermic effect of food and non-step movement as well as these
+            segments. Adding a movement total to it would double-count every one of these rows.
+            The footnote says so on the page, not just here: `data/METHOD.md` calls mixing the
+            two models the trap this chart has already fallen into twice. */}
+        <h4 className="segments-head">Proposed — what today is scheduled to cost</h4>
+        {proposed.items.length ? (
+          <div className="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th className="text">Segment</th><th className="text">Detail</th>
+                  <th>Est. kcal</th><th className="text">Basis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {proposed.items.map((i, idx) => (
+                  <tr key={`${i.label}-${idx}`}>
+                    <td className="text">{i.label}</td>
+                    <td className="text">{i.detail}</td>
+                    <td>
+                      {i.kcal == null
+                        ? <span className="tbd">{PROPOSED_ABSENCE[i.kcalAbsence ?? ''] ?? '—'}</span>
+                        : fmt(Math.round(i.kcal))}
+                    </td>
+                    <td className="text">{i.basis}</td>
+                  </tr>
+                ))}
+                {/* A total short by a real cost says so. An item with no figure is not
+                    automatically a gap — a walk contributes nothing here BY DESIGN, since its
+                    energy is in the step count — so only an `unknown` absence marks it. */}
+                <tr>
+                  <td className="text"><strong>Total proposed</strong></td>
+                  <td className="text">
+                    {proposed.totalIsPartial ? <span className="tbd">at least this much</span> : null}
+                  </td>
+                  <td>
+                    <strong>
+                      {proposed.totalKcal == null
+                        ? <span className="tbd">—</span>
+                        : fmt(Math.round(proposed.totalKcal))}
+                    </strong>
+                    {proposed.totalIsPartial ? <span className="tbd">~</span> : null}
+                  </td>
+                  <td className="text">
+                    {proposed.totalIsPartial
+                      ? proposed.items.filter((i) => i.kcalAbsence === 'unknown')
+                          .map((i) => `${i.label}: ${i.basis}`).join(' · ')
+                      : ''}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty>
+            Nothing scheduled — no written row and no block-template entry for this weekday.
+          </Empty>
+        )}
+
+        <h4 className="segments-head">Recorded — what has been logged so far</h4>
+        <div className="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th className="text">Segment</th><th className="text">Detail</th>
+                <th>Est. kcal</th><th className="text">Basis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recorded.map((r, idx) => (
+                <tr key={`${r.label}-${idx}`}>
+                  <td className="text">{r.label}</td>
+                  <td className="text">{r.detail}</td>
+                  <td>{r.kcal == null ? <span className="tbd">{r.absence}</span> : fmt(r.kcal)}</td>
+                  <td className="text">{r.basis}</td>
+                </tr>
+              ))}
+              <tr>
+                <td className="text"><strong>Total recorded</strong></td>
+                <td className="text">
+                  {recordedIsPartial ? <span className="tbd">at least this much</span> : null}
+                </td>
+                <td>
+                  <strong>
+                    {recordedKcal == null ? <span className="tbd">—</span> : fmt(recordedKcal)}
+                  </strong>
+                  {recordedIsPartial ? <span className="tbd">~</span> : null}
+                </td>
+                <td className="text">
+                  {recordedIsPartial
+                    ? recorded.filter((r) => r.shortfall).map((r) => `${r.label}: ${r.basis}`).join(' · ')
+                    : ''}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="footnote">
+          <strong>These are movement figures only</strong> — session, daily block and steps. They
+          exclude resting metabolism, the thermic effect of food and non-step movement, so{' '}
+          <strong>neither total is the same quantity as &ldquo;Burned so far&rdquo;</strong> at the
+          top of this page, and they must never be added to it: the recorded segments here are
+          already inside it. Proposed comes from the block template and the MET table, the same
+          forward model Next 7 Days renders. Recorded comes from the ledger — the per-session
+          figures that <code>data/energy.csv</code>&rsquo;s <code>session_kcal</code> is summed
+          from, and the step feed, which reports a day&rsquo;s total the following morning. A
+          session shows <span className="tbd">not performed yet</span> until a coaching session
+          writes its result, so the two tables are expected to disagree for most of the day —{' '}
+          <strong>and to converge once it is written</strong>, because the forward model reads a
+          written row&rsquo;s own duration and any device reading on it in preference to the
+          template. Proposed is what today costs on the best information there is, not a morning
+          guess frozen in place.
+        </p>
 
         {rx.length > 0 && logged.length > 0 && (
           <details className="table-view">
