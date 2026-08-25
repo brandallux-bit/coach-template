@@ -1,4 +1,5 @@
 import { Card } from './ui'
+import { LineChart } from './charts'
 import { metrics, metricsRegistry, type Row } from '@/lib/data'
 
 /**
@@ -21,6 +22,26 @@ import { metrics, metricsRegistry, type Row } from '@/lib/data'
  * `athlete/constants.json` (INVARIANTS.md X-11). A chart with an empty registry renders no card.
  */
 
+/**
+ * A metric's numeric readings over time, oldest first. Non-numeric values are skipped, not zeroed.
+ *
+ * **One point per date, and the LAST row for a date wins.** metrics.csv is append-only, so a
+ * second reading on a day is a correction or an update to the first — which is exactly how the
+ * chart this was written against uses it ("Updates the same-day entry above"). Two points sharing
+ * a date also collide on the x-axis, which places both at one tick and duplicates the React key.
+ */
+const seriesFor = (rows: Row[], key: string) => {
+  const byDate = new Map<string, number>()
+  for (const r of rows) {
+    if (r.metric !== key || String(r.value ?? '').trim() === '') continue
+    const v = Number(r.value)
+    if (Number.isFinite(v)) byDate.set(String(r.date), v)
+  }
+  return [...byDate.entries()]
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 const latestFor = (rows: Row[], key: string) =>
   rows
     .filter((r) => r.metric === key && r.value !== '')
@@ -29,6 +50,12 @@ const latestFor = (rows: Row[], key: string) =>
 export default function MetricsCard() {
   const registered = Object.entries(metricsRegistry ?? {})
   if (!registered.length) return null
+
+  // Two numeric readings is the minimum that can show a direction. One is a point, and a chart
+  // drawn through a single point invites reading a trend into it.
+  const trended = registered
+    .map(([key, def]) => [key, def, seriesFor(metrics, key)] as const)
+    .filter(([, , points]) => points.length >= 2)
 
   const anyLogged = registered.some(([key]) => latestFor(metrics, key))
 
@@ -72,6 +99,37 @@ export default function MetricsCard() {
           </tbody>
         </table>
       </div>
+
+      {/*
+        A trend per measure that has one. The table above answers "what is it now"; a domain whose
+        primary metric lives in metrics.csv — a symptom score, a lab value — needs "which way is it
+        going", and until this it had nowhere to show that at all. Registered-but-unlogged measures
+        deliberately produce no chart and stay visible as TBD in the table.
+      */}
+      {trended.map(([key, def, points]) => (
+        <div key={key} className="metric-trend">
+          <h3 className="metric-trend-title">
+            {def.label}
+            <span className="unit"> — {def.unit}</span>
+            {def.direction && (
+              <span className="footnote"> · {def.direction} is better</span>
+            )}
+          </h3>
+          <LineChart
+            series={[{ name: def.label, color: 'var(--series-3)', points }]}
+            decimals={Number.isInteger(points[0].value) && points.every((p) => Number.isInteger(p.value)) ? 0 : 1}
+            height={170}
+          />
+          {def.confounds && (
+            <p className="footnote">
+              A reading of {def.confounds.atOrAbove} or worse flags the{' '}
+              {def.confounds.lagDays ? 'next morning’s' : 'same day’s'}{' '}
+              <strong>{def.confounds.measure.replace(/_/g, ' ')}</strong> as confounded — see the
+              chart above.
+            </p>
+          )}
+        </div>
+      ))}
     </Card>
   )
 }

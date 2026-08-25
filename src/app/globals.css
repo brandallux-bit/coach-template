@@ -443,3 +443,16 @@ details.table-view[open] > summary { margin-bottom: 10px; }
 .banner.ok { border-color: var(--good); color: var(--text-primary); }
 .banner.bad { border-color: var(--critical); color: var(--text-primary); }
 .banner code { font-size: 12.5px; }
+
+/* A per-measure trend under the registered-measures table. See src/components/metrics-card.tsx:
+   the table says what a measure is now, these say which way it is going. */
+.metric-trend { margin-top: 1.25rem; }
+.metric-trend + .metric-trend { border-top: 1px solid var(--gridline); padding-top: 1.25rem; }
+.metric-trend-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+  color: var(--text);
+}
+.metric-trend-title .unit,
+.metric-trend-title .footnote { font-weight: 400; color: var(--text-muted); }

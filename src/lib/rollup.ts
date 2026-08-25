@@ -104,7 +104,13 @@ export function rollDay(date: string): DayRoll {
     alcoholKcal: sumOrNull(m, 'alcohol_kcal'),
     targetKcal: n(t?.kcal),
     targetAlcoholKcal: n(t?.alcohol_kcal),
-    targetProteinG: n(t?.protein_g),
+    // **Falls back to the plan's own protein floor when no targets row overrides it.**
+    // A `targets.csv` row is a day-specific refinement, not the only place a protein target can
+    // live — `plan.proteinFloorG` is a standing figure the chart already declares, and a chart
+    // that deliberately writes no daily target rows (see `plan.dailyKcalTargetPolicy`) would
+    // otherwise render its athlete's one daily process goal with no reference line at all. Not an
+    // invented number: it is the floor already on file, used where nothing more specific exists.
+    targetProteinG: n(t?.protein_g) ?? plan.proteinFloorG ?? null,
     targetFatG: n(t?.fat_g),
     targetFibreG: n(t?.fibre_g),
     burnKcal: n(e?.burn_total_kcal),

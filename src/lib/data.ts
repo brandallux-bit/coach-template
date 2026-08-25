@@ -164,7 +164,11 @@ type Bundle = {
   metrics: Row[]
   metricsRegistry: Record<
     string,
-    { label: string; unit: string; direction: 'up' | 'down'; domain: string }
+    {
+      label: string; unit: string; direction: 'up' | 'down'; domain: string
+      /** Optional: this metric makes another measurement unreliable. See `confoundedDates`. */
+      confounds?: { measure: string; atOrAbove: number; lagDays?: number }
+    }
   >
   coachNotes: Row[]
   energy: Row[]
@@ -382,3 +386,109 @@ export const series = (rows: Row[], key: string) =>
   rows
     .map((r) => ({ date: r.date, value: n(r[key]) }))
     .filter((p): p is { date: string; value: number } => p.value != null)
+
+// -------------------------------------------------------------------------------------------
+// Confounded readings
+// -------------------------------------------------------------------------------------------
+
+/**
+ * **A measurement a chart itself says is unreliable on a given day, and why.**
+ *
+ * Some charts track a symptom that moves the very measurement another domain depends on. Bloating
+ * distends the waist; a salt-heavy day moves scale weight; a flare moves grip strength. Plotting
+ * such a reading inside the trend line states a change the chart does not believe in — and the
+ * athlete is the one who ends up reasoning from it.
+ *
+ * **The rule is per-chart data, never code.** A metric in `athlete/constants.json`'s registry may
+ * declare what it confounds:
+ *
+ *     "bloating_severity": {
+ *       "label": "Bloating severity", "unit": "0-3 scale", "direction": "down",
+ *       "domain": "Bloating",
+ *       "confounds": { "measure": "waist_in", "atOrAbove": 2, "lagDays": 1 }
+ *     }
+ *
+ * `lagDays: 1` means a reading is confounded by a value recorded the day BEFORE — the morning-after
+ * case, which is the common one. `lagDays: 0` marks the same day.
+ *
+ * **A confounded reading is never hidden or dropped.** It is real, it was taken, and removing it
+ * would be editing the record to make a trend look better — the exact failure `data/METHOD.md`
+ * rule 3 exists to prevent. It is rendered apart from the trend, and said out loud.
+ */
+export type Confound = {
+  measure: string; atOrAbove: number; lagDays?: number
+  /**
+   * The date the chart ADOPTED this rule. Readings before it are left alone.
+   *
+   * A confound rule is usually written after the athlete notices the pattern, and applying it
+   * backwards re-judges readings the chart has already settled — including, in the case this was
+   * written for, the baseline the whole domain is measured against. Absent means "always", which
+   * is right for a rule declared at intake.
+   */
+  from?: string
+}
+
+export type ConfoundRule = { metric: string; label: string; domain?: string } & Confound
+
+/** Every confound rule this chart declares, for `measure` — empty on a chart that declares none. */
+export function confoundRulesFor(measure: string): ConfoundRule[] {
+  return Object.entries(metricsRegistry ?? {})
+    .filter(([key]) => !key.startsWith('_'))
+    .flatMap(([key, def]) => {
+      const c = (def as { confounds?: Confound }).confounds
+      if (!c || c.measure !== measure) return []
+      return [{
+        metric: key,
+        label: (def as { label?: string }).label ?? key,
+        domain: (def as { domain?: string }).domain,
+        measure: c.measure,
+        atOrAbove: c.atOrAbove,
+        lagDays: c.lagDays ?? 0,
+        from: c.from,
+      }]
+    })
+}
+
+/**
+ * The dates on which a reading of `measure` is confounded, mapped to the reason.
+ *
+ * Reads `metrics.csv` for each triggering metric, and shifts by `lagDays` so a severity logged on
+ * the 16th flags the morning of the 17th. A day with several triggering readings takes the worst.
+ */
+export function confoundedDates(measure: string): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const rule of confoundRulesFor(measure)) {
+    for (const row of metrics) {
+      if (row.metric !== rule.metric) continue
+      const v = Number(row.value)
+      if (!Number.isFinite(v) || v < rule.atOrAbove) continue
+      const on = rule.lagDays ? addDays(String(row.date), rule.lagDays) : String(row.date)
+      if (rule.from && on < rule.from) continue
+      out.set(on, `${rule.label} ${v} the ${rule.lagDays ? 'day before' : 'same day'}`)
+    }
+  }
+
+  // ⚠ **THE COACH'S WRITTEN VERDICT OVERRIDES THE DERIVED ONE, IN BOTH DIRECTIONS — but only
+  // when written as a TOKEN, never as prose.**
+  //
+  // The rule above is arithmetic on a severity score. It cannot know whether a symptom had
+  // RESOLVED by the morning of the reading, and that is exactly the question the athlete can
+  // answer and the score cannot. So the note gets the last word — via `[confounded]` or
+  // `[clean]`, which are the whole convention.
+  //
+  // **Matching the WORDS was tried first and was wrong on three readings out of twelve.** A note
+  // recapping a trend — "28(confounded) → 29(confounded) → 27(clean)" — is about other days, and
+  // one reading a coach data-flagged read "this can't be flagged CONFOUNDED under the formal
+  // rule", where the sentence means the opposite of the word in it. Prose describes; a token
+  // declares. Nothing incidental produces a bracketed token.
+  for (const row of body) {
+    const note = String(row.note ?? '')
+    const date = String(row.date)
+    if (!date || String(row[measure] ?? '').trim() === '') continue
+    if (/\[clean\]/i.test(note)) out.delete(date)
+    else if (/\[confounded\]/i.test(note) && !out.has(date)) {
+      out.set(date, 'flagged in the reading\u2019s own note')
+    }
+  }
+  return out
+}

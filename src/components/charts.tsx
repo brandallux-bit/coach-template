@@ -167,7 +167,17 @@ const asCount = (v: number, unit: string) => `${Math.round(v).toLocaleString()}$
 export function LineChart({
   series, refLines = [], height = 230, yLabel, decimals = 1, unit = '',
 }: {
-  series: { name: string; color: string; points: Point[] }[]
+  /**
+   * `pointsOnly` draws the markers and NO connecting line — for readings that are real but do not
+   * belong to the trend. A chart may flag a measurement as unreliable under a condition it also
+   * tracks (see `confounds` in the metrics registry); those points must still be visible, because
+   * hiding a reading the athlete took is editing the record, but joining them into the line states
+   * a trend the chart itself says is not there.
+   * `hollow` renders the marker unfilled, so the two read apart in one glance and in print.
+   */
+  series: {
+    name: string; color: string; points: Point[]; pointsOnly?: boolean; hollow?: boolean
+  }[]
   refLines?: RefLine[]
   height?: number
   yLabel?: string
@@ -236,13 +246,14 @@ export function LineChart({
         const last = pts[pts.length - 1]
         return (
           <g key={s.name}>
-            {pts.length > 1 && (
+            {pts.length > 1 && !s.pointsOnly && (
               <path d={d} fill="none" stroke={s.color} strokeWidth={2}
                 strokeLinecap="round" strokeLinejoin="round" />
             )}
             {pts.map((p) => (
               <circle key={p.date} cx={x(p.date)} cy={y(p.value)} r={4.5}
-                fill={s.color} stroke="var(--surface)" strokeWidth={2}>
+                fill={s.hollow ? 'var(--surface)' : s.color}
+                stroke={s.hollow ? s.color : 'var(--surface)'} strokeWidth={2}>
                 <title>{`${s.name} · ${shortDate(p.date)} · ${p.value.toFixed(decimals)}${unit}`}</title>
               </circle>
             ))}

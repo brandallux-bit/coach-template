@@ -1,9 +1,10 @@
-import { Card, Empty, Masthead, Nav, Shell, TableView, Tile } from '@/components/ui'
+import { Card, Empty, Legend, Masthead, Nav, Shell, TableView, Tile } from '@/components/ui'
 import { LineChart } from '@/components/charts'
 import FindingsCard from '@/components/FindingsCard'
 import MetricsCard from '@/components/metrics-card'
 import {
-  MIN_READINGS_FOR_PROJECTION, body, daysBetween, fmt, plan, prettyDate, series, today, trend,
+  MIN_READINGS_FOR_PROJECTION, body, confoundedDates, daysBetween, fmt, plan, prettyDate,
+  series, today, trend,
 } from '@/lib/data'
 import { viewFindings } from '@/lib/findings'
 import { allWeeks, missingBurnLabels } from '@/lib/rollup'
@@ -36,6 +37,20 @@ export default function GoalsPage() {
     latestWaist && plan.waistTriggerIn != null ? latestWaist.value - plan.waistTriggerIn : null
   // A chart with neither a waist trigger nor a waist reading has no waist domain, and this page
   // renders without one rather than asserting one.
+  // A chart may declare that one thing it tracks makes another unreliable — see `confoundedDates`.
+  // Empty map on a chart that declares none, in which case every reading is "clean" and the split
+  // below collapses to the single series this page has always drawn.
+  const waistConfounds = confoundedDates('waist_in')
+  const cleanWaist = waistPoints.filter((p) => !waistConfounds.has(p.date))
+  const confoundedWaist = waistPoints.filter((p) => waistConfounds.has(p.date))
+  // **A plan may want weight NOT to move**, and saying so is not the same as having no target.
+  // A recomposition phase, or any chart where losing weight works against another domain, sets
+  // targetRateLbPerWk to [0, 0]. Rendering that as "plan targets 0-0 lb/week" is technically true
+  // and useless; worse, the tiles below default to reading a drop as progress, which is the
+  // opposite of what such a plan wants.
+  const holdingWeight =
+    Array.isArray(plan.targetRateLbPerWk)
+    && plan.targetRateLbPerWk[0] === 0 && plan.targetRateLbPerWk[1] === 0
   const waistIsPrimary = plan.waistTriggerIn != null
   const showWaist = waistIsPrimary || waistPoints.length > 0
 
@@ -90,9 +105,14 @@ export default function GoalsPage() {
           value={fmt(latestWeight?.value, 1)}
           unit="lb"
           foot={
-            lostLb != null
-              ? <>{fmt(Math.abs(lostLb), 1)} lb {lostLb >= 0 ? 'below' : 'above'} the {plan.baselineWeightLb} lb baseline</>
-              : 'no weigh-in recorded'
+            lostLb == null
+              ? 'no weigh-in recorded'
+              : holdingWeight
+                ? <>{Math.abs(lostLb) < 0.05
+                    ? <>level with the {plan.baselineWeightLb} lb baseline — holding is the goal</>
+                    : <>{fmt(Math.abs(lostLb), 1)} lb {lostLb >= 0 ? 'below' : 'above'} the{' '}
+                        {plan.baselineWeightLb} lb baseline — holding is the goal, not dropping</>}</>
+                : <>{fmt(Math.abs(lostLb), 1)} lb {lostLb >= 0 ? 'below' : 'above'} the {plan.baselineWeightLb} lb baseline</>
           }
         />
         {plan.weightCheckpointLb != null && (
@@ -126,9 +146,12 @@ export default function GoalsPage() {
             <p>
               Weight trend over the last {weightTrend.n} readings:{' '}
               <strong>{weightTrend.perWeek >= 0 ? '+' : '−'}{fmt(Math.abs(weightTrend.perWeek), 2)} lb/week</strong>
-              {plan.targetRateLbPerWk
-                ? <> (plan targets {plan.targetRateLbPerWk[0]}–{plan.targetRateLbPerWk[1]} lb/week).</>
-                : '.'}
+              {holdingWeight
+                ? <> — and the plan wants that at <strong>zero</strong>. Weight holding steady is
+                    the target here, not a number to drive down.</>
+                : plan.targetRateLbPerWk
+                  ? <> (plan targets {plan.targetRateLbPerWk[0]}–{plan.targetRateLbPerWk[1]} lb/week).</>
+                  : '.'}
             </p>
             <p>
               {weeksToWeightCheckpoint
@@ -208,7 +231,19 @@ export default function GoalsPage() {
         {waistPoints.length ? (
           <>
             <LineChart
-              series={[{ name: 'Waist', color: 'var(--series-1)', points: waistPoints }]}
+              series={[
+                { name: 'Waist', color: 'var(--series-1)', points: cleanWaist },
+                // Real readings, kept visible and kept OUT of the line. See `confoundedDates`.
+                ...(confoundedWaist.length
+                  ? [{
+                    name: 'Confounded',
+                    color: 'var(--series-2)',
+                    points: confoundedWaist,
+                    pointsOnly: true,
+                    hollow: true,
+                  }]
+                  : []),
+              ]}
               refLines={[
                 ...(plan.waistWorkingBaselineIn != null
                   ? [{ value: plan.waistWorkingBaselineIn, label: `baseline ${plan.waistWorkingBaselineIn}″` }]
@@ -220,11 +255,45 @@ export default function GoalsPage() {
               decimals={2}
               unit="″"
             />
+            {confoundedWaist.length > 0 && (
+              <Legend
+                items={[
+                  { label: 'Clean readings — the trend', color: 'var(--series-1)' },
+                  { label: 'Confounded — shown, not counted', color: 'var(--series-2)' },
+                ]}
+              />
+            )}
             <p className="footnote">
               {waistPoints.length === 1
                 ? 'One reading is a point, not a trend.'
                 : `${waistPoints.length} readings on record.`}
+              {confoundedWaist.length > 0 && (
+                <>
+                  {' '}<strong>{confoundedWaist.length} of them {confoundedWaist.length === 1 ? 'is' : 'are'} confounded</strong>
+                  {' '}and sit outside the line — the chart says the measurement was unreliable that
+                  morning, not that nothing changed. The reading is kept because it was taken;
+                  dropping it would be editing the record.
+                </>
+              )}
             </p>
+            {confoundedWaist.length > 0 && (
+              <div className="scroll-x">
+                <table>
+                  <thead>
+                    <tr><th>Date</th><th className="num">Reading</th><th>Why it is set aside</th></tr>
+                  </thead>
+                  <tbody>
+                    {confoundedWaist.map((p) => (
+                      <tr key={p.date}>
+                        <td>{prettyDate(p.date)}</td>
+                        <td className="num">{fmt(p.value, 2)}″</td>
+                        <td>{waistConfounds.get(p.date)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         ) : <Empty>No waist readings yet.</Empty>}
       </Card>
