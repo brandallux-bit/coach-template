@@ -145,6 +145,28 @@ const emptyTheChart = (repo) => {
   for (const file of readdirSync(join(repo, 'athlete'))) {
     if (file.endsWith('.md')) writeFileSync(join(repo, 'athlete', file), `# ${file.replace('.md', '')}\n\n_Not yet written._\n`)
   }
+  // ⚠ **PROMOTED AGENTS AND SKILLS GO TOO, and forgetting them made this suite pass on one chart
+  // and fail on another running byte-identical code.**
+  //
+  // `CLAUDE.md` §7 and §8: the roster and the skill set are per-athlete. A fresh fork has NOTHING
+  // promoted — intake copies out of `library/` and rewrites the copy for that athlete. So a copy
+  // sitting in `.claude/agents/` or `skills/` is chart content, exactly like `nutrition/` above,
+  // and leaving it in place asks the suite to assert that the PREVIOUS athlete's specialists pass
+  // against the fixture athlete's constants. On a chart whose promoted files still matched the
+  // library that was invisible; on one whose intake had genuinely rewritten them — quoting that
+  // athlete's own protein figures — `test-single-home`'s prose scan found figures with no home in
+  // the fixture's chart and went red on every push.
+  const promoted = (dir, isDir) => {
+    const lib = join(repo, dir, 'library')
+    if (!existsSync(lib)) return []
+    const shipped = new Set(readdirSync(lib))
+    return readdirSync(join(repo, dir))
+      .filter((e) => e !== 'library' && shipped.has(e) && (isDir || e.endsWith('.md')))
+      .map((e) => join(repo, dir, e))
+  }
+  for (const path of [...promoted('.claude/agents', false), ...promoted('skills', true)]) {
+    rmSync(path, { recursive: true, force: true })
+  }
   writeFileSync(join(repo, 'decisions.md'), '# Decisions\n\n_Nothing decided yet._\n')
   execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'pipe' })
   execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=cold-start', 'commit', '-qm', 'empty chart'],
