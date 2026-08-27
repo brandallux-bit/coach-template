@@ -17,10 +17,11 @@ recommendation, read"):
    leftover work from a previous session that didn't get saved — commit and push them
    first:
    ```
-   git add -A
-   git commit -m "Sync uncommitted changes from previous session"
-   git push
+   node scripts/chart-commit.mjs -m "Sync uncommitted changes from previous session"
    ```
+   That validates before it commits (§0.3) — leftover work from a session that died mid-write
+   is exactly the state most likely to be half-written, and committing it unchecked is how a
+   broken row reaches `main`.
 3. **Full remote fetch.** `git fetch --all --prune`, then `git pull` — this brings down
    every branch's latest state, not just `main`'s.
 4. **Check for unmerged branches.** `git branch -r | grep -v -E '/(main|HEAD)$'` lists
@@ -133,7 +134,21 @@ your own context. This has caused real, silent day-corruption twice (`data/METHO
 Then run `node scripts/compute-energy.mjs` and commit the regenerated `data/energy.csv`
 alongside. It is a derived file; CI fails if it is stale.
 
-**Before every commit that touches `data/`, run `node scripts/validate-data.mjs`.** This is
+**Commit with `node scripts/chart-commit.mjs -m "<what changed and why>"`, not with raw git.**
+It runs the checks, **refuses to commit if they fail**, then commits and pushes — merging and
+retrying if another session pushed while you were writing. Your edits are never discarded: on a
+failure they sit untouched in the working tree, and on a merge conflict it stops and hands the
+resolution back to you, because combining rows is a judgement call about the athlete's record
+(§0.1).
+
+> **Why this replaced "remember to run the validator".** The rule below is unchanged and still
+> true; what changed is that it is now enforced instead of requested. A session wrote a
+> `kcal_override` with an empty `note`, committed, and pushed — and the error surfaced minutes
+> later as a red build on a different screen. The machinery had existed the whole time and only
+> the automated jobs were using it. **A rule that only lives in this file is one a session can
+> silently fail to follow**; this section said exactly that about itself and was then proved right.
+
+**The checks that command runs are the hard stop.** This is
 not optional and not a suggestion — it is the enforcement mechanism for every rule in this
 section (including the date rule above), because a rule that only lives in this file is one
 a session can silently fail to follow, as already happened twice. **A failing validator is a
@@ -174,13 +189,14 @@ make you reverse it — committed and pushed the same way, immediately.
 personal chart, not a codebase under review. Never create a branch, and never commit to
 any branch other than `main`, unless the athlete explicitly asks you to.
 
-**At the end of every session**, after any final writes, run the same commit/push
-sequence as a last-check safety net (the immediate-write habit above should mean there's
-nothing left to catch):
+**At the end of every session**, after any final writes, run the same command again as a
+last-check safety net (the immediate-write habit above should mean there's nothing left to
+catch):
 
-    git add -A
-    git commit -m "<one line: what changed and why>"
-    git push
+    node scripts/chart-commit.mjs -m "<one line: what changed and why>"
+
+It exits cleanly saying "nothing to commit" when there is nothing left, so running it costs
+nothing and catches the write you forgot.
 
 ## 1. Priority order — read it, don't assume it
 
