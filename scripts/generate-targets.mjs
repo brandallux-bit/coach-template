@@ -106,7 +106,10 @@ function writeDay(date) {
     // (audit F-38, F-69; INVARIANTS.md X-15 item 3.)
     alcohol_kcal: '',
     note: `${weekday}. Generated from plan.kcalByWeekday (nutrition/plan.md weekday structure). `
-      + `Protein floor ${plan.proteinFloorG}, aim ${plan.proteinAimG}. `
+      // ⚠ `proteinAimG` IS OPTIONAL. Unguarded, a chart without one wrote the literal string
+      // "aim undefined" into the note of every generated row — a fiction in the record, which is
+      // the one thing this file exists not to do.
+      + `Protein floor ${plan.proteinFloorG}${plan.proteinAimG != null ? `, aim ${plan.proteinAimG}` : ''}. `
       + `Not reviewed by a coaching session — override this row to change it.`,
   }
 

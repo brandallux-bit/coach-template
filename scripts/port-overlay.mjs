@@ -150,12 +150,15 @@ const REPIN_PATH = 'athlete/leak-acknowledgements.json'
  * including them would fire on every correctly-written line and the screen would be off in a day.
  *
  * **2 · A QUOTE IN THE FIRST PERSON.** A verbatim quote of a PERSON is speech, and speech about
- * oneself is first-person. That separates *"I don't need an AI for that"* and *"Make the weekly
- * 17,500 on my trip"* — real athlete quotes, both of which must never cross — from the quoted
- * identifiers, UI strings and illustrative sentences that shared code legitimately contains:
- * *"Must match build-findings.mjs's inputs exactly"* quotes a code comment, `**"0 / 3 · not
- * started"**` quotes a rendered label. Bare `\*"` matched all of them, and matched `\s*"Mon"`
+ * oneself is first-person. That separates an athlete saying what they want from the quoted
+ * identifiers, UI strings and illustrative sentences shared code legitimately contains — a quoted
+ * code comment, a quoted rendered label. Bare `\*"` matched all of those, and matched a `"Mon"`
  * inside a regex literal as well.
+ *
+ * ⚠ **AND THE FIRST VERSION OF THIS PARAGRAPH ILLUSTRATED THE RULE WITH TWO REAL QUOTES FROM THE
+ * PROTOTYPE ATHLETE**, in the one file exempt from its own screen — including a figure on the
+ * plan's not-crossing list. A reviewer found it. The example a rule needs is the SHAPE of the
+ * thing, never a specimen of it; that is the same judgement this whole port turns on.
  *
  * **3 · A DATE IN PROSE, NOT IN CODE.** The target is a dated incident — *"On <date> an automated
  * job reasoned its way to the opposite conclusion"* — which lives in a sentence. A bare date
@@ -169,15 +172,40 @@ const REPIN_PATH = 'athlete/leak-acknowledgements.json'
  * itself a violation of it.
  */
 const PRONOUN_RE = /\b(he|him|his|she|her|hers)\b/i
-const QUOTE_RE = /(^|[\s>])\*+"[^"]*\b(i|i'm|i'd|i'll|i've|my|me|myself|mine|we|our|us)\b/i
+/** Straight and curly, because a quote pasted out of a chat window carries curly ones. */
+const Q = '["\u201c\u201d]'
+const FIRST_PERSON = "(i|i'm|i'd|i'll|i've|my|me|myself|mine|we|our|us)"
+/** In prose, any quoted span. In code, only the markdown-emphasis form — see `isProse`. */
+const QUOTE_PROSE_RE = new RegExp(`${Q}[^"\u201c\u201d]*\\b${FIRST_PERSON}\\b`, 'i')
+const QUOTE_CODE_RE = new RegExp(`(^|[\\s>])\\*+${Q}[^"\u201c\u201d]*\\b${FIRST_PERSON}\\b`, 'i')
 const DATE_RE = /\b20\d\d-\d\d-\d\d\b/
 
-/** A comment line, or any line of a non-code file. Where a sentence about a person lives. */
-const isProse = (path, text) => !/\.(mjs|js|ts|tsx|json)$/.test(path) || /^\s*(\/\/|\*|\/\*|#)/.test(text)
+/**
+ * A comment line, or any line of a file that is prose rather than program.
+ *
+ * ⚠ **`.json` IS PROSE HERE, and excluding it blinded the screen to the file this port edits most
+ * for documentation.** `athlete/constants.template.json` is almost entirely English sentences
+ * inside JSON strings — every `_comment` and every `_note` — so treating it as code meant a dated
+ * incident or a quote in the very file a new user reads first went unseen.
+ */
+const isProse = (path, text) => !/\.(mjs|js|ts|tsx)$/.test(path) || /^\s*(\/\/|\*|\/\*|#)/.test(text)
 
-const deathleteHit = (path, text) => PRONOUN_RE.test(text)
-  || QUOTE_RE.test(text)
-  || (isProse(path, text) && DATE_RE.test(text))
+const deathleteHit = (path, text) => {
+  const prose = isProse(path, text)
+  return PRONOUN_RE.test(text)
+    || (prose ? QUOTE_PROSE_RE : QUOTE_CODE_RE).test(text)
+    || (prose && DATE_RE.test(text))
+}
+
+/**
+ * ⚠ **WHAT THIS SCREEN CANNOT SEE, STATED RATHER THAN IMPLIED.** It is a screen, not a scanner:
+ * it has no denylist, because the repo it runs in has no chart to derive one from. So a name with
+ * no pronoun around it, a session name, or a third-person quote carrying no first-person word all
+ * pass it clean — every one of those was checked and every one slips through. What it reliably
+ * catches is the shape the crossing content actually takes: comment prose about a particular
+ * person, their own words, and dated incidents. Reading the diff is still the job; this narrows
+ * where to look.
+ */
 
 const DEATHLETE_EXEMPT_FILE = 'scripts/port-overlay.mjs'
 
@@ -593,8 +621,32 @@ const leaks = scanForLeaks(clone, denylist, { only: copied })
  * over.
  */
 const changedHere = new Set(changedFiles())
-const mine = leaks.filter((f) => changedHere.has(f.path))
-const inherited = leaks.filter((f) => !changedHere.has(f.path))
+/**
+ * ⚠ **THE SPLIT IS PER LINE, NOT PER FILE — because a file-level proxy ADOPTS unrelated history the
+ * moment a phase touches the file.** Observed: adding one guard to `test-prescriptions.mjs` moved
+ * 38 pre-existing hits from "already there" to "this port's fault" and reddened the gate over
+ * fixture lines the phase never read. With nine phases still to run, that recurs every time.
+ *
+ * The question is "did THIS port write this line?", so ask it of the line: take the file as it
+ * stood at `BASE` and see whether the hit's text is already in it. Matching on TEXT rather than on
+ * line number survives every insertion above it.
+ */
+const baseLines = new Map()
+const wasThereBefore = (path, text) => {
+  if (!baseLines.has(path)) {
+    const before = gitHere(['show', `${BASE}:${path}`])
+    baseLines.set(path, new Set((before ?? '').split('\n').map((l) => l.trim().slice(0, 160))))
+  }
+  return baseLines.get(path).has(text)
+}
+const split = (f) => {
+  if (!changedHere.has(f.path)) return { ...f, added: [], old: f.hits }
+  const added = f.hits.filter((h) => !wasThereBefore(f.path, h.text))
+  return { ...f, added, old: f.hits.filter((h) => !added.includes(h)) }
+}
+const parts = leaks.map(split)
+const mine = parts.filter((f) => f.added.length).map((f) => ({ ...f, hits: f.added }))
+const inherited = parts.filter((f) => f.old.length).map((f) => ({ ...f, hits: f.old }))
 
 const show = (f) => {
   say(`  ${f.path} — ${f.hits.length} hit(s)`)
@@ -631,8 +683,9 @@ if (reported.length) {
 if (inherited.length) {
   const n = inherited.reduce((a, f) => a + f.hits.length, 0)
   say()
-  say(`  ${n} pre-existing line(s) in ${inherited.length} file(s) this port did not touch — NOT this`)
-  say('  port\'s doing, and not fixed by it. Recorded so a regression is visible against a number:')
+  say(`  ${n} pre-existing line(s) in ${inherited.length} file(s) — lines that already read this`)
+  say('  way at the comparison ref. NOT this port\'s doing and not fixed by it, recorded so a')
+  say('  regression is visible against a number:')
   for (const f of inherited) say(`    ${f.path} — ${f.hits.length}`)
 }
 

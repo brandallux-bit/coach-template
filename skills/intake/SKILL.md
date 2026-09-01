@@ -331,11 +331,30 @@ Run these in order, once, when the interview is finished and the values are real
    Three sections are easy to forget and each has a check behind it:
 
    - **`sessionTypes`** — the athlete's own activities, one entry each, naming the MET, whether a
-     completed session counts toward the sessions floor, and the `goals.md` domain it serves.
+     completed session counts toward the sessions floor, whether it is `loading`, and the
+     `goals.md` domain it serves.
      **This is `training.csv`'s `type` enum**: an activity that is not registered can only be
      logged as `other`, which counts toward nothing, so their training would be invisible to the
      adherence count while they trained six days a week (audit F-15). `rest` and `other` are
      supplied by the system — do not register them.
+
+     **Write `loading` on every entry, and do not ask about it.** Default it to
+     `met > 0 && no energyCountedIn` — that is right for almost every activity, and asking would be
+     asking a second time about something the MET already answers. Then check the two entries where
+     the default is wrong, because it is a THIRD question and the other two do not answer it:
+     `countsTowardFloor` asks *does this earn credit*, `met` asks *does this burn calories*,
+     `loading` asks *did this tire you out*.
+       - A rehabilitation or mobility block often loads genuinely while deliberately earning no
+         floor credit. The default gets this right; the floor set would not.
+       - **A walking type on a chart with no step feed is the one to look at.** With no feed it is
+         priced as a session at a real MET, because nothing else counts that movement — and the
+         default then calls it loading, so a week of walks reads as a week with no rest day. Write
+         `"loading": false` on it. (With a step feed it carries `energyCountedIn: "steps"` and
+         `met: 0`, and the default is right again.)
+
+     It feeds the consecutive-loading-days count that tells a coach how hard the last few days
+     have been, which is the input `skills/library/session-recommendation` reads before proposing
+     anything.
    - **`domains`** — the `goals.md` domain headings, verbatim, keyed by role. Findings are filed
      under these; a chart that omits them gets findings with no domain label, which is honest, and
      no default is applied because a default is another athlete's domain wearing this one's name.

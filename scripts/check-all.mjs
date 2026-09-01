@@ -46,7 +46,17 @@ const REGEN_ENERGY = process.argv.includes('--regen-energy')
  * behind the flag is gated on the data it needs actually existing, so an empty chart reports "not
  * applicable" rather than failing.
  */
-const REAL = ['--real']
+/**
+ * ⚠ **CONDITIONAL, AND THE CONDITION IS THE WHOLE REASON TWO SUITES CAN RUN HERE AT ALL.**
+ *
+ * `--real` opts a suite into assertions ABOUT THE LIVE CHART; the fixtures underneath it need no
+ * chart whatsoever. Passing the flag unconditionally therefore made two suites throw on a
+ * chart-less repo, which forced them to be registered `needsChart: true`, which SKIPPED their
+ * fixtures on exactly the repo where those fixtures are the only thing exercising `rollup.ts`,
+ * `forecast.ts` and the prescription resolver at all. A stranger forking this repo got neither
+ * half. Withholding just the flag gives them the half that applies.
+ */
+const REAL = hasChart ? ['--real'] : []
 
 const run = (script, args = []) =>
   execFileSync(process.execPath, [join(SCRIPTS, script), ...args], { cwd: ROOT, stdio: 'pipe' })
@@ -160,8 +170,13 @@ step('test-findings      — the coach-facing findings layer', () => run('test-f
 // (which nothing may fail, since only the athlete can close it). See scripts/lib/provenance.mjs.
 step('test-provenance    — every threshold records who it came from', () => run('test-provenance.mjs'))
 step('test-rowwrite      — the dashboard write path', () => run('test-rowwrite.mjs', REAL))
-step('test-prescriptions — the effective-date resolver', () => run('test-prescriptions.mjs', REAL))
-step('test-views         — rollup.ts and forecast.ts', () => run('test-views.mjs', REAL))
+// `needsChart: false` with a conditional `REAL` above: the fixtures run everywhere, the live-chart
+// assertions only where there is a chart. `test-cold-start.mjs` STATE A derives the list of suites
+// that pass without a chart and fails if any of them was skipped, so this cannot silently regress.
+step('test-prescriptions — the effective-date resolver', () => run('test-prescriptions.mjs', REAL),
+  { needsChart: false })
+step('test-views         — rollup.ts and forecast.ts', () => run('test-views.mjs', REAL),
+  { needsChart: false })
 // Deliberately inline here rather than in validate-data.yml, unlike test-git-sync.mjs: this suite
 // is pure arithmetic plus one short subprocess, so it cannot flake, and what it guards is the
 // figure the athlete reads off the page. A wrong deficit reaching main is exactly the thing the

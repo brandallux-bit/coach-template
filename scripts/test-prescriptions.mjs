@@ -28,12 +28,13 @@
  * components and this repo has no TS test runner. Mirroring is the honest cost of that, so every
  * mirror here is paired with a grep back at the real source that fails when the two diverge.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { markerAudit, parseMarkerTable } from './lib/findings.mjs'
 import { DAILY, RESERVED_SESSIONS } from './lib/sessions.mjs'
 import { REAL_DATA, modeBanner } from './lib/test-mode.mjs'
+import { WEEKDAYS } from './lib/weekdays.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const src = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -430,7 +431,8 @@ if (REAL_DATA) {
   const rows = parse(readFileSync(join(ROOT, 'data/prescriptions.csv'), 'utf8'))
   const constants = JSON.parse(readFileSync(join(ROOT, 'athlete/constants.json'), 'utf8'))
   const template = constants.program?.weeklyTemplate ?? {}
-  const KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  // Imported, never restated — see scripts/lib/weekdays.mjs and test-single-home's rule.
+  const KEYS = WEEKDAYS
 
   // Every session the template can land on must resolve without borrowing another session's rows.
   let leaked = 0
@@ -475,7 +477,12 @@ if (REAL_DATA) {
 
   // The marker audit against the live chart. Printed, never failed — see the section header.
   const constantsRaw = JSON.parse(readFileSync(join(ROOT, 'athlete/constants.json'), 'utf8'))
-  const goalsText = readFileSync(join(ROOT, 'athlete/goals.md'), 'utf8')
+  // ⚠ Guarded: a chart with `constants.json` and no `goals.md` yet is the MIDDLE OF A
+  // MULTI-SESSION INTAKE, which SETUP.md §3 explicitly supports — and an unguarded read took
+  // `check-all` down there with a raw ENOENT, the exact F-17 class this repo claims closed. The
+  // marker audit over an empty goals file simply finds no markers, which is the right answer.
+  const goalsPath = join(ROOT, 'athlete/goals.md')
+  const goalsText = existsSync(goalsPath) ? readFileSync(goalsPath, 'utf8') : ''
   const audit = markerAudit({
     goalsText,
     prescriptions: rows,

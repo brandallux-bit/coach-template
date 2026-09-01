@@ -134,6 +134,15 @@ the design.
 > that a failing build is the normal state of their chart. That is the exact outcome the no-chart
 > guard exists to prevent, defeated by the setup instructions (audit F-39).
 
+> **Two keys are easy to leave out and both are checked.** `plan.kcalByWeekday` needs all seven
+> weekday keys, spelled `Mon Tue Wed Thu Fri Sat Sun` — capitalised, three letters, because that is
+> what every lookup in the code produces, and six right names or seven wrong ones is a chart with no
+> calorie target on the days it cannot find. A chart that genuinely runs without daily targets says
+> so in writing instead: `plan.dailyKcalTargetPolicy: "none"` with a reason in
+> `plan._dailyKcalTargetPolicy_note`. And every `sessionTypes` entry carries `loading` — see
+> `skills/intake/SKILL.md`, which says how to default it and which single entry to check by hand.
+> `validate-data.mjs` reports both.
+
 ## 3. Run intake
 
 > ### ⚠ Use Claude Code, not Cowork

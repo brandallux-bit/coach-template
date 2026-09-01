@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { readCsv, num } from './lib/csv.mjs'
 import { DATE_RE, SPEC } from './lib/schema.mjs'
 import { WEEKDAYS, checkWeekdayKeys } from './lib/weekdays.mjs'
+import { noDailyTargetReason } from './lib/targets.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -256,42 +257,83 @@ try {
     }
   }
 
-  // ⚠ **THE KEYS, NOT JUST THEIR COUNT — and OUTSIDE the budget branch, which is where the first
-  // version of this check wrongly sat.** `plan.weeklyKcalBudget` is not in REQUIRED_PLAN_FIELDS,
-  // so a chart that has a weekday map and no weekly total skipped the whole block below and got no
-  // key check at all — leaving exactly the original failure: seven lowercase keys,
-  // `generate-targets.mjs` exiting 1 every morning with "no entry for Mon", and nothing here
-  // saying why. The key check needs only the map.
+  // ⚠ **THE KEYS, NOT THEIR COUNT — AND `missing` COUNTS AS MUCH AS `unexpected`, WHICH THE FIRST
+  // VERSION OF THIS CHECK COMPUTED AND THEN THREW AWAY.**
   //
-  // WHY IT MATTERS AT ALL: `athlete/constants.template.json` documented these as
-  // `mon|tue|wed|thu|fri|sat|sun` while every lookup in the codebase produces `Mon`. Seven right
-  // numbers under seven wrong names is a chart where every single day has no calorie target —
-  // the failure CLAUDE.md §0.3 and data/METHOD.md both name.
+  // It reported only when a key was UNEXPECTED, so two reachable shapes walked straight past it
+  // into exactly the failure it was written to stop:
+  //
+  //   • SIX correct keys and no seventh. Nothing unexpected, so nothing said — and
+  //     `generate-targets.mjs` then exits 1 on that one weekday, every week, forever. Worse than
+  //     the lower-case case, because `--fill-gaps` aborts mid-loop on the first day it cannot
+  //     write, so `check-targets-gap.mjs` fails the build and prints a remedy that can never
+  //     succeed.
+  //   • A map holding nothing but its `_comment` — **which is literally the shape
+  //     `athlete/constants.template.json` ships.** Zero non-`_` keys meant zero unexpected keys
+  //     meant silence, and the sum check below cannot cover it either because that one is gated on
+  //     `weeklyKcalBudget`, which is not required. A user who copies the template and fills in
+  //     everything except the weekday map gets no calorie target on any day, ever, with the
+  //     validator calling the chart valid.
+  //
+  // WHY IT MATTERS AT ALL: every weekday lookup in the code produces `Mon`, and the template
+  // documented these as `mon|tue|…` in two `_comment` strings AND its `_example`. Seven right
+  // numbers under seven wrong names — or six right names — is a chart where every single day has
+  // no calorie target, which is the failure CLAUDE.md §0.3 and data/METHOD.md both name.
+  //
+  // ⚠ **A CHART MAY LEGITIMATELY HAVE NO WEEKDAY MAP, AND `dailyKcalTargetPolicy` IS HOW IT SAYS
+  // SO.** A symptom-control chart, or one where a number on a screen is itself the risk, opts out
+  // in writing with a reason. This check must never be the thing that forces a chart to invent a
+  // calorie figure — so it asks the same question `generate-targets.mjs` and
+  // `check-targets-gap.mjs` already ask, through the same one home.
   {
     const map = constants?.plan?.kcalByWeekday
-    if (map && Object.keys(map).filter((k) => !k.startsWith('_')).length) {
+    const keys = Object.keys(map ?? {}).filter((k) => !k.startsWith('_'))
+    let optedOut = null
+    try {
+      optedOut = noDailyTargetReason(constants)
+    } catch (e) {
+      // The policy is "none" with no reason recorded. That is its own error and it belongs here,
+      // where a malformed chart is reported, rather than as a throw out of a validator.
+      err('athlete/constants.json', e.message)
+      optedOut = 'malformed'
+    }
+    if (!optedOut && !keys.length) {
+      err('athlete/constants.json',
+        'plan.kcalByWeekday has no weekday entries. Every day needs a calorie target and this map '
+        + `is the fallback that always answers — seven keys, exactly ${WEEKDAYS.join(', ')}. `
+        + 'A chart that genuinely runs without daily targets says so in writing: set '
+        + 'plan.dailyKcalTargetPolicy to "none" and record why in plan._dailyKcalTargetPolicy_note.')
+    } else if (!optedOut) {
       const { ok, missing, unexpected } = checkWeekdayKeys(map)
-      if (!ok && unexpected.length) {
+      if (!ok) {
+        const parts = []
+        if (unexpected.length) parts.push(`does not use ${unexpected.join(', ')}`)
+        if (missing.length) parts.push(`has no entry for ${missing.join(', ')}`)
         err('athlete/constants.json',
-          `plan.kcalByWeekday is keyed ${unexpected.join(', ')} but generate-targets.mjs looks up `
-          + `${missing.join(', ')} — the keys are exactly ${WEEKDAYS.join(', ')}, case-sensitive. `
-          + `Seven entries with the wrong names is a chart where every day has no target.`)
+          `plan.kcalByWeekday: generate-targets.mjs ${parts.join(' and ')} — the keys are exactly `
+          + `${WEEKDAYS.join(', ')}, case-sensitive. A weekday the lookup cannot find is a day `
+          + 'with no calorie target, and it fails every time that weekday comes round.')
       }
     }
   }
 
   // `program.weeklyTemplate` is looked up with the same key by `planDay()` and by the
-  // session-repeat check, and it failed the same way for the same documented reason. It is
-  // OPTIONAL — a chart with no training domain has none — so this only fires on a map that exists.
+  // session-repeat check, and it failed the same way for the same documented reason.
+  //
+  // ⚠ **MISSING DAYS ARE LEGAL HERE AND ONLY HERE**, which is why this is not the check above with
+  // a different field name: a template that names Monday, Wednesday and Saturday is a three-day-a
+  // -week program, not a broken map. A key the lookup cannot find is still an error, because that
+  // day's session silently resolves to nothing.
   {
     const wt = constants?.program?.weeklyTemplate
     if (wt && Object.keys(wt).filter((k) => !k.startsWith('_')).length) {
-      const { ok, missing, unexpected } = checkWeekdayKeys(wt)
-      if (!ok && unexpected.length) {
+      const { unexpected } = checkWeekdayKeys(wt)
+      if (unexpected.length) {
         err('athlete/constants.json',
           `program.weeklyTemplate is keyed ${unexpected.join(', ')} — the keys are exactly `
           + `${WEEKDAYS.join(', ')}, case-sensitive, or the day's session silently resolves to `
-          + `nothing${missing.length ? ` (missing: ${missing.join(', ')})` : ''}.`)
+          + 'nothing. A weekday may be ABSENT (a three-day-a-week program names three); it may '
+          + 'not be spelled a way the lookup cannot find.')
       }
     }
   }

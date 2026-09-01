@@ -331,7 +331,7 @@ const asData = (line, re) => {
   const strings = [...line.matchAll(/'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\.[^"\\]*)*)"|`([^`]*)`/g)]
     .map((m) => m[1] ?? m[2] ?? m[3] ?? '')
   if (strings.some((s) => re.test(s))) return true
-  // An unquoted object key or a JSX prop: `bjj: 10.3`, `label={...}`.
+  // An unquoted object key or a JSX prop: `<registry key>: 10.3`, `label={...}`.
   const keys = [...line.matchAll(/(?:^|[{,(\s])([A-Za-z_$][\w$]*)\s*[:=]/g)].map((m) => m[1])
   return keys.some((k) => re.test(k))
 }
@@ -414,7 +414,7 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
   const patterns = denylist.map((d) => ({
     ...d,
     // A word matches with boundaries, case-insensitively, and tolerates a plural: `Peloton`,
-    // `peloton`, `PELOTON` and `Knees` against a `knee` heading are one leak. A PHRASE matches on
+    // a key, its upper-cased form, and a plural against a singular heading are one leak. A PHRASE matches on
     // its own text with whitespace made flexible, so a re-wrapped copy of the same sentence in a
     // shared component still collides.
     // ⚠ ANCHORED — **but only where a boundary can exist.** Without the trailing boundary the
@@ -469,14 +469,13 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
         .filter((p) => !isCode || asData(line, p.re))
       // ⚠ **A REGISTRY KEY COUNTS ONLY IN COMPANY, and this rule is what makes the check
       // usable.** The keys are the athlete's activity list, but several of them are also
-      // ordinary English — `strength`, `walk`, `rest`, `circuit`. One of them on a line is a
-      // sentence; TWO OR MORE is the enum restated, which is exactly the defect F-15 names:
-      // `['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']` typed into a
-      // schema, a dropdown and a floor set. Matching singles produced 27 hits on lines like
+      // ordinary English words. One of them on a line is a sentence; TWO OR MORE is the enum
+      // restated, which is exactly the defect F-15 names: a chart's whole activity list typed out
+      // into a schema, a dropdown and a floor set. Matching singles produced 27 hits on lines like
       // "flag conflicts with the strength agent" — noise that would have got the check muted.
-      // ⚠ **A KNOWN, MEASURED HOLE: a LONE registry key is not reported, in code either.**
-      // `const t = 'peloton'` in shared code passes this check. That was tested, and it is the
-      // deliberate cost of the rule below rather than an oversight.
+      // ⚠ **A KNOWN, MEASURED HOLE: a LONE registry key is not reported, in code either.** One
+      // registry key as a bare string literal in shared code passes this check. That was tested,
+      // and it is the deliberate cost of the rule below rather than an oversight.
       //
       // The obvious tightening — "in code, `asData` has already filtered, so keep singles" —
       // was tried and reverted. `asData` is generous by design: its unquoted-key branch matches
@@ -489,8 +488,7 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
       //
       // What still catches the real thing: two or more keys on one line — which is what the
       // enum actually looks like when it is restated into a schema, a dropdown or a floor set
-      // (`['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']`), and that form
-      // IS caught. A single hand-typed key remains findable only by review.
+      // out as a literal array, and that form IS caught. A single hand-typed key remains findable only by review.
       const enumHits = matched.filter((p) => p.kind === 'enum-member')
       const terms = (enumHits.length >= 2 ? matched : matched.filter((p) => p.kind !== 'enum-member'))
         .map((p) => p.term)

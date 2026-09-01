@@ -235,20 +235,33 @@ export const countsTowardFloorSet = () => new Set(
  * feed, where nothing else counts that movement — would be called LOADING by the MET test, so a
  * week of walks would read as a week without a rest day.
  *
- * So the registry answers it explicitly. `skills/intake` defaults the flag from
- * `met > 0 && energyCountedIn !== 'steps'` so nobody is asked twice, and a chart may override it —
- * which is the case the default cannot get right on its own.
+ * So the registry answers it explicitly. `skills/intake` writes the flag, defaulting it so nobody
+ * is asked twice, and a chart may override it — which is the case the default cannot get right on
+ * its own. **The default is stated in one place, `isLoadingType` below**; the intake step and
+ * `constants.template.json` describe it in the same words. A first draft of this paragraph said
+ * `energyCountedIn !== 'steps'` while the code tested for its absence and the template said a
+ * third thing — three statements of one rule, in one commit, which is the defect this file spends
+ * most of its length preventing.
  *
  * Resolved over `sessionTypes()` rather than the raw registry, so the two universal types are
  * included with their own MET. **An unregistered type is loading**: `other` is the fallback for
  * real work nobody has classified, and treating an unknown session as rest would silently shorten
  * every streak that contained one.
  */
-export const isLoadingType = (def) => (def?.loading === undefined
-  // The default `skills/intake` writes the flag from, restated here so a chart that predates the
-  // flag behaves identically to one that answered it.
-  ? Number(def?.met) > 0 && def?.energyCountedIn === undefined
-  : def.loading === true)
+export const isLoadingType = (def) => {
+  // ⚠ **AN UNREGISTERED TYPE IS LOADING, AND THE PREDICATE HAS TO SAY SO TOO.** The SET below
+  // delivers that by omission — an unknown key is simply absent from it — but a caller reaching
+  // for `isLoadingType(registry[type])` on a type the registry does not hold got `undefined`, and
+  // the old body answered "not loading". That is the over-fresh answer three lines of docstring
+  // call the worse failure, returned by the function the docstring is attached to.
+  if (!def) return true
+  if (def.loading !== undefined) return def.loading === true
+  // The default, and the one `skills/intake` writes the flag from. `energyCountedIn` is checked
+  // for CONTENT, not for presence: intake writing `""` as a "none" placeholder would otherwise
+  // turn a MET-7 session into a rest day, and `validate-data`'s `energyCountedIn ⇒ met === 0`
+  // rule cannot catch it either, because `''` is falsy and that rule is gated on truthiness.
+  return Number(def.met) > 0 && !String(def.energyCountedIn ?? '').trim()
+}
 
 export const nonLoadingTypeSet = () => new Set(
   Object.entries(sessionTypes()).filter(([, t]) => !isLoadingType(t)).map(([k]) => k),

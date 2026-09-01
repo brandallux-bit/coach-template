@@ -132,7 +132,12 @@ const DEFINITIONS = [
   {
     name: 'the weekday key list',
     home: 'scripts/lib/weekdays.mjs',
-    pattern: /'Sun',\s*'Mon'|"Sun",\s*"Mon"/,
+    // ⚠ **ORDER-INDEPENDENT: three quoted weekday abbreviations in a row IS the list.** The first
+    // version anchored on `'Sun', 'Mon'` and so could only see a Sunday-first literal —
+    // `test-prescriptions.mjs` already held a Mon-first copy of the same seven strings and matched
+    // nothing. A rule that reads as "one home" and is really "one home, if the next copy happens
+    // to start on Sunday" is worse than none, because it is believed.
+    pattern: /(['"])(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\1[,\s]+(['"])(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\2[,\s]+(['"])(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)\3/,
     why: 'it had FOUR homes — generate-targets, data.ts, test-views and findings.mjs — which all '
       + 'happened to agree, so nothing ever went red. What was wrong was the PROSE describing '
       + 'them: constants.template.json documented mon|tue|… in two comments and its _example, so '

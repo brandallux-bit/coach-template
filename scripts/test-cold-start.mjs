@@ -420,15 +420,25 @@ console.log('STATE A — a repo with no chart at all')
      * ⚠ **A SUITE WHOSE FIXTURES ARE ENTIRELY INLINE MUST NOT SKIP HERE, AND THE DEFAULT IS
      * BACKWARDS.** `step()`'s `needsChart` defaults to TRUE, so registering a chart-free suite
      * plainly makes it skip on exactly the repo where its fixtures are the only thing exercising
-     * the engine — and `check-all` still exits 0, so the omission reads as a pass. Asserting the
-     * LINE rather than the exit status is the whole point: a green suite that skipped the step
-     * under test says nothing about it.
+     * the engine — and `check-all` still exits 0, so the omission reads as a pass.
+     *
+     * ⚠ **AND THE LIST IS DERIVED, NOT TYPED.** The first version of this assertion named four
+     * suites by hand and printed "every suite with inline fixtures RAN" — a green line asserting
+     * more than it had tested, which is the shape of check this file exists to catch. It missed
+     * two that were skipping. So: take every `test-*.mjs` `check-all` registers, run the ones it
+     * SKIPPED directly, and fail on any that passes. A suite that goes green on a chart-less repo
+     * has fixtures that did not need a chart, and skipping it is coverage thrown away on precisely
+     * the repo a stranger forks.
      */
-    const inlineSuites = ['test-recent-work', 'test-suspensions', 'test-athlete-leak', 'validate-data']
-    const skipped = inlineSuites.filter((n) => new RegExp(`^skip\\s+${n}`, 'm').test(all.out))
-    skipped.length === 0
-      ? ok(`...and every suite with inline fixtures RAN: ${inlineSuites.join(', ')}`)
-      : fail('a suite that needs no chart must not be registered as if it did', skipped.join(', '))
+    const registered = [...readFileSync(join(repo, 'scripts', 'check-all.mjs'), 'utf8')
+      .matchAll(/run\('(test-[^']+\.mjs)'/g)].map((m) => m[1])
+    const skippedSuites = registered.filter((f) =>
+      new RegExp(`^skip\\s+${f.replace('.mjs', '')}\\b`, 'm').test(all.out))
+    const wronglySkipped = skippedSuites.filter((f) => runScript(repo, f).code === 0)
+    wronglySkipped.length === 0
+      ? ok(`...and no suite that PASSES without a chart was skipped (checked all ${registered.length})`)
+      : fail('a suite that needs no chart must not be registered as if it did — its fixtures are '
+        + 'the only thing exercising that code on this repo', wronglySkipped.join(', '))
   } finally {
     discard(dir)
   }
@@ -475,22 +485,76 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
      * about a key nobody had typed. This lower-cases the map and asserts the validator now says so
      * BEFORE the chart is ever pushed.
      */
-    const lower = JSON.parse(JSON.stringify(FRESH_CHART))
-    lower.plan.kcalByWeekday = Object.fromEntries(
-      Object.entries(FRESH_CHART.plan.kcalByWeekday).map(([k, v]) => [k.toLowerCase(), v]))
-    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(lower, null, 2)}\n`)
-    const lowered = runScript(repo, 'validate-data.mjs')
-    lowered.code !== 0 && /kcalByWeekday is keyed/.test(lowered.out)
-      ? ok('a lower-cased weekday map is REJECTED, naming the keys rather than counting them')
-      : fail('seven right numbers under seven wrong names must not pass', lowered.out.slice(0, 500))
-    ;(/Mon/).test(lowered.out)
+    // A date the generator can be pointed at. Its own local-today would do, but naming one keeps
+    // the assertion's failure message readable.
+    const dates0 = daysEndingToday(1, FRESH_CHART.athlete.timezone)[0]
+    const withMap = (build) => {
+      const c = JSON.parse(JSON.stringify(FRESH_CHART))
+      build(c)
+      writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(c, null, 2)}\n`)
+      return runScript(repo, 'validate-data.mjs')
+    }
+    const rejects = (name, out, code, needle) => (code !== 0 && needle.test(out)
+      ? ok(name)
+      : fail(name, `exit ${code}\n${out.slice(0, 500)}`))
+
+    // (1) Seven right numbers under seven wrong names.
+    const lowered = withMap((c) => {
+      c.plan.kcalByWeekday = Object.fromEntries(
+        Object.entries(FRESH_CHART.plan.kcalByWeekday).map(([k, v]) => [k.toLowerCase(), v]))
+    })
+    rejects('a lower-cased weekday map is REJECTED, by its keys and not by their count',
+      lowered.out, lowered.code, /does not use mon/)
+    ;(/Mon, Tue/).test(lowered.out)
       ? ok('...and the error says which spelling the code actually looks up')
-      : fail('the error must name the key that is missing', lowered.out.slice(0, 400))
-    // And the generator is the script that would have failed every morning instead.
-    const gen = runScript(repo, 'generate-targets.mjs')
-    gen.code !== 0
-      ? ok('...which is the failure generate-targets.mjs would otherwise have produced daily')
-      : fail('a lower-cased map cannot produce a target', gen.out.slice(0, 300))
+      : fail('the error must name the keys the lookup uses', lowered.out.slice(0, 400))
+
+    // (2) ⚠ SIX RIGHT NAMES AND NO SEVENTH — the shape the first version of this check could not
+    // see, because it reported `unexpected` keys and threw `missing` away. It is WORSE than (1):
+    // `--fill-gaps` aborts on the first day it cannot write, so check-targets-gap fails the build
+    // and prints a remedy that can never succeed.
+    const short = withMap((c) => { delete c.plan.kcalByWeekday.Sun })
+    rejects('a map missing one weekday is REJECTED — nothing is unexpected, so nothing used to be',
+      short.out, short.code, /has no entry for Sun/)
+
+    // (3) ⚠ A MAP HOLDING NOTHING BUT ITS `_comment` — which is the shape
+    // `athlete/constants.template.json` SHIPS. A user who copies the template and fills in
+    // everything except this map lands here.
+    const empty = withMap((c) => {
+      c.plan.kcalByWeekday = { _comment: 'seven entries, one per weekday' }
+    })
+    rejects('a weekday map with no weekday entries is REJECTED — the template ships that shape',
+      empty.out, empty.code, /no weekday entries/)
+    ;(/dailyKcalTargetPolicy/).test(empty.out)
+      ? ok('...and the error names the written opt-out rather than demanding an invented figure')
+      : fail('a check that cannot go green without inventing data must not be written', empty.out.slice(0, 400))
+
+    // (4) ...and the opt-out really is one. A chart whose domains have nothing to do with intake
+    // says so in writing, with a reason, and is then left alone.
+    const optedOut = withMap((c) => {
+      c.plan.kcalByWeekday = { _comment: 'not used on this chart' }
+      c.plan.dailyKcalTargetPolicy = 'none'
+      c.plan._dailyKcalTargetPolicy_note = 'No energy domain: this chart tracks symptom control only.'
+    })
+    optedOut.code === 0
+      ? ok('...while a chart that opted out IN WRITING is not asked for a weekday map at all')
+      : fail('a chart with no energy domain must not be forced to invent one', optedOut.out.slice(0, 400))
+
+    // ⚠ **AND THE GENERATOR IS THE SCRIPT THAT WOULD HAVE FAILED EVERY MORNING INSTEAD** — the
+    // whole point of moving the check upstream is that this failure never reaches a user. Asserting
+    // its MESSAGE, not merely a non-zero exit: any unrelated breakage in generate-targets.mjs would
+    // keep an exit-code-only assertion green, which is a check that cannot fail.
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(
+      { ...FRESH_CHART,
+        plan: { ...FRESH_CHART.plan,
+          kcalByWeekday: Object.fromEntries(Object.entries(FRESH_CHART.plan.kcalByWeekday)
+            .map(([k, v]) => [k.toLowerCase(), v])) } }, null, 2)}\n`)
+    const gen = runScript(repo, 'generate-targets.mjs', [dates0])
+    gen.code !== 0 && /kcalByWeekday has no entry for [A-Z][a-z][a-z]/.test(gen.out)
+      ? ok('...which is the exact failure generate-targets.mjs produced daily, naming the key')
+      : fail('a lower-cased map cannot produce a target, and must say which key it looked for',
+        `exit ${gen.code}\n${gen.out.slice(0, 400)}`)
+
     writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(FRESH_CHART, null, 2)}\n`)
 
     const bundle = JSON.parse(readFileSync(join(repo, 'src', 'generated', 'data.json'), 'utf8'))
