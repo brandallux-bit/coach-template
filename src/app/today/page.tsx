@@ -14,7 +14,7 @@ import { hasStepFeed, movementLevel } from '@/lib/movement'
 // The grouping and the three states live in scripts/lib/session-table.mjs rather than here, so
 // scripts/test-session-table.mjs runs the code this page runs instead of a hand-written mirror of
 // it — the arrangement aggregate.ts already has, for the same reason.
-import { sessionTable } from '@/lib/session-table'
+import { sessionTable, setsLeft } from '@/lib/session-table'
 import { partialBurn, rollDay, rollWeek } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
@@ -128,11 +128,24 @@ export default function TodayPage() {
    * ADVISORY: it decides whether a group gets a "prescribed N × R" annotation and which
    * prescription rows are left over. It can no longer decide whether the work is visible.
    */
-  // ⚠ **`finished` IS THE SESSION'S OWN `status`, NEVER A COUNT OF WHAT IS LOGGED.** "one of seven
-  // logged so far" and "did one thing and stopped" are indistinguishable by count and are
-  // completely different sessions. See `sessionTable` for what the three states render as.
-  const finished = sessions.some((sn) => sn.status === 'completed')
-  const { performed, remaining, notDone } = sessionTable({ sets: loggedHere, rx, finished })
+  /**
+   * ⚠ **THIS SESSION'S OWN STATUS, NOT THE DAY'S — and the first version was the day's.**
+   *
+   * It read `sessions.some((sn) => sn.status === 'completed')`, an OR across every training row on
+   * the day. The comment eight lines above says why that is not a rare shape: a standing daily
+   * block is logged as its own row, so nearly every day has two. Finishing the short one therefore
+   * flipped the flag for the session being rendered — deleting its live prescription, and printing
+   * "Prescribed, not logged" against movements the athlete was in the middle of.
+   *
+   * `written` is the session whose prescription `rx` was resolved for, so its status is the one
+   * that governs this table. No written row means nothing has happened yet, which is `planned`.
+   * `sessionTable` takes the STATUS rather than a boolean so `skipped` and `rest` stop rendering
+   * as "still to do" — the enum has four values and this used to read one bit of it.
+   */
+  const { performed, remaining, notDone, closed } = sessionTable({
+    sets: loggedHere, rx, status: written?.status ?? 'planned',
+  })
+  const skipped = written?.status === 'skipped'
 
   // =============================================================================================
   // THE COST OF TODAY'S MOVEMENT, PROPOSED AND RECORDED
@@ -583,7 +596,12 @@ export default function TodayPage() {
             {plan.copy?.templateFlexNote ? ` ${plan.copy.templateFlexNote}` : ''}
           </p>
         )}
-        {performed.length || remaining.length ? (
+        {/* ⚠ `notDone.length` IS IN THIS GATE BECAUSE OF EXACTLY THE CASE IT DESCRIBES. A closed
+            session with nothing logged has no performed rows and no remaining rows BY DESIGN — so
+            the branch carrying the one sentence a closed session may print was unreachable, and
+            the page instead said the session "has no set-by-set prescription — nothing logged
+            yet" about a session with a full sheet that the ledger had already closed. */}
+        {performed.length || remaining.length || notDone.length ? (
           <>
             <div className="scroll-x">
               <table>
@@ -605,9 +623,13 @@ export default function TodayPage() {
                         <td>{s.reps || (s.duration_s ? `${s.duration_s}s` : '—')}</td>
                         <td>{s.rir || <span className="tbd">—</span>}</td>
                         <td className="text">
+                          {/* `setsAgainstRx`, not `g.sets.length`: two spellings of one movement
+                              are two groups sharing one prescription, and each counting its own
+                              shortfall against the full prescribed total put "1 set left" beside
+                              "2 set left" on a session where all three were performed. */}
                           {i > 0 ? '' : g.rx
-                            ? `${g.rx.sets} × ${g.rx.reps}${g.sets.length >= (Number(g.rx.sets) || 0) ? '' : ` · ${(Number(g.rx.sets) || 0) - g.sets.length} set left`}`
-                            : <span className="tbd">not prescribed</span>}
+                            ? `${g.rx.sets} × ${g.rx.reps}${setsLeft(g) ? ` · ${setsLeft(g)} set${setsLeft(g) === 1 ? '' : 's'} left` : ''}`
+                            : <span className="tbd">{g.ambiguous ? 'matches more than one prescribed movement' : 'not prescribed'}</span>}
                         </td>
                       </tr>
                     )),
@@ -629,11 +651,25 @@ export default function TodayPage() {
                 </tbody>
               </table>
             </div>
+            {/* ⚠ **THE SAME POINTER THE EMPTY STATE CARRIES, ON THE BRANCH THAT ACTUALLY RENDERS
+                MOST OF THE TIME.** It was only in the empty state, so a day with a prescription
+                AND sets logged under a different session name showed a full table with nothing
+                saying that other work existed. Not erasure — the disclosure below holds them — but
+                a reader has no reason to open it. */}
+            {logged.length > loggedHere.length && (
+              <p className="footnote">
+                {logged.length - loggedHere.length} set(s) were logged today under a different
+                session name. They are under &ldquo;Every set logged today&rdquo; below.
+              </p>
+            )}
             {notDone.length > 0 && (
               <p className="footnote">
                 {/* The only "did not do" claim this card makes, and only once the session is marked
                     completed — a sentence about the sheet, not a row implying a measurement. */}
-                <strong>Prescribed, not logged:</strong>{' '}
+                {/* "Skipped" and "not logged" are different sentences about the same list, and
+                    the record already says which. Calling a skipped session's sheet "not logged"
+                    reports a decision as an omission. */}
+                <strong>{skipped ? 'Skipped — this was on the sheet:' : 'Prescribed, not logged:'}</strong>{' '}
                 {notDone.map((p) => `${p.exercise} (${p.sets} × ${p.reps})`).join(' · ')}.
               </p>
             )}

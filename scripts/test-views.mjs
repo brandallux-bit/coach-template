@@ -429,6 +429,32 @@ const planDay = (date) => planDayIn(FIXTURE, date)
     withoutMinutes.filter((d) => d.dailyBlock > 0).length, 0)
 
   /**
+   * ⚠ **THE SESSION TABLE'S STATE COMES FROM THE SESSION BEING RENDERED, NOT FROM THE DAY.**
+   *
+   * `scripts/lib/session-table.mjs` takes the status as an argument, so its own suite cannot see
+   * which status the page hands it — and the page handed it `sessions.some(s => s.status ===
+   * 'completed')`, an OR across every training row on the day. Charts log a standing daily block
+   * as its own row, so nearly every day has two: finishing the short one closed the main one,
+   * deleting its live prescription and printing "Prescribed, not logged" against work in
+   * progress. One line, no coverage, and the two things it sat between were both correct.
+   *
+   * A shape assertion, because the alternative is a fourth mirror. It catches the specific shape
+   * that broke: reading the day rather than the session.
+   */
+  {
+    const page = code('src/app/today/page.tsx')
+    // The state must come from the session whose prescription is on screen.
+    eq('the Today card reads the RENDERED session\'s status, not the day\'s',
+      /status: written\?\.status/.test(page), true)
+    // An OR across the day closes a session that has not started, whenever a sibling row is done.
+    eq('...and never by scanning every training row for a completed one',
+      /sessions\.some\(\s*\(?\s*sn?\s*\)?\s*=>\s*sn?\.status === 'completed'/.test(page), false)
+    // A boolean reads one bit of a four-value enum, and `skipped` rendered as "still to do".
+    eq('...and it passes a STATUS rather than a boolean, so skipped and rest are expressible',
+      !/finished:\s/.test(page) && /sessionTable\(\{/.test(page), true)
+  }
+
+  /**
    * ⚠ **THE MOVEMENT TERM, ON BOTH CONFIGURATIONS, because a mirror with one branch is a mirror
    * of half the code.** The fixture is a wearable chart; this is the other one.
    */
