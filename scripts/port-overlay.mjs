@@ -74,9 +74,10 @@ const BASE = opt('--changed-since', 'origin/main')
 const die = (msg) => { console.error(`::error::${msg}`); process.exit(1) }
 const say = (s = '') => console.log(s)
 
-if (!CHART) {
+if (!CHART && !flag('--deathlete-only')) {
   die('no chart to borrow. Pass --chart <path-or-url> (or set COACH_CHART). It is cloned, never '
-    + 'written to — see this file\'s header.')
+    + 'written to — see this file\'s header. (--deathlete-only needs no chart: it is a grep over '
+    + 'this repo\'s own diff.)')
 }
 
 // -------------------------------------------------------------------------------------------
@@ -142,6 +143,23 @@ const REPIN_PATH = 'athlete/leak-acknowledgements.json'
 
 const DEATHLETE_RE = /\*"|\bhe\b|\bhis\b|\bhim\b|2026-0/
 
+/**
+ * Two narrowings, each with a reason, because a screen that cannot be satisfied gets deleted and a
+ * screen with a general escape hatch is not a screen.
+ *
+ * **A DATE IN A DATE-SHAPED FIELD IS DATA, NOT AN INCIDENT.** What the `2026-0` clause is hunting
+ * is one athlete's dated events crossing into shared prose — *"On 2026-08-25 an automated job
+ * reasoned its way to the opposite conclusion"*. A provenance marker's `asOf`, or a fixture
+ * chart's `since`, is a structured field whose whole content is a date; flagging it reports the
+ * schema. Anything in a SENTENCE still counts, which is where every real instance lives.
+ *
+ * **AND THIS FILE IS NOT SUBJECT TO ITS OWN PATTERN**, for the reason `banned-terms.mjs` already
+ * states and `test-athlete-leak.mjs` already asserts: the file that declares the rule is never
+ * itself a violation of it. `DEATHLETE_RE` above necessarily contains `\bhe\b`.
+ */
+const DEATHLETE_EXEMPT_LINE = /\b(asOf|since|date|dob|effective|updated|phaseEndDate)\s*[:=]\s*'20\d\d-\d\d(-\d\d)?'/
+const DEATHLETE_EXEMPT_FILE = 'scripts/port-overlay.mjs'
+
 const gitHere = (args) => {
   const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
   return r.status === 0 ? r.stdout : null
@@ -157,10 +175,15 @@ const deathleteReport = () => {
   const hits = []
   for (const f of files) {
     const diff = gitHere(['diff', '-U0', BASE, '--', f]) ?? ''
+    if (f === DEATHLETE_EXEMPT_FILE) continue
     for (const line of diff.split('\n')) {
       if (!line.startsWith('+') || line.startsWith('+++')) continue
       const text = line.slice(1)
-      if (DEATHLETE_RE.test(text)) hits.push({ path: f, text: text.trim().slice(0, 150) })
+      if (!DEATHLETE_RE.test(text)) continue
+      // Strip the date-shaped fields, then ask again: a line that only matched through one of them
+      // has nothing left to answer for. A sentence around a date still does.
+      if (!DEATHLETE_RE.test(text.replace(new RegExp(DEATHLETE_EXEMPT_LINE, 'g'), ''))) continue
+      hits.push({ path: f, text: text.trim().slice(0, 150) })
     }
   }
   say(`── de-athleting count over ${files.length} file(s) changed since ${BASE}: ${hits.length}`)
@@ -212,11 +235,26 @@ if (!existsSync(join(clone, 'athlete', 'constants.json'))) {
 // Copy the system layer over it, by path
 // -------------------------------------------------------------------------------------------
 
-/** Git-tracked files only: build artifacts are not the template's shipped surface. */
-const tracked = (repo, path) => {
-  const r = run('git', ['ls-files', '-z', '--', path], repo)
+/**
+ * The files this repo would ship at `path` — **as the working tree stands, not as the last commit
+ * left it.**
+ *
+ * ⚠ **`--others --exclude-standard` IS LOAD-BEARING AND ITS ABSENCE COST A WRONG GREEN.** Plain
+ * `git ls-files` lists tracked files only, so a brand-new script — the usual case while a
+ * workstream is in flight — is silently absent from the overlay and this gate certifies the last
+ * commit instead of the tree under test. Measured: two new scripts were missing from a run that
+ * reported itself green, and the file count only moved after they were committed.
+ * `test-cold-start.mjs` documents the identical trap; it had the answer and this did not.
+ * `.gitignore`d build output still stays out, which is the point.
+ *
+ * `withUntracked` is false for the clone, where "untracked" would mean the overlay's own writes.
+ */
+const filesAt = (repo, path, withUntracked) => {
+  const args = ['ls-files', '-z', '--cached']
+  if (withUntracked) args.push('--others', '--exclude-standard')
+  const r = run('git', [...args, '--', path], repo)
   if (r.status !== 0) return []
-  return r.stdout.split('\0').filter(Boolean)
+  return [...new Set(r.stdout.split('\0').filter(Boolean))]
 }
 
 const guard = (rel) => {
@@ -229,8 +267,8 @@ const copied = new Set()
 const deleted = []
 
 for (const path of SYSTEM_PATHS) {
-  const here = tracked(ROOT, path)
-  const there = tracked(clone, path)
+  const here = filesAt(ROOT, path, true)
+  const there = filesAt(clone, path, false)
 
   for (const rel of here) {
     guard(rel)
@@ -257,7 +295,7 @@ for (const path of SYSTEM_PATHS) {
   }
 }
 
-say(`overlaid ${copied.size} tracked file(s); pruned ${deleted.length} chart-only file(s)`)
+say(`overlaid ${copied.size} file(s) from this working tree; pruned ${deleted.length} chart-only file(s)`)
 if (deleted.length) for (const d of deleted) say(`  - ${d}`)
 
 /**

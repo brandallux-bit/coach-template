@@ -220,7 +220,23 @@ export function denylistFrom(root) {
    */
   const addPhrase = (raw, from) => {
     const norm = String(raw ?? '').replace(/\s+/g, ' ').trim()
-    if (norm.split(' ').filter(Boolean).length < 2) return addWords(norm, from)
+    // ⚠ **A ONE-WORD LABEL IS AN ENUM MEMBER, NOT A PHRASE, AND THIS IS THE SAME RULE AS THE
+    // REGISTRY KEYS — for the same reason, arrived at the same way.**
+    //
+    // A phrase is anchored on its whole text, so `Threshold 400s` can only match `Threshold 400s`.
+    // Collapse it to one word and that anchoring is gone: the term matches every ordinary use of
+    // an ordinary English word, in prose files where `asData` does not apply. Measured against
+    // this repo's own shared prose, 18 of 25 plausible one-word labels already collide — `Push`
+    // 148 times, `Strength` 40, `Threshold` 36, `Recovery` 16, `Core` 11, `Technique` 3. So a
+    // chart whose domain is "Strength", or whose Thursday session is called "Technique", got a
+    // LEAK failure on its first push, naming a library agent's own description, with no fix
+    // available but an acknowledgement entry. Both are ordinary charts.
+    //
+    // Marking it `enum-member` applies the rule this file already states for registry keys: one on
+    // a line is a sentence, TWO OR MORE is the chart restated into a schema or a dropdown, and
+    // that form is still caught. It inherits that rule's known, measured cost as well — a LONE
+    // one-word label is not reported — which is the deliberate price of a check people leave on.
+    if (norm.split(' ').filter(Boolean).length < 2) return addWords(norm, from, { kind: 'enum-member' })
     const key = `phrase:${norm.toLowerCase()}`
     if (!terms.has(key)) terms.set(key, { term: norm, stem: null, kind: 'phrase', from: new Set() })
     terms.get(key).from.add(from)

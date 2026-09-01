@@ -14,6 +14,22 @@
  *                                     the state that used to produce six failures across three
  *                                     suites (audit F-30) and a raw ENOENT from five scripts on a
  *                                     file that is not in this repository (F-17).
+ *   STATE C · rows, and no step feed. **The majority configuration, and until this existed it had
+ *                                     no coverage anywhere.** See below.
+ *
+ * ⚠ **WHY STATE C IS NOT AN EXTRA — IT IS THE CONFIGURATION MOST FORKS WILL BE IN.** The step feed
+ * this repo ships needs an Apple Watch worn all day plus a hand-built iOS Shortcut that took real
+ * effort to get working. `SETUP.md` §4 already calls it optional, and most users will decline. So
+ * "rows, and no feed" is the DEFAULT case, not a degraded one — and neither other state can see
+ * it: State A and State B have no rows to average, and the one live chart this repo is developed
+ * against has a feed, so its suite is green on code that dies without one.
+ *
+ * That gap was not theoretical. Run against a real no-feed chart once, this configuration surfaced
+ * a hard `TypeError` that took `check-all` down at step 11 of 18 — `observedDailyBurn` returns
+ * null whenever the ledger holds fewer than `MIN_DAYS_FOR_OBSERVED_BURN` complete rows, and
+ * `compute-energy.mjs` gates `complete` on `stepsKcal != null`, so a chart with no feed has
+ * `complete='n'` on EVERY row for the life of the chart and that mean is null forever. State C is
+ * how that stays fixed, and how the next one is found here rather than in somebody's live chart.
  *
  * **The athlete in State B is deliberately nobody this repo has met** — a different sex, height,
  * timezone, domain set and session-type registry. A green run therefore says something about the
@@ -35,10 +51,15 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SPEC } from './lib/schema.mjs'
 import { NO_CHART_MESSAGE } from './lib/athlete.mjs'
+import { MIN_DAYS_FOR_OBSERVED_BURN, observedDailyBurn } from './lib/aggregate.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 let failed = 0
+/** `--keep` leaves each state's temp repo on disk, named. The states are built and destroyed in
+ *  one process, so without it a failure inside a clone is only ever visible as captured output. */
+const KEEP = process.argv.includes('--keep')
+const discard = (dir) => (KEEP ? console.log(`       (kept: ${dir})`) : rmSync(dir, { recursive: true, force: true }))
 const ok = (name) => console.log(`  ok   ${name}`)
 const fail = (name, detail = '') => { failed++; console.log(`  FAIL ${name}\n${String(detail).split('\n').map((l) => `       ${l}`).join('\n')}`) }
 
@@ -101,6 +122,156 @@ const FRESH_CHART = {
   program: {},
   events: {},
   metrics: {},
+}
+
+/**
+ * **State C's chart: the same stranger, now with a month of rows and no wearable.**
+ *
+ * Everything State B's chart has, plus the two structures a chart needs once it is actually
+ * running — a weekday calorie map and a weekly template — and deliberately **no
+ * `plan.stepsPerDayTarget`**, because they never set up a feed.
+ *
+ * ⚠ **`stroll` KEEPS `energyCountedIn: 'steps'` ON A CHART WITH NO STEPS, AND THAT IS THE POINT.**
+ * It is what intake writes today, and on a chart with a feed it is correct — the walk is priced
+ * once, in the step count, and pricing it again as a session would double-count it. With no feed
+ * there is nothing on the other side of that promise, so the movement is priced NOWHERE. The
+ * fixture reproduces the defect rather than tidying it away; a fixture tuned until it passes
+ * asserts nothing (X-10).
+ */
+const NO_FEED_CHART = {
+  ...FRESH_CHART,
+  plan: {
+    ...FRESH_CHART.plan,
+    weeklyKcalBudget: 12_250,
+    /**
+     * ⚠ **`Mon`, NOT `mon`.** Every weekday lookup in this repo produces a capitalised
+     * three-letter key, and this fixture is the only thing standing between the next person who
+     * writes `mon` and a chart whose `generate-targets.mjs` exits 1 every morning with "no entry
+     * for Mon". It shipped in the template's own `_comment` AND its `_example` and nothing caught
+     * it, because no fixture had a weekday map at all.
+     */
+    kcalByWeekday: { Mon: 1750, Tue: 1750, Wed: 1750, Thu: 1750, Fri: 1750, Sat: 1750, Sun: 1750 },
+    targetRateLbPerWk: 0.75,
+    maxRatePctBwPerWk: 1.0,
+    sessionsPerWeekFloor: 3,
+    sessionsPerWeekTarget: 5,
+    // No `stepsPerDayTarget`. Absent, not zero: they have no feed and never answered a step
+    // question, and `data/METHOD.md` rule 6 is explicit that a blank and a measured zero are
+    // different claims.
+    //
+    // Every value above carries a marker, because `test-provenance.mjs` requires one of every
+    // threshold on a live chart and this fixture IS a live chart as far as that check is
+    // concerned. Writing them by hand is the point: a fixture that could skip the contract would
+    // not be exercising it.
+    _provenance: {
+      ...FRESH_CHART.plan._provenance,
+      weeklyKcalBudget: {
+        class: 'derived', asOf: '2026-08-14', inputs: 'Σ plan.kcalByWeekday', source: 'intake',
+        note: 'Arithmetic over the weekday map, not a separate decision.',
+      },
+      kcalByWeekday: {
+        class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
+        note: 'The coach split the week flat; the athlete has not asked for a different shape.',
+      },
+      targetRateLbPerWk: {
+        class: 'athlete-stated', asOf: '2026-08-14', quote: 'Slow is fine. Half a kilo a week at most.',
+        source: 'intake session 2', note: 'Their own pace, in their own words.',
+      },
+      maxRatePctBwPerWk: {
+        class: 'external', asOf: '2026-08-14', source: 'CLAUDE.md §5.2',
+        note: 'A standing safety floor in the charter, not a per-athlete choice and not theirs to set.',
+      },
+      sessionsPerWeekFloor: {
+        class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
+        note: 'The coach set this at intake; the athlete has not ruled on it.',
+      },
+      sessionsPerWeekTarget: {
+        class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
+        note: 'The coach set this at intake; the athlete has not ruled on it.',
+      },
+    },
+  },
+  program: {
+    weeklyTemplate: {
+      Mon: { type: 'swim', session: 'Threshold 400s', focus: 'Aerobic threshold', durationMin: 45 },
+      Tue: { type: 'ergo', session: 'Steady 5k', focus: 'Steady state', durationMin: 40 },
+      Wed: { type: 'stroll', session: 'Recovery walk', focus: 'Easy movement', durationMin: 40 },
+      Thu: { type: 'swim', session: 'Technique', focus: 'Drills and form', durationMin: 40 },
+      Fri: { type: 'ergo', session: 'Intervals', focus: 'Hard intervals', durationMin: 35 },
+      Sat: { type: 'swim', session: 'Long swim', focus: 'Volume', durationMin: 60 },
+      Sun: { type: 'rest', session: 'Rest', focus: 'Full rest day', durationMin: 0 },
+    },
+  },
+}
+
+/** The number of days of history State C writes. Above `MIN_DAYS_FOR_OBSERVED_BURN` on purpose. */
+const STATE_C_DAYS = 28
+
+/**
+ * Every date this fixture writes, oldest first, ending on the chart's own local today.
+ *
+ * ⚠ **RELATIVE TO TODAY, NEVER HARD-CODED.** `check-targets-gap.mjs` fails on any day between the
+ * first target and athlete-local today that has no row, and `findings.mjs` reads recency windows
+ * off the same clock. A fixture pinned to fixed dates passes on the day it is written and rots
+ * into a red build a week later — which is the shape of failure that gets a suite deleted.
+ */
+const daysEndingToday = (n, timeZone) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone, dateStyle: 'short' }).format(new Date())
+  const end = Date.parse(`${today}T12:00:00Z`)
+  return Array.from({ length: n }, (_, i) =>
+    new Date(end - (n - 1 - i) * 86_400_000).toISOString().slice(0, 10))
+}
+
+const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const weekdayOf = (date) => WEEKDAY[new Date(`${date}T12:00:00Z`).getUTCDay()]
+
+/**
+ * Write a month of plausible rows for `NO_FEED_CHART` — and leave `steps.csv` with nothing in it
+ * but its header.
+ *
+ * The numbers are synthetic and say so; what has to be true of them is only that they are internally
+ * consistent enough to pass `validate-data.mjs` and to give the burn model something to average.
+ * Weight falls about 0.75 lb/week against a ~1,750 kcal intake, which keeps the fixture inside the
+ * §5.2 rate ceiling so a safety finding does not fire and drown the assertions it is here for.
+ */
+const populateStateC = (repo, dates) => {
+  const w = (file, rows) => writeFileSync(join(repo, 'data', file),
+    `${SPEC[file].header.join(',')}\n${rows.map((r) => SPEC[file].header.map((h) => r[h] ?? '').join(',')).join('\n')}\n`)
+
+  w('body.csv', dates.map((date, i) => ({
+    date,
+    weight_lb: (150 - i * 0.107).toFixed(1),
+    sleep_h: (7 + ((i % 5) - 2) * 0.25).toFixed(2),
+    note: 'Synthetic fixture row — see scripts/test-cold-start.mjs, STATE C.',
+  })))
+
+  w('meals.csv', dates.flatMap((date) => [
+    { date, time: '08:00', item: 'Breakfast', kcal: 450, protein_g: 35, fat_g: 14, carb_g: 45, fibre_g: 6, confidence: 'label' },
+    { date, time: '13:00', item: 'Lunch', kcal: 600, protein_g: 45, fat_g: 20, carb_g: 55, fibre_g: 8, confidence: 'label' },
+    { date, time: '19:00', item: 'Dinner', kcal: 700, protein_g: 40, fat_g: 25, carb_g: 70, fibre_g: 10, confidence: 'estimate' },
+  ]))
+
+  const plan = NO_FEED_CHART.program.weeklyTemplate
+  const sessions = dates.map((date) => ({ date, ...plan[weekdayOf(date)] }))
+  w('training.csv', sessions.map(({ date, type, session, durationMin }) => ({
+    date,
+    type,
+    session,
+    status: type === 'rest' ? 'rest' : 'completed',
+    rpe: type === 'rest' ? '' : 6,
+    duration_min: durationMin || '',
+    pain_flag: 'n',
+  })))
+
+  // A few real sets on the ergo days, so the set-level machinery has something to read on a chart
+  // that is not a lifting chart. Most of this athlete's work is untimed by set, which is the
+  // ordinary case for swimming and rowing and is exactly why it must not become a zero.
+  w('sets.csv', sessions.filter((s) => s.type === 'ergo').flatMap(({ date, session }) =>
+    [1, 2, 3].map((set_index) => ({ date, session, exercise: 'Ergo interval', set_index, duration_s: 300 }))))
+
+  // ⚠ **HEADER ONLY. THIS IS THE WHOLE STATE.** Not a zero, not a gap to be filled: this chart has
+  // no feed, so there is no row to write and never will be.
+  w('steps.csv', [])
 }
 
 /** A clone of the working tree — the real files, the real scripts, a real git repo. */
@@ -184,9 +355,9 @@ const runCheckAll = (repo) => {
   }
 }
 
-const runScript = (repo, script) => {
+const runScript = (repo, script, args = []) => {
   try {
-    return { code: 0, out: execFileSync(process.execPath, [join(repo, 'scripts', script)], { cwd: repo, stdio: 'pipe' }).toString() }
+    return { code: 0, out: execFileSync(process.execPath, [join(repo, 'scripts', script), ...args], { cwd: repo, stdio: 'pipe' }).toString() }
   } catch (e) {
     return { code: e.status ?? 1, out: [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') }
   }
@@ -228,7 +399,7 @@ console.log('STATE A — a repo with no chart at all')
       ? ok('...and says which steps it skipped, and why')
       : fail('skipped steps must be visible', all.out.slice(-800))
   } finally {
-    rmSync(dir, { recursive: true, force: true })
+    discard(dir)
   }
 }
 
@@ -284,7 +455,102 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       ? ok('a chart with no standing instruction has nothing banned — the ban did not ship')
       : fail('a preference must never ship as a system rule', banned.out.slice(0, 400))
   } finally {
-    rmSync(dir, { recursive: true, force: true })
+    discard(dir)
+  }
+}
+
+// =================================================================================================
+console.log('\nSTATE C — a chart with a month of rows and no step feed')
+// =================================================================================================
+//
+// The majority configuration. See the header for why it earns a state of its own rather than a
+// case inside State B.
+
+{
+  const { dir, repo } = cloneRepo()
+  try {
+    emptyTheChart(repo)
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(NO_FEED_CHART, null, 2)}\n`)
+    writeFileSync(join(repo, 'athlete', 'goals.md'), '# Goals\n\n## Domain: Swim faster\n\n**Satisfied when:** …\n')
+    runScript(repo, 'build-docs.mjs')
+
+    const dates = daysEndingToday(STATE_C_DAYS, NO_FEED_CHART.athlete.timezone)
+    populateStateC(repo, dates)
+
+    // Targets are generated, never typed: `plan.kcalByWeekday` is the fallback and it always
+    // answers. This is also the assertion that a lower-cased weekday map would fail outright.
+    // From the first day they ate, not from today: `check-targets-gap.mjs` calls a meal logged
+    // before the first target "a day eaten against no target" and is right to.
+    // Two calls, and the shape is what a real chart does: name the first day explicitly, because
+    // `--fill-gaps` fills BETWEEN existing rows and has nothing to anchor on in an empty file.
+    const first = runScript(repo, 'generate-targets.mjs', [dates[0]])
+    const targets = first.code === 0 ? runScript(repo, 'generate-targets.mjs', ['--fill-gaps']) : first
+    targets.code === 0
+      ? ok('generate-targets writes a target for every day from the weekday map')
+      : fail('a weekday map that the code cannot read is the worst defect this repo has shipped', targets.out.slice(0, 600))
+
+    const energy = runScript(repo, 'compute-energy.mjs')
+    energy.code === 0
+      ? ok('compute-energy costs a month of sessions with no step count to add')
+      : fail('the burn model must work without a feed', energy.out.slice(0, 600))
+
+    execFileSync('git', ['add', '-A'], { cwd: repo, stdio: 'pipe' })
+    execFileSync('git', ['-c', 'user.email=a@b', '-c', 'user.name=cold-start', 'commit', '-qm', 'a month of rows'],
+      { cwd: repo, stdio: 'pipe' })
+
+    // THE POINT OF THE WHOLE STATE.
+    const all = runCheckAll(repo)
+    all.code === 0
+      ? ok('check-all is GREEN on a chart with rows and no step feed')
+      : fail('the majority configuration must not be red', all.out.slice(-2500))
+    ;!(/skip /).test(all.out)
+      ? ok('...and nothing is skipped — a skipped step proves nothing about this state')
+      : fail('a chart with constants must run every step', all.out.slice(-800))
+
+    const ledger = readFileSync(join(repo, 'data', 'energy.csv'), 'utf8').trim().split('\n')
+    const cols = ledger[0].split(',')
+    const rows = ledger.slice(1).map((l) => Object.fromEntries(l.split(',').map((v, i) => [cols[i], v])))
+
+    rows.length >= STATE_C_DAYS - 1
+      ? ok(`the ledger holds ${rows.length} day(s) of a chart nobody wears a watch on`)
+      : fail('the ledger must cost every day it can', `${rows.length} rows`)
+    rows.every((r) => r.steps_kcal === '')
+      ? ok('...every steps_kcal blank, because a blank is "not measured" and a zero would be a lie')
+      : fail('a chart with no feed must not record a measured zero for steps',
+        JSON.stringify(rows.filter((r) => r.steps_kcal !== '').slice(0, 3)))
+
+    // ⚠ **RECORDED AS THE CURRENT STATE, NOT ASSERTED AS CORRECT.** Today `complete` is gated on
+    // `stepsKcal != null`, so it is 'n' on every row of this chart forever and everything
+    // downstream of it — `observedDailyBurn`, the OUT side of the weekly energy card, the burn
+    // projection, the budget-vs-goal finding — is inert. That is a defect, not a property.
+    const complete = rows.filter((r) => r.complete === 'y').length
+    console.log(`       (${complete}/${rows.length} rows complete — a no-feed chart's known state)`)
+
+    /**
+     * ⚠ **THE PRECONDITION FOR THE CRASH THIS STATE WAS BUILT ON, ASSERTED DIRECTLY — because the
+     * crash itself is NOT REPRODUCIBLE IN THIS REPO YET AND SAYING OTHERWISE WOULD BE A LIE.**
+     *
+     * The failure was `test-aggregations.mjs` building a detail string with `mean.days` as an eager
+     * argument, so it threw a TypeError even on the passing path. That line does not exist here: it
+     * arrives with the port of the blank-not-zero work, and its fix arrives beside it. What IS true
+     * here, today, is the condition that makes any such caller explode — `observedDailyBurn`
+     * returns null, permanently, on every chart without a feed — and a guard on a green string is
+     * worth nothing next to the fact itself.
+     *
+     * So this asserts the fact. When the caller lands, it lands on a ledger already known to return
+     * null, and the crash is a named failure here instead of a stack trace at step 11 of 18 in
+     * somebody's live chart.
+     */
+    observedDailyBurn(rows) === null && rows.length >= MIN_DAYS_FOR_OBSERVED_BURN
+      ? ok(`observedDailyBurn is null on ${rows.length} rows — every caller must handle that, and`
+        + ' this is the only fixture where it is true')
+      : fail('a no-feed chart must expose the null-mean case, or this state is not covering it',
+        `${rows.length} rows, mean=${JSON.stringify(observedDailyBurn(rows))}`)
+    ;!(/TypeError|Cannot read properties of null/).test(all.out)
+      ? ok('...and no suite dereferences it')
+      : fail('a null aggregate must be handled, not dereferenced', all.out.slice(-1200))
+  } finally {
+    discard(dir)
   }
 }
 

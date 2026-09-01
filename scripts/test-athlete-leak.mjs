@@ -229,6 +229,61 @@ console.log('\nacknowledgements: pinned to the lines they cover, and stale is a 
 }
 
 // =================================================================================================
+console.log('\na one-word label counts only in company, or an ordinary chart is red on day one')
+// =================================================================================================
+//
+// ⚠ **THE RED FIXTURE IS THE THIRD CASE, AND IT IS WHAT MAKES THE SECOND ONE MEAN ANYTHING.**
+// Found by `test-cold-start.mjs` STATE C, whose swimmer trains on Thursdays in a session called
+// "Technique" — which is also a word `.claude/agents/library/strength.md` uses in its own
+// description. A phrase is anchored on its whole text; a one-word label is not, so it matched
+// ordinary English in a shared prose file and a fresh chart failed its first push.
+
+{
+  const ONE_WORD = {
+    ...CHART,
+    // Both shapes, because both degrade the same way and only one was found by accident.
+    domains: { performance: 'Strength' },
+    program: { weeklyTemplate: { Thu: { type: 'swim', session: 'Technique', durationMin: 40 } } },
+  }
+  const inOneWordChart = (files, fn) => {
+    const root = mkdtempSync(join(tmpdir(), 'leak-oneword-'))
+    try {
+      write(root, 'athlete/constants.json', JSON.stringify(ONE_WORD, null, 2))
+      write(root, 'athlete/profile.md', '# Profile\nA swimmer.\n')
+      for (const [rel, text] of Object.entries(files)) write(root, rel, text)
+      return fn(root)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }
+
+  inOneWordChart({}, (root) => {
+    const kinds = new Map(denylistFrom(root).map((t) => [t.term, t.kind]))
+    kinds.get('Strength') === 'enum-member' && kinds.get('Technique') === 'enum-member'
+      ? ok('a one-word domain label and a one-word session name are both collected as enum members')
+      : fail('a one-word label must not be collected as a bare word',
+        `Strength=${kinds.get('Strength')} Technique=${kinds.get('Technique')}`)
+  })
+
+  // GREEN — the sentences a shared file is entitled to write, one ordinary word per line, which
+  // is how `.claude/agents/library/strength.md` actually reads.
+  const prose = inOneWordChart({
+    '.claude/agents/thing.md': 'Consult for program design, progression schemes, and technique\n'
+      + 'questions about any lift.\n\nDeload timing and volume are decided here.\n',
+  }, (root) => verdict(scanForLeaks(root, denylistFrom(root))))
+  prose.failures.length === 0
+    ? ok('...so an agent describing its own job in English is not a leak')
+    : fail('ordinary English in a shared file must not fail a chart',
+      JSON.stringify(prose.failures.map((f) => f.hits.map((h) => h.text))))
+
+  // RED — the same words, restated as this chart's list. Still caught, which is the whole bargain.
+  const restated = inOneWordChart({
+    '.claude/agents/thing.md': 'The sessions are `Technique` and `Strength`, in that order.\n',
+  }, (root) => verdict(scanForLeaks(root, denylistFrom(root))))
+  restated.failures.length === 1
+    ? ok("...while the chart's list restated into a shared file still fails, two on one line")
+    : fail('two enum members on one line is the enum, and must still be caught',
+      JSON.stringify(restated.failures.length))
+}
+// =================================================================================================
 console.log('\nthe banned-term check is the ATHLETE\'s, and it is inert without their instruction')
 // =================================================================================================
 
