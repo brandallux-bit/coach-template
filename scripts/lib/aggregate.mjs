@@ -399,16 +399,29 @@ export function observedDailyBurn(energyRows, minDays = MIN_DAYS_FOR_OBSERVED_BU
 /**
  * ⚠ **THE WEEK'S ESTIMATED CALORIES IN, ESTIMATED CALORIES OUT, AND WHAT THEY PRODUCE.**
  *
- * Asked for directly on 2026-08-15: *"my goal for the week is still lose 1 lb, so the week needs
- * an estimated cals in and estimated cals out to achieve that, and they need to be divided
- * logically amongst the 7 days."*
+ * A week needs an estimated calories in and an estimated calories out to reach its own goal, and
+ * both have to be divided across the seven days in a way a coach can defend line by line.
+ *
+ * ⚠ **BOTH SIDES ARE THE LEDGER WHERE THE LEDGER EXISTS AND THE PLAN ONLY WHERE IT DOES NOT.**
+ * That symmetry is the whole point of the pair, and the IN side did not have it: it summed the
+ * seven TARGETS and nothing else, so a week already several hundred calories over its budget
+ * reported the budget straight back — the plan, restated — while the OUT side beside it was six
+ * measured days plus one estimate. The projection underneath divided a gap between a real burn and
+ * a hypothetical intake, which is not the week's rate of loss but the rate the plan would have
+ * produced.
+ *
+ * So, per day: a **finished day** contributes what it ate; **today** contributes what it has eaten
+ * plus whatever is left of its own target; a **day still to come** contributes its target. A
+ * finished day with no meal row is the one impure case — nothing was recorded, so it falls back to
+ * the plan and counts as an estimate, because a day nobody logged is not a zero-calorie day (X-1).
  *
  * **THE DIVISION ALREADY EXISTED AND NOTHING HERE INVENTS A NEW ONE.** `plan.kcalByWeekday` is the
  * split — Mon–Thu 1,700, Fri 1,750, Sat 2,650, Sun 1,750 — and `validate-data.mjs` already asserts
- * it sums to `weeklyKcalBudget`. A day that has a written `targets.csv` row uses that row, because
- * a written row is a deliberate override (the big dinner moving off Saturday); a day that has none
- * yet falls back to the same weekday structure the generator would write. Two sources, one
- * division, and `writtenTargetDays` / `structureTargetDays` say which days came from which.
+ * it sums to `weeklyKcalBudget`. Wherever a target is what a day contributes, a written
+ * `targets.csv` row wins, because a written row is a deliberate override (the big dinner moving off
+ * Saturday); a day that has none yet falls back to the same weekday structure the generator would
+ * write. Two sources, one division, and `writtenTargetDays` / `structureTargetDays` say which days
+ * came from which.
  *
  * **THE OUT SIDE IS ACTUALS WHERE THEY EXIST AND THE ATHLETE'S OWN AVERAGE WHERE THEY DO NOT.**
  * There is no second burn computation here: a finished day contributes `energy.csv`'s own
@@ -422,7 +435,9 @@ export function observedDailyBurn(energyRows, minDays = MIN_DAYS_FOR_OBSERVED_BU
  * while it is above zero, and `scripts/test-aggregations.mjs` asserts the marker is attached to the
  * element carrying the figure rather than merely present in the file. On the current week it is
  * always above zero — today has not finished — so the mark is not a corner case, it is the normal
- * state.
+ * state. **`estimatedIntakeDays` is the identical contract on the IN side** and exists because that
+ * side is now part record and part forecast too; a surface rendering `inKcal` unmarked while it is
+ * above zero is claiming the week's food is already eaten.
  *
  * Null-propagating throughout: no observed figure yet means `outKcal` and `lossLb` are null and the
  * IN side still renders, because the plan is knowable when the burn is not.
@@ -435,24 +450,54 @@ export function weekEnergy({ days = [], observed = null, weekdayBudget = null, k
   const perDay = observed?.meanKcal ?? null
 
   const burns = days.map((d) => {
-    const actual = d.energyComplete ? n(d.burnKcal) : null
+    // `!d.inProgress` as well as the flag, and the conjunction is the point. `complete` means "TEF
+    // and steps are present", which can go true HOURS before the day is over — rollup.ts's
+    // `inProgress` comment records today's row reading `complete=y` at 10:15 on 16 steps. Trusting
+    // it on today would enter a half-finished day's burn into the week as a MEASUREMENT, silently
+    // shrinking the out side by most of a day and the projection with it. Today therefore always
+    // takes the observed mean, which is a whole-day figure for a day that will be whole.
+    const actual = d.energyComplete && !d.inProgress ? n(d.burnKcal) : null
     return actual != null
       ? { kcal: actual, actual: true }
       : { kcal: perDay, actual: false }
   })
-  const targets = days.map((d) => {
+
+  const intakes = days.map((d) => {
+    const logged = n(d.intakeKcal)
     const written = n(d.targetKcal)
-    return written != null
-      ? { kcal: written, written: true }
-      : { kcal: n(weekdayBudget?.[d.weekday]), written: false }
+    const target = written != null ? written : n(weekdayBudget?.[d.weekday])
+
+    // TODAY. What is on the ledger, plus whatever is left of today's target.
+    // `Math.max` is the floor that makes it survive a day already over target:
+    // eaten + max(0, target − eaten), never eaten minus an overshoot. A day with no target at all
+    // is unknowable past this moment, so it nulls the side rather than reporting the floor as a
+    // forecast (X-1) — `plan.kcalByWeekday` always answers, so that branch never fires on a chart
+    // that has one.
+    if (d.inProgress) {
+      const kcal = target == null ? null : Math.max(logged ?? 0, target)
+      return { kcal, written: written != null, usesTarget: true, recorded: kcal === logged }
+    }
+    // A FINISHED DAY IS WHAT IT ATE, not what it was told to eat. This is the half that was
+    // missing: the out side has always used the ledger for finished days, and the in side used the
+    // plan for all seven, so a week running over target projected the loss the plan would have
+    // produced rather than the one the week is actually heading for.
+    if (logged != null) return { kcal: logged, written: false, usesTarget: false, recorded: true }
+    // Not logged and not today: a day still to come, or one nobody wrote down. Both are the plan.
+    return { kcal: target, written: written != null, usesTarget: true, recorded: false }
   })
 
   // sumOrNull, not reduce: a single day with no figure must not be silently counted as zero. A
   // week whose out side is incomplete has no out side — that is X-1, and the alternative is a
   // total that looks like a light week rather than a partial one.
   const outKcal = burns.some((b) => b.kcal == null) ? null : sumOrNull(burns.map((b) => b.kcal))
-  const inKcal = targets.some((t) => t.kcal == null) ? null : sumOrNull(targets.map((t) => t.kcal))
+  const inKcal = intakes.some((t) => t.kcal == null) ? null : sumOrNull(intakes.map((t) => t.kcal))
   const gapKcal = outKcal == null || inKcal == null ? null : outKcal - inKcal
+
+  // What the week has ACTUALLY eaten, over every day holding a meal row — today included. Returned
+  // beside `inKcal` so the tile can show its own arithmetic: this much is on the ledger, the rest
+  // is still plan. Null-skipping is correct here because the question is "what is recorded", not
+  // "what did the week total".
+  const recordedIntakeKcal = sumOrNull(days.map((d) => n(d.intakeKcal)))
 
   return {
     days: days.length,
@@ -472,9 +517,23 @@ export function weekEnergy({ days = [], observed = null, weekdayBudget = null, k
     observedFrom: observed?.from ?? null,
     observedTo: observed?.to ?? null,
     /** Days taking their target from a written `targets.csv` row. */
-    writtenTargetDays: targets.filter((t) => t.written).length,
+    writtenTargetDays: intakes.filter((t) => t.usesTarget && t.written).length,
     /** Days falling back to `plan.kcalByWeekday`. Never a figure this function chose. */
-    structureTargetDays: targets.filter((t) => !t.written && t.kcal != null).length,
+    structureTargetDays: intakes.filter((t) => t.usesTarget && !t.written && t.kcal != null).length,
+    /** Calories actually on the ledger this week, across every day holding a meal row. */
+    recordedIntakeKcal,
+    /** Days holding a meal row at all — the denominator under `recordedIntakeKcal`. */
+    recordedIntakeDays: days.filter((d) => n(d.intakeKcal) != null).length,
+    /** Days whose IN figure came WHOLLY from the ledger. */
+    actualIntakeDays: intakes.filter((t) => t.recorded).length,
+    /**
+     * **Days whose IN figure is still plan rather than record. Above zero means IN is a forecast.**
+     * The in-side twin of `estimatedBurnDays`, and it carries the same obligation: a surface
+     * rendering `inKcal` while this is above zero must mark it (X-1).
+     */
+    estimatedIntakeDays: intakes.filter((t) => !t.recorded).length,
+    /** `inKcal − recordedIntakeKcal`: the part of the week's intake nobody has eaten yet. */
+    plannedIntakeKcal: inKcal == null ? null : inKcal - (recordedIntakeKcal ?? 0),
   }
 }
 

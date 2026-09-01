@@ -153,6 +153,14 @@ export type WeekEnergyDay = {
   burnKcal: number | null
   energyComplete: boolean
   targetKcal: number | null
+  /** What the day actually ate. The IN side's equivalent of `burnKcal` — null means not logged. */
+  intakeKcal: number | null
+  /**
+   * True on the day that has not finished. Both sides read it: the IN side splits today into
+   * "eaten" plus "the rest of the target", and the OUT side refuses to treat a `complete=y` flag
+   * on today as a measurement, because that flag goes true hours before the day is over.
+   */
+  inProgress: boolean
 }
 
 /**
@@ -164,7 +172,11 @@ export type WeekEnergyDay = {
  */
 export type WeekEnergy = {
   days: number
-  /** Σ of the week's targets: written rows where they exist, `plan.kcalByWeekday` where they do not. */
+  /**
+   * **Where the week's intake lands: the ledger for finished days, today's eaten-plus-remainder for
+   * today, the target for days still to come.** A forecast while `estimatedIntakeDays > 0` — not a
+   * restatement of the budget, which is what it was before.
+   */
   inKcal: number | null
   /** Σ of the week's burn: `energy.csv` for complete days, the observed mean for the rest. */
   outKcal: number | null
@@ -180,6 +192,15 @@ export type WeekEnergy = {
   observedTo: string | null
   writtenTargetDays: number
   structureTargetDays: number
+  /** Calories actually on the ledger this week, today included, and the days holding a meal row. */
+  recordedIntakeKcal: number | null
+  recordedIntakeDays: number
+  /** Days whose IN figure came wholly from the ledger. */
+  actualIntakeDays: number
+  /** **Days whose IN figure is still plan. Above zero means `inKcal` is a forecast (X-1).** */
+  estimatedIntakeDays: number
+  /** `inKcal − recordedIntakeKcal` — the part of the week's intake nobody has eaten yet. */
+  plannedIntakeKcal: number | null
 }
 
 export const weekEnergy = agg.weekEnergy as (args: {

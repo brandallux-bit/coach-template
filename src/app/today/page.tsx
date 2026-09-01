@@ -359,26 +359,34 @@ export default function TodayPage() {
           </p>
 
           {/*
-            ⚠ **ESTIMATED IN · ESTIMATED OUT · WHAT THEY PRODUCE.** Asked for on 2026-08-15: "my
-            goal for the week is still lose 1 lb, so the week needs an estimated cals in and
-            estimated cals out to achieve that, and they need to be divided logically amongst the
-            7 days."
+            ⚠ **ESTIMATED IN · ESTIMATED OUT · WHAT THEY PRODUCE.** A week aimed at a rate of loss
+            needs an estimated calories in and an estimated calories out to reach it, divided across
+            the seven days in a way a coach can defend line by line.
 
-            **THE DIVISION IS `plan.kcalByWeekday` AND NOTHING HERE INVENTS A NEW ONE.** A day with
-            a written targets.csv row uses that row; a day without one falls back to the same
-            weekday structure `generate-targets.mjs` writes from. The foot says which days came
-            from which, because "12,950" with no provenance is indistinguishable from a figure
-            somebody typed.
+            **THE IN SIDE IS THE LEDGER TOO, WHEREVER THE LEDGER EXISTS.** A finished day
+            contributes what it ATE; today contributes what it has eaten plus whatever is left of
+            its own target; only a day still to come contributes a target. It summed seven targets
+            before, so a week already over budget reported the budget straight back under a label
+            saying "estimated", while the OUT side beside it was measured days plus one estimate —
+            and the projection underneath divided a real burn by a hypothetical intake.
+
+            **THE DIVISION IS `plan.kcalByWeekday` AND NOTHING HERE INVENTS A NEW ONE.** Wherever a
+            target is what a day contributes, a written targets.csv row wins; a day without one
+            falls back to the same weekday structure `generate-targets.mjs` writes from. The foot
+            says how much of the figure is ledger and how much is plan, because a total with no
+            provenance is indistinguishable from a figure somebody typed.
 
             **THE OUT SIDE IS THE LEDGER, NOT A SECOND BURN MODEL.** Complete energy.csv rows
             contribute their own figures; the days that have not finished contribute the mean of
             exactly those rows. See scripts/lib/aggregate.mjs `weekEnergy`.
 
             ⚠ **A PROJECTION IS NOT A MEASUREMENT (INVARIANTS.md X-1).** The badges are computed
-            from `estimatedBurnDays`, never hardcoded, so on a week whose every day is finished
-            they disappear and the figures stop claiming to be forecasts. scripts/test-aggregations.mjs
-            asserts the badge is attached to THESE tiles, not merely present in this file — the
-            defect a previous check shipped was exactly that distinction.
+            from `estimatedBurnDays` and `estimatedIntakeDays`, never hardcoded, so on a week whose
+            every day is finished and logged they disappear and the figures stop claiming to be
+            forecasts. scripts/test-aggregations.mjs asserts the badge is attached to THESE tiles,
+            not merely present in this file — the defect a previous check shipped was exactly that
+            distinction — and it runs that check for the IN side as well, which became a forecast
+            the moment it stopped being a restatement of the budget.
           */}
           {wi.budget.total != null && wk.energy.inKcal != null && (
             <>
@@ -387,11 +395,20 @@ export default function TodayPage() {
                   label="Estimated in"
                   value={fmt(wk.energy.inKcal)}
                   unit="kcal"
+                  badge={wk.energy.estimatedIntakeDays > 0 ? 'part estimate' : undefined}
                   foot={
-                    wk.energy.structureTargetDays === 0
-                      ? 'all 7 days from the targets already written'
-                      : `${wk.energy.writtenTargetDays} of 7 days from written targets · `
-                        + `${wk.energy.structureTargetDays} from the plan's weekday structure`
+                    wk.energy.estimatedIntakeDays === 0
+                      ? `all ${wk.energy.days} days as logged — a record, not a forecast`
+                      : `${fmt(wk.energy.recordedIntakeKcal)} kcal logged over `
+                        + `${wk.energy.recordedIntakeDays} day`
+                        + `${wk.energy.recordedIntakeDays === 1 ? '' : 's'} · `
+                        + `${fmt(wk.energy.plannedIntakeKcal)} still on plan for `
+                        + `${wk.energy.estimatedIntakeDays} day`
+                        + `${wk.energy.estimatedIntakeDays === 1 ? '' : 's'}, `
+                        + `${wk.energy.structureTargetDays === 0
+                          ? 'from the targets already written'
+                          : `${wk.energy.writtenTargetDays} written · `
+                            + `${wk.energy.structureTargetDays} from the weekday structure`}`
                   }
                 />
                 <Tile
@@ -423,11 +440,16 @@ export default function TodayPage() {
                 />
               </div>
               <p className="footnote">
-                {wk.energy.estimatedBurnDays > 0
-                  ? `A projection, not a result: ${wk.energy.estimatedBurnDays} of the 7 days `
-                    + 'have not finished, and they are costed at what your finished days have '
-                    + 'actually burned. What the scale says is measured separately.'
-                  : 'Every day this week is finished, so both sides are measured.'}
+                {wk.energy.estimatedBurnDays > 0 || wk.energy.estimatedIntakeDays > 0
+                  ? `A projection, not a result. In: ${fmt(wk.energy.recordedIntakeKcal)} kcal is `
+                    + `already on the ledger and ${fmt(wk.energy.plannedIntakeKcal)} is what the `
+                    + 'plan still has left to eat — going over that moves this figure up, not the '
+                    + `budget. Out: ${wk.energy.estimatedBurnDays} of the ${wk.energy.days} days `
+                    + `${wk.energy.estimatedBurnDays === 1 ? 'has' : 'have'} not finished, and `
+                    + `${wk.energy.estimatedBurnDays === 1 ? 'it is' : 'they are'} costed at what `
+                    + 'your finished days have actually burned. What the scale says is measured '
+                    + 'separately.'
+                  : 'Every day this week is finished and logged, so both sides are measured.'}
                 {goalRateLbPerWk != null && wk.energy.lossLb != null
                   ? ` Your goal on file is ${goalRateLbPerWk.toFixed(2)} lb/week; this week's `
                     + `numbers are aimed at ~${wk.energy.lossLb.toFixed(2)}. Changing either side `

@@ -905,7 +905,10 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
 
   const day = (weekday, over) => ({
     date: `2026-01-0${Object.keys(WEEKDAY_BUDGET).indexOf(weekday) + 1}`,
-    weekday, burnKcal: null, energyComplete: false, targetKcal: null, ...over,
+    weekday, burnKcal: null, energyComplete: false, targetKcal: null,
+    // The IN side's two inputs, defaulted explicitly: a day with no meal row is not a
+    // zero-calorie day, and a day is finished unless it says otherwise.
+    intakeKcal: null, inProgress: false, ...over,
   })
 
   const observed = { meanKcal: 2000, days: 9, from: '2025-12-20', to: '2025-12-28' }
@@ -985,6 +988,97 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
   }
 
   {
+    // =============================================================================================
+    // ⚠ **THE IN SIDE IS THE LEDGER FIRST.** It used to sum the seven targets and nothing else, so
+    // it answered "what does the plan add up to" under a label that says "estimated" — and on a
+    // week already several hundred calories over budget it reported the budget straight back, while
+    // the OUT side beside it was measured days plus one estimate.
+    //
+    // The fixture below is the SHAPE of such a week — six finished days that ate over target, and a
+    // part-logged today — on synthetic numbers, so the assertions test the rule and not a chart.
+    // =============================================================================================
+    const overWeek = [
+      day('Mon', { targetKcal: '1000', intakeKcal: '1400' }),
+      day('Tue', { targetKcal: '1000', intakeKcal: '1300' }),
+      day('Wed', { targetKcal: '1000', intakeKcal: '1200' }),
+      day('Thu', { targetKcal: '1000', intakeKcal: '1100' }),
+      day('Fri', { targetKcal: '1000', intakeKcal: '1500' }),
+      day('Sat', { targetKcal: '3000', intakeKcal: '3200' }),
+      day('Sun', { targetKcal: '2000', intakeKcal: '300', inProgress: true }),
+    ]
+    const over = weekEnergy({
+      days: overWeek, observed, weekdayBudget: WEEKDAY_BUDGET, kcalPerLbFat: KCAL_PER_LB,
+    })
+
+    is('a finished day contributes what it ATE, not what it was told to eat',
+      over.recordedIntakeKcal, 1400 + 1300 + 1200 + 1100 + 1500 + 3200 + 300)
+    is('...and today contributes what is eaten plus the REST of today\'s target',
+      over.inKcal, 1400 + 1300 + 1200 + 1100 + 1500 + 3200 + 2000)
+    is('...so the part still on plan is today\'s remaining target and nothing else',
+      over.plannedIntakeKcal, 2000 - 300)
+    yes('...and the week does NOT report the budget back on a week that has overeaten it',
+      over.inKcal > WEEK_TOTAL,
+      `inKcal ${over.inKcal} vs budget ${WEEK_TOTAL} — this is the whole defect: a week 700 kcal `
+      + 'over its plan cannot land on its plan')
+    is('the six finished days are records, not estimates', over.actualIntakeDays, 6)
+    is('...and only the unfinished one is an estimate, which is what the badge reads',
+      over.estimatedIntakeDays, 1)
+    is('ledger + plan reconciles to the total, so the tile can show its own arithmetic',
+      over.recordedIntakeKcal + over.plannedIntakeKcal, over.inKcal)
+
+    // ⚠ THE OVERSHOOT DIRECTION. `target − eaten` alone goes NEGATIVE once today is over its
+    // target, which would have the week's estimated intake FALL as the athlete keeps eating. The
+    // floor is what makes the formula survive its own worst day.
+    const blown = weekEnergy({
+      days: [day('Sun', { targetKcal: '2000', intakeKcal: '2600', inProgress: true })],
+      observed, weekdayBudget: WEEKDAY_BUDGET, kcalPerLbFat: KCAL_PER_LB,
+    })
+    is('a today already OVER its target contributes what was eaten, never eaten minus the overshoot',
+      blown.inKcal, 2600)
+    is('...and it is a record at that point, not an estimate', blown.estimatedIntakeDays, 0)
+
+    // A day still to come is the plan, and so is a finished day nobody logged — a day with no meal
+    // row is not a zero-calorie day (X-1), and it says it is an estimate.
+    const ahead = weekEnergy({
+      days: [day('Mon', { targetKcal: '1000', intakeKcal: '900' }), day('Sat')],
+      observed, weekdayBudget: WEEKDAY_BUDGET, kcalPerLbFat: KCAL_PER_LB,
+    })
+    is('a day with no meal row falls back to the plan rather than counting as zero',
+      ahead.inKcal, 900 + WEEKDAY_BUDGET.Sat)
+    is('...and is counted as an estimate', ahead.estimatedIntakeDays, 1)
+    is('...while the logged day is not', ahead.actualIntakeDays, 1)
+
+    // A finished, fully logged week: both sides stop being forecasts and the badges go away.
+    const done = weekEnergy({
+      days: overWeek.map((d) => ({
+        ...d, inProgress: false, energyComplete: true, burnKcal: '2500',
+        intakeKcal: d.intakeKcal ?? '1000',
+      })),
+      observed, weekdayBudget: WEEKDAY_BUDGET, kcalPerLbFat: KCAL_PER_LB,
+    })
+    is('a finished, fully logged week has no estimated intake days at all',
+      done.estimatedIntakeDays, 0)
+    is('...and its IN side is exactly what it ate', done.inKcal, done.recordedIntakeKcal)
+    is('...with nothing left on plan', done.plannedIntakeKcal, 0)
+    is('...and no estimated burn days either, so neither tile claims to be a forecast',
+      done.estimatedBurnDays, 0)
+
+    // ⚠ **`complete=y` ON TODAY IS NOT A MEASUREMENT.** The flag means "TEF and steps are present",
+    // and rollup.ts records today's row reading `complete=y` at 10:15 on 16 steps. Counting that
+    // half-day as an actual would shrink the week's burn by most of a day, silently.
+    const earlyComplete = weekEnergy({
+      days: [day('Sun', {
+        energyComplete: true, burnKcal: '900', targetKcal: '2000', inProgress: true,
+      })],
+      observed, weekdayBudget: WEEKDAY_BUDGET, kcalPerLbFat: KCAL_PER_LB,
+    })
+    is('a day in progress takes the observed mean even when its row says complete',
+      earlyComplete.outKcal, observed.meanKcal)
+    is('...and counts as estimated, so the projection marker fires',
+      earlyComplete.estimatedBurnDays, 1)
+  }
+
+  {
     // observedDailyBurn itself.
     const rows = (spec) => spec.map(([date, kcal, complete]) =>
       ({ date, burn_total_kcal: kcal, complete }))
@@ -1020,11 +1114,18 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
     // The badge is required to be COMPUTED rather than a literal for the same reason: on a week
     // whose every day is finished the figures stop being forecasts, and a hardcoded "projection"
     // would then be wrong in the other direction.
-    const FIGURES = /\b(outKcal|lossLb|gapKcal)\b/g
-    const MARK = /estimatedBurnDays/
+    // ⚠ **TWO CONTRACTS, ONE CHECK.** The IN side became a forecast the moment it stopped being a
+    // restatement of the budget — which is exactly why it carried no marker, and why the tile could
+    // print the week's budget beside a larger figure already eaten without anything objecting. It
+    // now has the same obligation as the OUT side, so this runs once per contract rather than being
+    // written twice and drifting.
+    const CONTRACTS = [
+      { figures: /\b(outKcal|lossLb|gapKcal)\b/g, marker: 'estimatedBurnDays' },
+      { figures: /\b(inKcal)\b/g, marker: 'estimatedIntakeDays' },
+    ]
     const SURFACES = {
-      // /today's weekly card. The daily surface is where he decides what to eat, so this is where
-      // "where does the week land" belongs (docs/SURFACES.md). Nothing else renders it.
+      // /today's weekly card. The daily surface is where the athlete decides what to eat, so this
+      // is where "where does the week land" belongs (docs/SURFACES.md). Nothing else renders it.
       'src/app/today/page.tsx': true,
     }
 
@@ -1047,10 +1148,21 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
       return out
     }
 
+    /**
+     * ⚠ **A NULL GUARD IS NOT A RENDER, and the distinction has to be drawn narrowly.**
+     * `{wk.energy.inKcal != null && (…)}` prints no number — it decides whether the card exists at
+     * all — so requiring a projection marker on it would force a marker onto a branch nobody reads.
+     * Only `=== null` / `!= null` immediately after the name is excused; anything else, including
+     * the same name one character further into an expression, is a figure reaching a reader.
+     */
+    const isNullGuard = (text, hit) => /^\s*[!=]==?\s*null/.test(text.slice(hit.index + hit[0].length))
+
     let rendered = 0
+    for (const { figures: FIGURES, marker } of CONTRACTS) {
+    const MARK = new RegExp(marker)
     for (const f of pages) {
       const text = code(f)
-      const hits = [...text.matchAll(FIGURES)]
+      const hits = [...text.matchAll(FIGURES)].filter((h) => !isNullGuard(text, h))
       if (!hits.length) continue
       if (!SURFACES[f]) {
         bad(`${f} renders a projected weekly figure and is not in the projection registry`,
@@ -1066,11 +1178,11 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
             'a projected figure printed in a caption or a bare paragraph reads as a measurement '
             + '(INVARIANTS.md X-1). Put it in the marked Tile, or mark where it is.')
         } else if (!MARK.test(holder.text)) {
-          bad(`${f}: the element rendering \`${h[0]}\` does not reference estimatedBurnDays`,
+          bad(`${f}: the element rendering \`${h[0]}\` does not reference ${marker}`,
             `${holder.text.slice(0, 200)}…\n       the mark has to be ON the figure, not elsewhere `
             + 'in the file — a mention is not a mark')
         } else {
-          ok(`${f}: \`${h[0]}\` is rendered inside an element marked from estimatedBurnDays`)
+          ok(`${f}: \`${h[0]}\` is rendered inside an element marked from ${marker}`)
         }
       }
 
@@ -1095,12 +1207,13 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
             'the containment rule is satisfied by any mention anywhere in the element — the PILL '
             + 'on the figure is what the reader sees, and it has to be asserted separately')
         } else {
-          yes(`  ...and the "${name}" tile's badge is computed, not a literal`,
-            /estimatedBurnDays/.test(badge),
+          yes(`  ...and the "${name}" tile's badge is computed from ${marker}, not a literal`,
+            MARK.test(badge),
             `badge=${badge} — a literal badge still says "projection" on a week that is entirely `
             + 'measured')
         }
       }
+    }
     }
     yes('the projection registry is not vacuous — at least one surface actually renders it',
       rendered > 0,

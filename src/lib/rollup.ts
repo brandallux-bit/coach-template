@@ -290,7 +290,11 @@ export function rollWeek(start: string, through: string): WeekRoll {
     intake,
     // ⚠ NO SECOND BURN COMPUTATION HERE, and that is the constraint that shaped it. A finished day
     // hands over `energy.csv`'s own figure; a day that has not finished takes the mean of exactly
-    // those rows. Composing a fresh RMR + NEAT + TEF + steps + session estimate for Thursday would
+    // those rows. The IN side is the mirror of that, and was not: a finished day hands over what
+    // it ATE, today hands over what it has eaten plus the rest of its target, and only a day still
+    // to come hands over a target. Summing seven targets reported the plan back under a label
+    // saying "estimated", on a week already over it.
+    // Composing a fresh RMR + NEAT + TEF + steps + session estimate for a future day would
     // be a second implementation of the burn model, which scripts/test-single-home.mjs fails.
     // `plan.estMaintenanceKcal` is deliberately NOT the fallback: it is RMR × 1.5 and METHOD.md
     // forbids putting it on the same axis as the decomposed model (audit F-57, ~2,618 kcal/week).
@@ -301,6 +305,11 @@ export function rollWeek(start: string, through: string): WeekRoll {
         burnKcal: d.burnKcal,
         energyComplete: d.energyComplete,
         targetKcal: d.targetKcal,
+        // The IN side's ledger, and the flag that stops either side reading today as finished.
+        // `intakeKcal` is meals.csv's own sum, the same figure the budget card above renders, so
+        // the two cards cannot disagree about what the week has eaten.
+        intakeKcal: d.intakeKcal,
+        inProgress: d.inProgress,
       })),
       observed: observedDailyBurn(energy),
       weekdayBudget: plan.kcalByWeekday,
