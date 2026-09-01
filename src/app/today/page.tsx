@@ -11,6 +11,10 @@ import {
   DAILY, SUPPLEMENTS, effectiveRx, orderedSessions, planDay, primarySession, rxFor, setsForSession,
 } from '@/lib/forecast'
 import { hasStepFeed, movementLevel } from '@/lib/movement'
+// The grouping and the three states live in scripts/lib/session-table.mjs rather than here, so
+// scripts/test-session-table.mjs runs the code this page runs instead of a hand-written mirror of
+// it — the arrangement aggregate.ts already has, for the same reason.
+import { sessionTable } from '@/lib/session-table'
 import { partialBurn, rollDay, rollWeek } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
@@ -101,11 +105,34 @@ export default function TodayPage() {
   const dayNames = d.sessions.map((s) => s.session)
   const loggedHere = setsForSession(logged, sessionName, dayNames)
 
-  // "Push-up (feet elevated)" and "Push-up (flat)" are the same prescribed movement performed at
-  // two leverages — matching on the base name before the parenthetical keeps the count honest.
-  const base = (s: string) => s.split(' (')[0].trim().toLowerCase()
-  const loggedFor = (exercise: string) =>
-    loggedHere.filter((s) => s.exercise === exercise || base(s.exercise) === base(exercise))
+  /**
+   * ⚠ **THE TABLE IS BUILT FROM WHAT WAS PERFORMED, NOT FROM WHAT WAS PRESCRIBED.**
+   *
+   * It used to be a row per prescription, with a "sets done" count matched to logged work by name.
+   * That shape cannot show what the athlete actually did, for two reasons that are structural
+   * rather than incidental:
+   *
+   *   1. **A missed match costs a ROW, not an annotation.** Every name matcher is fuzzy — a
+   *      prescription reads "Pull-ups (band-assisted as needed)" and the log reads "Pull-up
+   *      (band-assisted)". When the match fails in a prescription-shaped table, real logged sets
+   *      vanish from the page and the prescription renders as `0 / 3 · not started`. The failure
+   *      mode of a string comparison should never be the erasure of measured work, and worse, its
+   *      failure mode here was a false claim that work was skipped.
+   *   2. **Unprescribed work has nowhere to render.** Anything the athlete added on their own — a
+   *      movement the sheet never named — appeared on no surface at all, however many sets of it
+   *      were logged, because no prescription row existed to hang it on.
+   *
+   * So the rows come from `sets.csv` in the order they were performed, and the prescription is
+   * looked up FOR each group rather than the other way round. `sameMovement` (shared with the
+   * session-recommendation collision detector, so there is one matcher and not two) becomes
+   * ADVISORY: it decides whether a group gets a "prescribed N × R" annotation and which
+   * prescription rows are left over. It can no longer decide whether the work is visible.
+   */
+  // ⚠ **`finished` IS THE SESSION'S OWN `status`, NEVER A COUNT OF WHAT IS LOGGED.** "one of seven
+  // logged so far" and "did one thing and stopped" are indistinguishable by count and are
+  // completely different sessions. See `sessionTable` for what the three states render as.
+  const finished = sessions.some((sn) => sn.status === 'completed')
+  const { performed, remaining, notDone } = sessionTable({ sets: loggedHere, rx, finished })
 
   // =============================================================================================
   // THE COST OF TODAY'S MOVEMENT, PROPOSED AND RECORDED
@@ -556,53 +583,70 @@ export default function TodayPage() {
             {plan.copy?.templateFlexNote ? ` ${plan.copy.templateFlexNote}` : ''}
           </p>
         )}
-        {rx.length ? (
-          <div className="scroll-x">
-            <table>
-              <thead>
-                <tr><th className="text">Exercise</th><th>Prescribed</th><th className="text">Load</th><th>Sets done</th><th className="text">Status</th></tr>
-              </thead>
-              <tbody>
-                {rx.map((p) => {
-                  const done = loggedFor(p.exercise).length
-                  const want = Number(p.sets) || 0
-                  return (
-                    <tr key={p.order}>
-                      <td className="text">{p.exercise}</td>
-                      <td>{p.sets} × {p.reps}</td>
-                      <td className="text">{p.load || 'BW'}</td>
-                      <td>{done} / {want || '—'}</td>
-                      <td className="text">
-                        {done === 0 ? 'not started' : want && done >= want ? 'done' : `${want - done} left`}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : logged.length ? (
-          <div className="scroll-x">
-            <table>
-              <thead><tr><th className="text">Exercise</th><th>Set</th><th>Load</th><th>Reps / time</th><th>RIR</th></tr></thead>
-              <tbody>
-                {logged.map((s, i) => (
-                  <tr key={i}>
-                    <td className="text">{s.exercise}</td>
-                    <td>{s.set_index}</td>
-                    <td>{s.load_lb ? `${s.load_lb} lb` : 'BW'}</td>
-                    <td>{s.reps || (s.duration_s ? `${s.duration_s}s` : '—')}</td>
-                    <td>{s.rir || <span className="tbd">—</span>}</td>
+        {performed.length || remaining.length ? (
+          <>
+            <div className="scroll-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th className="text">Performed</th><th>Set</th><th>Load</th>
+                    <th>Reps / time</th><th>RIR</th><th className="text">Prescribed</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {performed.map((g) =>
+                    g.sets.map((s, i) => (
+                      <tr key={`${g.exercise}-${i}`}>
+                        {/* The name is the one it was PERFORMED under, not the prescription's. If
+                            the two differ that is worth seeing, not worth papering over. */}
+                        <td className="text">{i === 0 ? g.exercise : ''}</td>
+                        <td>{s.set_index}</td>
+                        <td>{s.load_lb ? `${s.load_lb} lb` : 'BW'}</td>
+                        <td>{s.reps || (s.duration_s ? `${s.duration_s}s` : '—')}</td>
+                        <td>{s.rir || <span className="tbd">—</span>}</td>
+                        <td className="text">
+                          {i > 0 ? '' : g.rx
+                            ? `${g.rx.sets} × ${g.rx.reps}${g.sets.length >= (Number(g.rx.sets) || 0) ? '' : ` · ${(Number(g.rx.sets) || 0) - g.sets.length} set left`}`
+                            : <span className="tbd">not prescribed</span>}
+                        </td>
+                      </tr>
+                    )),
+                  )}
+                  {/* Still to do. Rows, not a footnote — carrying the load and the rep target,
+                      which is what makes them usable mid-session. No "0 / 3" count: a count of
+                      nothing is not a measurement, and dressing it as one is what rendered logged
+                      work as "not started" whenever the name matcher missed. */}
+                  {remaining.map((p) => (
+                    <tr key={`todo-${p.order}`} className="tbd">
+                      <td className="text">{p.exercise}</td>
+                      <td>—</td>
+                      <td>{p.load || 'BW'}</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td className="text">{p.sets} × {p.reps} · to do</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {notDone.length > 0 && (
+              <p className="footnote">
+                {/* The only "did not do" claim this card makes, and only once the session is marked
+                    completed — a sentence about the sheet, not a row implying a measurement. */}
+                <strong>Prescribed, not logged:</strong>{' '}
+                {notDone.map((p) => `${p.exercise} (${p.sets} × ${p.reps})`).join(' · ')}.
+              </p>
+            )}
+          </>
         ) : (
           <Empty>
-            {sessionName
-              ? `${sessionName} has no set-by-set prescription — nothing logged yet.`
-              : 'No prescription and no sets logged for today.'}
+            {/* Never "nothing logged" when something WAS logged elsewhere — that is a claim about
+                the athlete's day, and the sets are one disclosure below. */}
+            {logged.length
+              ? `Nothing logged against ${sessionName || 'today\u2019s session'} yet — but ${logged.length} set(s) were logged today under another name. They are under "Every set logged today" below.`
+              : sessionName
+                ? `${sessionName} has no set-by-set prescription — nothing logged yet.`
+                : 'No prescription and no sets logged for today.'}
           </Empty>
         )}
 
@@ -729,7 +773,14 @@ export default function TodayPage() {
           guess frozen in place.
         </p>
 
-        {rx.length > 0 && logged.length > 0 && (
+        {/* ⚠ **GATED ON THE SETS ALONE, NOT ON A PRESCRIPTION EXISTING.** The table above is scoped
+            to THIS session; this is every set logged today, whatever session it was written under.
+            Gated additionally on `rx.length > 0`, a day whose only logged work sat under a
+            different session name — or under none — rendered the empty state and this block stayed
+            shut, so the sets appeared nowhere on the page. That is the same defect the table above
+            was rebuilt to fix, reappearing one scope out: a lookup missing must never erase
+            measured work. A disclosure that opens to nothing costs nothing. */}
+        {logged.length > 0 && (
           <details className="table-view">
             <summary>Every set logged today</summary>
             <div className="scroll-x">

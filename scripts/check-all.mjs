@@ -203,6 +203,11 @@ step('test-suspensions   — the suspension grammar, on fixtures', () => run('te
 // still a green run.
 step('test-recent-work   — does today repeat the last three days', () => run('test-recent-work.mjs'),
   { needsChart: false })
+// Fixtures only, same as the suite above and for the same reason — it needs no chart, so it must
+// not be withheld from one. It is what covers today's session card: the logic moved out of the
+// page precisely so a suite could run it rather than a mirror describing it.
+step('test-session-table — what today\'s card shows, and what it refuses to claim',
+  () => run('test-session-table.mjs'), { needsChart: false })
 step('check-suspensions  — nothing prescribes what the block suspends', () => run('check-suspensions.mjs'))
 
 step('check-no-athlete-leak — nothing shared encodes one athlete', () => run('check-no-athlete-leak.mjs'))
