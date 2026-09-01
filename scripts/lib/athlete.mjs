@@ -266,9 +266,24 @@ export const isLoadingType = (def) => {
   return Number(def.met) > 0 && !String(def.energyCountedIn ?? '').trim()
 }
 
-export const nonLoadingTypeSet = () => new Set(
-  Object.entries(sessionTypes()).filter(([, t]) => !isLoadingType(t)).map(([k]) => k),
+/**
+ * The non-loading types of ANY registry, chart-free.
+ *
+ * ⚠ **PARAMETERISED BECAUSE `buildFindings` TAKES ITS CONSTANTS AS AN ARGUMENT.** That layer runs
+ * on fixture charts as well as this one, so a helper that reads the module-level chart would answer
+ * about the wrong athlete under every fixture — and it would answer about the REAL one on a fresh
+ * fork's suite, which is worse. The universals are merged in here so a caller cannot get a set that
+ * silently omits `rest`.
+ */
+export const nonLoadingTypesIn = (registry = {}) => new Set(
+  Object.entries({ ...registry, ...UNIVERSAL_SESSION_TYPES })
+    .filter(([k]) => !k.startsWith('_'))
+    .filter(([, t]) => !isLoadingType(t))
+    .map(([k]) => k),
 )
+
+/** The same, for this chart. One implementation; this is only the binding. */
+export const nonLoadingTypeSet = () => nonLoadingTypesIn(chartSessionTypes())
 
 /**
  * The MET table as documentation: value plus what it is, in registry order.

@@ -44,7 +44,7 @@
  * an empty bundle, which `scripts/smoke-routes.mjs` covers for the live chart only. **A fresh
  * chart's five routes are not smoke-tested, and that is open work.**
  */
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -421,11 +421,21 @@ const runCheckAll = (repo) => {
   }
 }
 
+/**
+ * ⚠ **BOTH STREAMS ON SUCCESS TOO, and until now only the failure path took stderr.**
+ *
+ * `validate-data.mjs` prints its WARNINGS to `console.warn`, so on a script that exits 0 every one
+ * of them was invisible here — no fixture in this file could assert a warning at all, only that a
+ * count appeared in the summary line. A warning is the whole output of a check that has decided
+ * not to block, which is most of the interesting ones.
+ */
 const runScript = (repo, script, args = []) => {
+  const streams = (r) => [r?.stdout?.toString(), r?.stderr?.toString()].filter(Boolean).join('\n')
   try {
-    return { code: 0, out: execFileSync(process.execPath, [join(repo, 'scripts', script), ...args], { cwd: repo, stdio: 'pipe' }).toString() }
+    const r = spawnSync(process.execPath, [join(repo, 'scripts', script), ...args], { cwd: repo })
+    return { code: r.status ?? 1, out: streams(r) }
   } catch (e) {
-    return { code: e.status ?? 1, out: [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') }
+    return { code: e.status ?? 1, out: streams(e) }
   }
 }
 
@@ -640,9 +650,16 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
     const strayMenu = withMap((c) => {
       c.program = { ...c.program, conditioningMenu: ['Circuit nobody wrote'] }
     })
-    rejects('a menu option with no prescription rows is REJECTED — it renders nowhere and the '
-      + 'suspension guard cannot see it',
-      strayMenu.out, strayMenu.code, /which no row of data\/prescriptions\.csv/)
+    // ⚠ **A WARNING, NOT A REJECTION, and the difference is a real chart shape.** A whole-session
+    // activity — a flat walk, a swim, a class — has nothing to prescribe set by set and is a
+    // perfectly good menu option. Rejecting it forced the machine-readable list to be a strict
+    // subset of the menu document, with nothing checking the two agree, and the option it excluded
+    // was exactly the one then sitting outside the suspension guard this key exists to feed.
+    strayMenu.code === 0 && /which no row of data\/prescriptions\.csv/.test(strayMenu.out)
+      ? ok('a menu option with no prescription rows WARNS — it is legitimate, and the warning says '
+        + 'what it costs')
+      : fail('an option with no set-by-set rows is a walk, not an error',
+        `exit ${strayMenu.code}\n${strayMenu.out.slice(0, 400)}`)
 
     const objectMenu = withMap((c) => {
       c.program = { ...c.program, conditioningMenu: { C1: 'Circuit' } }

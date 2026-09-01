@@ -353,7 +353,7 @@ Run these in order, once, when the interview is finished and the values are real
          `met: 0`, and the default is right again.)
 
      It feeds the consecutive-loading-days count that tells a coach how hard the last few days
-     have been, which is the input `skills/library/session-recommendation` reads before proposing
+     have been, which is the input `skills/session-recommendation` reads before proposing
      anything.
    - **`program.setRestSec`** — ONE question, and only where the chart has a training domain:
      *"Roughly how long do you rest between working sets?"* The system ships **70 seconds** and it

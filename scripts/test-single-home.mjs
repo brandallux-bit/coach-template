@@ -903,6 +903,44 @@ console.log('\n5 · generated documents are current, and the model version is ho
 }
 
 // =================================================================================================
+console.log('\n5b · the library inventories are exhaustive, and something checks that')
+// CLAUDE.md §8 and .claude/agents/MANIFEST.md each list what `library/` holds, and both are read
+// as complete — "a chart with no program-design skill is a valid chart" only means anything if the
+// list of what COULD be copied up is the real one. Nothing compared either list to the directory,
+// so a skill added to the library and not to the line is a skill no coach learns exists.
+// =================================================================================================
+
+{
+  const listed = (text, dir) => new Set(
+    [...text.matchAll(/`([a-z][a-z-]+)`/g)].map((m) => m[1]).filter((n) => existsSync(join(ROOT, dir, n))
+      || existsSync(join(ROOT, dir, `${n}.md`))),
+  )
+  // A chart may have no `library/` at all — an older fork, or one that deleted what it promoted.
+  // Nothing to compare is not a failure; it is a chart that cannot get this wrong.
+  const onDisk = (dir, suffix = '') => new Set(
+    existsSync(join(ROOT, dir)) ? readdirSync(join(ROOT, dir)).map((e) => e.replace(suffix, '')) : [],
+  )
+
+  // ⚠ **TO THE NEXT HEADING, NOT TO THE NEXT BLANK LINE.** One of these lists is a sentence and
+  // the other is a markdown table with a blank line above it, so a paragraph-sized window read the
+  // table as empty and the check failed on a correct file. The window is the section.
+  const section = (text, marker) => (text.split(marker)[1] ?? '').split(/\n#{2,3} /)[0]
+  const skillsPara = section(src('CLAUDE.md'), 'Available in `skills/library/`')
+  const skillsListed = listed(skillsPara, 'skills/library')
+  const skillsOnDisk = onDisk('skills/library')
+  yes('CLAUDE.md §8 names every skill in skills/library/',
+    [...skillsOnDisk].every((n) => skillsListed.has(n)),
+    `on disk: ${[...skillsOnDisk].join(', ')}\nnamed:   ${[...skillsListed].join(', ')}`)
+
+  const agentsPara = section(src('.claude/agents/MANIFEST.md'), 'Available in `.claude/agents/library/`')
+  const agentsListed = listed(agentsPara, '.claude/agents/library')
+  const agentsOnDisk = onDisk('.claude/agents/library', '.md')
+  yes('MANIFEST.md names every agent in .claude/agents/library/',
+    [...agentsOnDisk].every((n) => agentsListed.has(n)),
+    `on disk: ${[...agentsOnDisk].join(', ')}\nnamed:   ${[...agentsListed].join(', ')}`)
+}
+
+// =================================================================================================
 console.log('\n6 · the 1.5 shortcut and the decomposition never share an axis (F-57)')
 // The class, not the two charts that had it: ANY file under src/app or src/components that renders
 // a decomposed burn or deficit figure may not also render estMaintenanceKcal. data/METHOD.md says

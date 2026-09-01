@@ -238,11 +238,17 @@ console.log('\ntoday\'s proposal against the last three days — the backstop, n
   }
   // The fixture's `today` is a Friday. The template proposes a session for it; the day before
   // held one whose sets cover most of that proposal.
+  // ⚠ **NO `domains.training` ROLE.** The domain a training decision serves is already on the
+  // registry entry — `sessionTypes.<type>.domain`, required and validated — so a second key for it
+  // would be two homes for one fact, and on the chart this shipped for the second home was empty
+  // while the first had the answer.
   const chart = {
     ...deficitChart,
-    domains: { training: 'Get stronger' },
     program: { weeklyTemplate: { Fri: { session: 'Circuit', type: 'circuit' } } },
-    sessionTypes: { lift: { met: 5, countsTowardFloor: true, domain: 'Get stronger' } },
+    sessionTypes: {
+      lift: { met: 5, countsTowardFloor: true, domain: 'Get stronger' },
+      circuit: { met: 6, countsTowardFloor: true, domain: 'Get stronger' },
+    },
   }
   const rx = (exercise, order) => ({
     date: day(-30), session: 'Circuit', order: String(order), exercise, sets: '3', reps: '10',
@@ -287,6 +293,112 @@ console.log('\ntoday\'s proposal against the last three days — the backstop, n
     },
     null)
 
+  /**
+   * ⚠ **A COMPLETED SESSION DOES NOT ANSWER FOR A PLANNED ONE STILL AHEAD.**
+   *
+   * The suppression above used to be about the DAY — any completed row anywhere on today silenced
+   * the check. A completed morning walk beside a planned evening session is an ordinary shape (the
+   * forward view names it), and it made the backstop quiet about the session the athlete had not
+   * done yet. A written planned row is always still ahead; only the TEMPLATE's guess at an empty
+   * slot is answered by something else happening.
+   */
+  {
+    const walk = { date: '2026-08-14', type: 'lift', session: 'Walk', status: 'completed', duration_min: '40' }
+    const ahead = { date: '2026-08-14', type: 'circuit', session: 'Circuit', status: 'planned' }
+    check('  a completed session does not silence a PLANNED one still ahead of it',
+      { ...base, constants: chart, training: [...trained, walk, ahead], sets: yesterdaySets },
+      'session-repeats-recent-work')
+    check('  ...and row order does not decide it either',
+      { ...base, constants: chart, training: [...trained, ahead, walk], sets: yesterdaySets },
+      'session-repeats-recent-work')
+    // A day whose record says "not happening" is not a proposal. Before, a written rest or skipped
+    // row fell through to the template and got scored, describing a session every surface says is
+    // off.
+    check('  ...while a day the record has already answered is silent',
+      {
+        ...base,
+        constants: chart,
+        training: [...trained, { date: '2026-08-14', type: 'rest', session: 'Rest', status: 'rest' }],
+        sets: yesterdaySets,
+      },
+      null)
+  }
+
+  /**
+   * ⚠ **THE SESSION-NAME BRIDGE, WITHOUT WHICH THIS CHECK IS DEAD ON HALF THE CHARTS THERE ARE.**
+   *
+   * `livePrescriptions` matches the session name exactly, and `scripts/lib/sessions.mjs` exists
+   * because a chart legitimately writes the same session under several conventions — a descriptive
+   * name in `training.csv`, a short one in `prescriptions.csv`. Unbridged, the lookup returns
+   * nothing, `items` is empty, and the ratio can never fire: the check silently does nothing.
+   */
+  check('  a descriptive session name still finds its prescription',
+    {
+      ...base,
+      constants: chart,
+      training: [...trained, { date: '2026-08-14', type: 'circuit', session: 'Circuit — upper density', status: 'planned' }],
+      sets: yesterdaySets,
+    },
+    'session-repeats-recent-work')
+
+  /**
+   * ⚠ **THE SECOND BRANCH, WHICH NOTHING COVERED AND WHICH WAS WRONG BECAUSE OF IT.**
+   *
+   * `consecutiveLoadingDays` counts days that actually loaded the athlete. `sessionOverlap` takes
+   * a `nonLoading` set for that and its docstring says a caller who forgets it over-counts — and
+   * the first version of this finding was the caller who forgot, so every walk and every rest day
+   * counted as a loading day. On a real chart that made a flat walk read as loading day five.
+   * Reverting the argument turns the second assertion below red.
+   */
+  {
+    const loadDays = [1, 2, 3].map((n) => ({
+      date: day(-n), type: 'lift', session: 'Upper', status: 'completed', duration_min: '45',
+    }))
+    const walkDays = [1, 2, 3].map((n) => ({
+      date: day(-n), type: 'stroll', session: 'Walk', status: 'completed', duration_min: '40',
+    }))
+    // `stroll` is registered non-loading; `lift` is not, so it loads by the default rule.
+    const withStroll = {
+      ...chart,
+      sessionTypes: {
+        ...chart.sessionTypes,
+        stroll: { met: 3.5, countsTowardFloor: false, loading: false, domain: 'Get stronger' },
+      },
+    }
+    check('  three straight loading days behind today is reported, whatever today repeats',
+      { ...base, constants: withStroll, training: loadDays, sets: [] },
+      'session-repeats-recent-work')
+    check('  ...and three straight WALKS are not — the registry says they do not load',
+      { ...base, constants: withStroll, training: walkDays, sets: [] },
+      null)
+  }
+
+  /**
+   * ⚠ **A SESSION WITH NO PRESCRIPTION ROWS KNOWS NOTHING ABOUT ITSELF AND MUST NOT SAY OTHERWISE.**
+   * The detail read "Nothing in it is new work." whenever the row list was empty — which is every
+   * whole-session activity, and every session whose rows are not written yet. A blank rendered as
+   * a measured zero, in the sentence the athlete reads (INVARIANTS.md X-1).
+   */
+  {
+    const f2 = buildFindings({
+      today: '2026-08-14',
+      constants: chart,
+      training: [1, 2, 3].map((n) => ({
+        date: day(-n), type: 'lift', session: 'Upper', status: 'completed', duration_min: '45',
+      })),
+      sets: [],
+      body: steadyBody,
+      targets: [target('2026-08-13', FLOOR + 600)],
+      prescriptions: [],
+    }).find((x) => x.id === 'session-repeats-recent-work')
+    if (f2 && /movements are not on file/.test(f2.detail) && !/Nothing in it is new work/.test(f2.detail)) {
+      console.log('ok      a proposal with no prescription rows says so, rather than "nothing is new"')
+    } else {
+      failed++
+      console.error(`FAIL    an empty row list must not be reported as a measured nothing\n      ${f2?.detail}`)
+    }
+  }
+
   check('  a proposal with nothing in common is silent',
     {
       ...base,
@@ -317,7 +429,7 @@ console.log('\ntoday\'s proposal against the last three days — the backstop, n
     console.error(`FAIL  the action must not name chart files a fork lacks\n      ${f?.action}`)
   }
   if (f && f.domain === 'Get stronger') {
-    console.log('ok    ...filed under the training domain this chart named, not another chart\'s')
+    console.log('ok    ...filed under the domain the SESSION TYPE declares, not a second key for it')
   } else {
     failed++
     console.error(`FAIL  the finding must read its domain from the chart, got ${JSON.stringify(f?.domain)}`)

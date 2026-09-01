@@ -298,7 +298,7 @@ try {
    * gets, so an option built on a movement the block later took out fails the build instead of
    * being proposed. That only works if the names are the ones `prescriptions.csv` actually uses: a
    * typo does not error anywhere by itself, it just quietly removes an option from the guard AND
-   * from what `skills/library/session-recommendation` may choose.
+   * from what `skills/session-recommendation` may choose.
    *
    * Names only, and the shape is a flat array for that reason — the contents and the selection
    * rules live in the menu document, and a second copy of them here would be a second home. The
@@ -318,21 +318,29 @@ try {
           'program.conditioningMenu is empty. A menu with no options is a key that reads as a '
           + 'choice and offers none — delete it, or name the options.')
       } else {
-        // ⚠ **NO "SKIP IF prescriptions.csv IS EMPTY" ESCAPE.** The first version had one, so on
-        // the chart most likely to get this wrong — a new one, writing its menu before its rows —
-        // the rule was inert. A menu entry with no rows is wrong on any chart: the option can be
-        // chosen and not performed. If the rows are not written yet, the menu is not ready yet.
+        /**
+         * ⚠ **A WARNING, NOT AN ERROR — because an option with no set-by-set rows is legitimate.**
+         *
+         * The first version rejected it. A whole-session activity — a flat walk, a swim, a class —
+         * has nothing to prescribe set by set and is a perfectly good menu option; rejecting it
+         * forces the machine-readable list to be a strict subset of the document's menu, with
+         * nothing checking the two agree, and the excluded option is exactly the one then sitting
+         * outside the suspension guard this key exists to feed. So the list keeps it and the
+         * warning says what it costs: nothing to hold to the block's suspension list, and nothing
+         * for a surface to render.
+         */
         const known = new Set(readCsv(join(DATA, 'prescriptions.csv')).map((r) => r.session))
         for (const name of menu) {
           if (typeof name !== 'string' || !name.trim()) {
             err('athlete/constants.json',
               `program.conditioningMenu holds ${JSON.stringify(name)}, which is not a session name.`)
           } else if (!known.has(name)) {
-            err('athlete/constants.json',
+            warn('athlete/constants.json',
               `program.conditioningMenu names "${name}", which no row of data/prescriptions.csv `
-              + 'uses as a session. An option with no prescription rows can be chosen and not '
-              + 'performed \u2014 it renders nowhere, and check-suspensions.mjs cannot hold it to '
-              + 'the block\'s suspension list. Write its rows, or take it off the menu.')
+              + 'uses as a session. That is correct for a whole-session activity like a walk, and '
+              + 'is what it costs: nothing renders it set by set, and check-suspensions.mjs has no '
+              + 'rows to hold against the block\'s suspension list. If it is meant to have a '
+              + 'prescription, write its rows.')
           }
         }
       }

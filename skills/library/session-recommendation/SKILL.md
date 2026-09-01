@@ -16,10 +16,10 @@ and — before this skill and the `session-repeats-recent-work` finding existed 
 would notice.
 
 That is not a rare edge. It is what a template *is*: a plan written before the week happened. The
-athlete who asked for this put the standard plainly — a coach has a template, but recommends what
-the situation calls for, and to do that the coach has to know what has happened. **Two days is the
-floor; this skill reads three**, so a two-day-old collision is still visible on the third day
-instead of dropping off the edge.
+standard a coach is held to is simple — a coach has a template, but recommends what the situation
+calls for, and to do that the coach has to know what has happened. **Two days is the floor; this
+skill reads three**, so a two-day-old collision is still visible on the third day instead of
+dropping off the edge.
 
 ## Step 1 — Read what happened. Before anything else, including the template.
 

@@ -86,11 +86,10 @@
   },
 
   "domains": {
-    "_comment": "The athlete/goals.md domain headings, VERBATIM, keyed by the role the code needs to name one for. This is the machine-readable pointer; goals.md holds the reasoning and the ranking. Without it, findings render with no domain label — which is honest, and is why there is no default: a default would be another chart's domain wearing this one's name. Roles the code asks for: `energyDeficit` (the domain a calorie deficit serves), `health`, and `training` (the domain a session decision serves \u2014 read by the session-repeats-recent-work finding). Add a key only when this chart actually has that domain.",
+    "_comment": "The athlete/goals.md domain headings, VERBATIM, keyed by the role the code needs to name one for. This is the machine-readable pointer; goals.md holds the reasoning and the ranking. Without it, findings render with no domain label — which is honest, and is why there is no default: a default would be another chart's domain wearing this one's name. Roles the code asks for: `energyDeficit` (the domain a calorie deficit serves) and `health`. A TRAINING domain needs no role here \u2014 every session type already declares the domain it serves, required and validated, in sessionTypes.<type>.domain, and a finding about a session reads it from there. Add a key only when this chart actually has that domain.",
     "_example": {
       "energyDeficit": "<the goals.md heading, copied exactly>",
-      "health": "<the goals.md heading, copied exactly>",
-      "training": "<the goals.md heading, copied exactly>"
+      "health": "<the goals.md heading, copied exactly>"
     }
   },
 

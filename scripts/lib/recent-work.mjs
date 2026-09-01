@@ -9,7 +9,8 @@
  * a proposal; the record is what makes it a recommendation.
  *
  * So: this module answers "what happened recently" and "does the proposal collide with it" as
- * data, and `skills/library/session-recommendation` is the procedure that has to consult it. The
+ * data, and `skills/session-recommendation` is the procedure that has to consult it (it ships in
+ * `skills/library/` and intake promotes it). The
  * finding built on top is a backstop for the session that forgets — it is not the mechanism.
  * **Nothing here blocks anything** (findings.mjs preamble): it reports, the coach decides.
  *

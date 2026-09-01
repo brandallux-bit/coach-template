@@ -63,9 +63,13 @@ const { suspensions, collisions, staleMarks, mark } = suspensionCollisions({
     // template sessions — but they are not IN the template, so without this line every one of them
     // sat outside the suspension guard. An option built on a movement the block later took out
     // would then be proposed, and the only thing standing between the athlete and it would be the
-    // coach remembering. `program.conditioningMenu.options` maps each option to the session name
-    // its prescription rows use; that mapping exists for this.
-    ...(constants.program?.conditioningMenu ?? []),
+    // coach remembering. `program.conditioningMenu` is the list of those session names, and it is
+    // machine-readable for exactly this.
+    //
+    // `Array.isArray` rather than `?? []`: `validate-data.mjs` rejects any other shape, but this
+    // script also runs standalone and under `--list`, where nothing has validated yet, and a
+    // spread of a non-array throws a bare TypeError instead of the error that names the key.
+    ...(Array.isArray(constants.program?.conditioningMenu) ? constants.program.conditioningMenu : []),
     ...RESERVED_SESSIONS,
   ],
   today,

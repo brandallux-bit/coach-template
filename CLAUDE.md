@@ -141,7 +141,7 @@ previous afternoon and nothing will notice. A coach has a template and recommend
 situation calls for; to do that the coach has to know what has happened.
 
 So: whenever a session is due, whenever they ask what to train, and before the workout half of
-`skills/daily-dashboard` renders, **run `skills/library/session-recommendation`.** It reads
+`skills/daily-dashboard` renders, **run `skills/session-recommendation`.** It reads
 `data/training.csv` and `data/sets.csv` for the last three days — **`sets.csv` is the evidence,
 `training.csv` is only the frame** — computes the overlap with `scripts/lib/recent-work.mjs`, and
 requires you to say which of **confirm / adapt / replace** you did. Where the chart keeps a menu of
