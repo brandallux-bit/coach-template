@@ -23,10 +23,42 @@ export const DAILY = 'Daily'
  *
  * ⚠ It is NOT `Daily`, and that is the whole design decision. `effectiveRx` resolves a session to
  * the rows on its single newest date and renders only those — so adding supplement rows under
- * `Daily` dated today would have made them the newest `Daily` set and SILENTLY DELETED the
- * eleven-item knee-rehab block from the Today tab. See `data/METHOD.md`.
+ * `Daily` dated today would make them the newest `Daily` set and SILENTLY DELETE whatever daily
+ * movement block the chart prescribes from the Today tab. See `data/METHOD.md`.
  */
 export const SUPPLEMENTS = 'Supplements'
 
 /** Every reserved name, in one place, for callers that need the set rather than the members. */
 export const RESERVED_SESSIONS = [DAILY, SUPPLEMENTS]
+
+/**
+ * A session name reduced to the part three different files agree on.
+ *
+ * A chart writes the same session under three conventions, all of them legitimate:
+ *   `training.csv`      "Lower A — hinge, squat, carries"   (what happened, described)
+ *   `prescriptions.csv` "Lower A"                           (what is prescribed)
+ *   `sets.csv`          "Lower A"                           (what was performed)
+ * An exact-match lookup across them finds nothing, which would make every prescription and every
+ * historical set invisible the moment the coach wrote a descriptive session name. Stripping the
+ * parenthetical and everything after a spaced dash leaves the stem the three share.
+ *
+ * ORDER MATTERS: the parenthetical goes first, or the ` — ` inside a name like
+ * "Morning block (Phase 1 — Base)" truncates it mid-parenthesis.
+ *
+ * It is a fallback and never a first choice — every caller tries the exact name first, and
+ * `rxSessionFor` refuses to use it when it is ambiguous.
+ *
+ * ⚠ **IT LIVES HERE RATHER THAN IN `src/lib/forecast.ts`, WHICH RE-EXPORTS IT.**
+ * `scripts/` cannot import TypeScript, and `scripts/lib/session-duration.mjs` needs this stem to
+ * group a session's historical durations. A second implementation would be X-8 in the file whose
+ * whole job is preventing it: this stem is what decides that two differently-described logs of the
+ * same session are comparable durations, so two answers to it is two answers to "how long does
+ * that session take".
+ */
+export const sessionKey = (s) =>
+  (s ?? '')
+    .toLowerCase()
+    .replace(/\s*\(.*$/, '')
+    .replace(/\s+[—–-]\s+.*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()

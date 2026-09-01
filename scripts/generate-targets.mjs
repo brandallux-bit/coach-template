@@ -34,11 +34,11 @@ import { fileURLToPath } from 'node:url'
 import { readCsv, toCsv } from './lib/csv.mjs'
 import { constants, hasChart } from './lib/athlete.mjs'
 import { fillableGaps, noDailyTargetReason } from './lib/targets.mjs'
+import { weekdayKey } from './lib/weekdays.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = join(ROOT, 'data', 'targets.csv')
 const HEADER = ['date', 'kcal', 'protein_g', 'fat_g', 'fibre_g', 'alcohol_kcal', 'note']
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 if (!hasChart) {
   console.log('No athlete/constants.json — template repo with no chart yet. Nothing to generate.')
@@ -68,7 +68,7 @@ const readRows = () => (existsSync(FILE) ? readCsv(FILE) : [])
 
 /** Writes one day's row, or explains why it did not. Never throws; returns nothing. */
 function writeDay(date) {
-  const weekday = WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()]
+  const weekday = weekdayKey(date)
   const kcal = plan.kcalByWeekday?.[weekday]
 
   if (kcal == null) {

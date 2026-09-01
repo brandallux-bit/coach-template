@@ -16,12 +16,11 @@
  * distinction is load-bearing.
  */
 
-import { writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readCsv } from './lib/csv.mjs'
 import { buildFindings } from './lib/findings.mjs'
-import { readChartDocs } from './lib/chart-docs.mjs'
+import { collectFindingsInputs } from './lib/findings-inputs.mjs'
 import { constants, hasChart, localToday } from './lib/athlete.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -33,28 +32,9 @@ if (!hasChart) {
   process.exit(0)
 }
 
-const read = (f) => (existsSync(join(DATA, f)) ? readCsv(join(DATA, f)) : [])
-const goalsPath = join(ROOT, 'athlete', 'goals.md')
-
-const findings = buildFindings({
-  constants,
-  targets: read('targets.csv'),
-  body: read('body.csv'),
-  // Not for a number on a chart — for whether the feed that writes it is still arriving at all.
-  steps: read('steps.csv'),
-  goalsText: existsSync(goalsPath) ? readFileSync(goalsPath, 'utf8') : '',
-  // For the marker audit: goals.md's guardrail can only fire on a set performed at the marker's
-  // load and dose, and nothing checked that the block still prescribes one.
-  prescriptions: read('prescriptions.csv'),
-  // The ledger, for the burn side of the budget-vs-goal finding. Its own decomposed output is the
-  // only figure comparable with a calorie budget — plan.estMaintenanceKcal is RMR x 1.5 and
-  // data/METHOD.md forbids mixing the two. See scripts/lib/findings.mjs.
-  energy: read('energy.csv'),
-  // The chart's prose, for dated commitments. Read through the shared collector so this list and
-  // the dashboard's cannot drift into two answers (scripts/lib/chart-docs.mjs).
-  chartDocs: readChartDocs(ROOT),
-  today: localToday(),
-})
+const findings = buildFindings(
+  collectFindingsInputs(ROOT, { constants, today: localToday() }),
+)
 
 // asOf is the athlete's local date, not the session's — the whole chart is keyed that way and a
 // findings file stamped in UTC would disagree with every row it describes (data/METHOD.md rule 6).

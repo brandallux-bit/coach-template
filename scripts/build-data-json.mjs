@@ -7,11 +7,11 @@
  * Also lifts the handful of plan constants the dashboard needs out of the markdown chart, so
  * they are stated in exactly one place here rather than retyped into three page components.
  */
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildFindings } from './lib/findings.mjs'
-import { readChartDocs } from './lib/chart-docs.mjs'
+import { collectFindingsInputs } from './lib/findings-inputs.mjs'
 import { readCsv, num } from './lib/csv.mjs'
 import { missingPlanFields } from './lib/schema.mjs'
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
@@ -23,7 +23,6 @@ import { ageOn, constants, hasChart, rmrFloorKcal, sessionCostFor, stripNotes, m
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
 const OUT = join(ROOT, 'src', 'generated')
-const GOALS = join(ROOT, 'athlete', 'goals.md')
 
 const body = readCsv(join(DATA, 'body.csv'))
 
@@ -166,24 +165,9 @@ const bundle = {
   // Empty before intake: every finding is a comparison against a threshold in `constants.json`,
   // so with no chart there is nothing to compare and nothing to report. Not an error state — a
   // chart-less repo genuinely has no findings.
-  findings: !hasChart ? [] : buildFindings({
-    // The RAW constants, not the stripped `c`. Provenance markers live in `_provenance`, which
-    // stripNotes() removes — and it should, since no view may render them. But passing the
-    // stripped copy here made this bundle's findings a strict subset of data/findings.json's,
-    // which build-findings.mjs computes from the raw file: two lists, one name, silently
-    // different (INVARIANTS.md X-8). buildFindings only reads plan/baseline/triggers values and
-    // ignores `_` keys, so the raw object is safe here and is the only one that is complete.
-    constants,
-    targets: readCsv(join(DATA, 'targets.csv')),
-    body,
-    steps,
-    goalsText: existsSync(GOALS) ? readFileSync(GOALS, 'utf8') : '',
-    chartDocs: readChartDocs(ROOT),
-    // Must match build-findings.mjs's inputs exactly, per the note above: two lists under one name
-    // that quietly differ is X-8, and it has already happened here once with `constants`.
-    energy: readCsv(join(DATA, 'energy.csv')),
-    today: localToday(),
-  }),
+  findings: !hasChart ? [] : buildFindings(
+    collectFindingsInputs(ROOT, { constants, today: localToday() }),
+  ),
 }
 
 // The contract `Plan` in `src/lib/data.ts` declares, checked before the artifact is written.

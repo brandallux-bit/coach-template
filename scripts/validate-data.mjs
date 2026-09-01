@@ -10,6 +10,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readCsv, num } from './lib/csv.mjs'
 import { DATE_RE, SPEC } from './lib/schema.mjs'
+import { WEEKDAYS, checkWeekdayKeys } from './lib/weekdays.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -227,6 +228,14 @@ try {
           `sessionTypes.${type}.met must be 0: the entry says its energy is already counted in `
           + `${def.energyCountedIn}, and counting it again as a session counts it twice`)
       }
+      // A key nothing validates is a key a typo can disable silently: `loading: "false"` is a
+      // truthy string, and the resolver's `=== true` test would then read it as false while
+      // `!== undefined` stopped the default from covering for it.
+      if (def?.loading !== undefined && typeof def.loading !== 'boolean') {
+        err('athlete/constants.json',
+          `sessionTypes.${type}.loading must be true or false, not ${JSON.stringify(def.loading)} `
+          + '— omit it entirely to take the default (met > 0 and no energyCountedIn)')
+      }
       for (const [tier, m] of Object.entries(def?.metByIntensity ?? {})) {
         if (!['light', 'moderate', 'hard'].includes(tier)) {
           err('athlete/constants.json', `sessionTypes.${type}.metByIntensity.${tier} is not a tier — use light, moderate or hard`)
@@ -243,6 +252,46 @@ try {
     for (const [i, t] of readCsv(join(DATA, 'training.csv')).entries()) {
       if (t.type && !legal.has(t.type)) {
         err('training.csv', `row ${i + 2}: type "${t.type}" is not in constants.json sessionTypes`)
+      }
+    }
+  }
+
+  // ⚠ **THE KEYS, NOT JUST THEIR COUNT — and OUTSIDE the budget branch, which is where the first
+  // version of this check wrongly sat.** `plan.weeklyKcalBudget` is not in REQUIRED_PLAN_FIELDS,
+  // so a chart that has a weekday map and no weekly total skipped the whole block below and got no
+  // key check at all — leaving exactly the original failure: seven lowercase keys,
+  // `generate-targets.mjs` exiting 1 every morning with "no entry for Mon", and nothing here
+  // saying why. The key check needs only the map.
+  //
+  // WHY IT MATTERS AT ALL: `athlete/constants.template.json` documented these as
+  // `mon|tue|wed|thu|fri|sat|sun` while every lookup in the codebase produces `Mon`. Seven right
+  // numbers under seven wrong names is a chart where every single day has no calorie target —
+  // the failure CLAUDE.md §0.3 and data/METHOD.md both name.
+  {
+    const map = constants?.plan?.kcalByWeekday
+    if (map && Object.keys(map).filter((k) => !k.startsWith('_')).length) {
+      const { ok, missing, unexpected } = checkWeekdayKeys(map)
+      if (!ok && unexpected.length) {
+        err('athlete/constants.json',
+          `plan.kcalByWeekday is keyed ${unexpected.join(', ')} but generate-targets.mjs looks up `
+          + `${missing.join(', ')} — the keys are exactly ${WEEKDAYS.join(', ')}, case-sensitive. `
+          + `Seven entries with the wrong names is a chart where every day has no target.`)
+      }
+    }
+  }
+
+  // `program.weeklyTemplate` is looked up with the same key by `planDay()` and by the
+  // session-repeat check, and it failed the same way for the same documented reason. It is
+  // OPTIONAL — a chart with no training domain has none — so this only fires on a map that exists.
+  {
+    const wt = constants?.program?.weeklyTemplate
+    if (wt && Object.keys(wt).filter((k) => !k.startsWith('_')).length) {
+      const { ok, missing, unexpected } = checkWeekdayKeys(wt)
+      if (!ok && unexpected.length) {
+        err('athlete/constants.json',
+          `program.weeklyTemplate is keyed ${unexpected.join(', ')} — the keys are exactly `
+          + `${WEEKDAYS.join(', ')}, case-sensitive, or the day's session silently resolves to `
+          + `nothing${missing.length ? ` (missing: ${missing.join(', ')})` : ''}.`)
       }
     }
   }

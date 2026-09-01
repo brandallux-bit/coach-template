@@ -110,6 +110,35 @@ console.log('1 · one definition site per construct')
 
 const DEFINITIONS = [
   {
+    name: 'sessionKey, the session-name stem three files must agree on',
+    home: 'scripts/lib/sessions.mjs',
+    // ⚠ **ANCHORED ON THE IMPLEMENTATION, NOT THE IDENTIFIER, AND THE DIFFERENCE IS FOUR
+    // ALLOW ENTRIES.** `sessionKey` as a name additionally appears at every CALL SITE — the
+    // duration resolver's, forecast.ts's re-export, the log page's — none of which is a second
+    // definition. The parenthetical strip plus the spaced-dash strip is what a second
+    // IMPLEMENTATION looks like, and both deliberate mirrors below carry it too.
+    pattern: /replace\(\/\\s\*\\\(\.\*\$\/[\s\S]{0,120}?\[—–-\]/,
+    allow: {
+      'scripts/test-prescriptions.mjs': 'A DELIBERATE MIRROR. It asserts that the resolver behaves '
+        + 'the way this stem is specified to behave, so it has to write the stem out — a mirror '
+        + 'that imported the thing it mirrors would assert nothing (F-58).',
+      'scripts/test-views.mjs': 'The same deliberate mirror, for rollup/forecast rather than for '
+        + 'the prescription resolver. Same reason.',
+    },
+    why: 'it moved out of src/lib/forecast.ts because scripts/ cannot import TypeScript and the '
+      + 'duration resolver needs the same stem — two implementations would be two answers to '
+      + '"are these two logs of the same session comparable"',
+  },
+  {
+    name: 'the weekday key list',
+    home: 'scripts/lib/weekdays.mjs',
+    pattern: /'Sun',\s*'Mon'|"Sun",\s*"Mon"/,
+    why: 'it had FOUR homes — generate-targets, data.ts, test-views and findings.mjs — which all '
+      + 'happened to agree, so nothing ever went red. What was wrong was the PROSE describing '
+      + 'them: constants.template.json documented mon|tue|… in two comments and its _example, so '
+      + 'a chart that followed its own template had no calorie target on any day, forever',
+  },
+  {
     name: 'the session formula, MET × 3.5 × kg / 200',
     home: 'scripts/lib/aggregate.mjs',
     // Matches the arithmetic wherever it is written, not a particular variable name.
@@ -663,37 +692,40 @@ console.log('\n3b · all three precedence levels, on fixtures rather than on wha
  * neither one takes.
  *
  * That is a check green by absence of data, on the exact axis where the next divergence will land:
- * `training.csv`'s 2026-08-13 peloton row already says *"overwrite with the actual and set the
- * bike's own kcal_override once ridden"*, so the uncovered branch has a date on it.
+ * A chart's own row may already carry a note saying the figure is provisional and will be
+ * overwritten once the session is actually performed, so the uncovered branch has a date on it.
  *
  * Fixtures, not live rows, for the same reason `INVARIANTS.md` X-11 wants them everywhere: a check
  * that only holds while the chart happens to contain something is a check that silently stops
  * holding.
  */
 {
-  const met = (type, tier) => (tier ? { light: 4.8, moderate: 7, hard: 10 }[tier] : ({ bjj: 10, walk: 3.5 })[type] ?? 4)
+  // Synthetic type names. They must not be any real chart's registry keys: two of those on one
+  // line is the enum restated into a shared file, which is the X-11 defect the leak scanner
+  // reports and which this fixture used to be an instance of.
+  const met = (type, tier) => (tier ? { light: 4.8, moderate: 7, hard: 10 }[tier] : ({ hardType: 10, easyType: 3.5 })[type] ?? 4)
   const W = 180
 
-  const override = sessionCost({ type: 'bjj', kcal_override: '500', duration_min: '90' }, W, met)
+  const override = sessionCost({ type: 'hardType', kcal_override: '500', duration_min: '90' }, W, met)
   yes('an override wins over duration and tiers',
     override.level === 'override' && override.kcal === 500, `${override.level} ${override.kcal}`)
 
-  const split = sessionCost({ type: 'bjj', duration_min: '80', light_min: '60', hard_min: '20' }, W, met)
-  const flatSame = sessionCost({ type: 'bjj', duration_min: '80' }, W, met)
+  const split = sessionCost({ type: 'hardType', duration_min: '80', light_min: '60', hard_min: '20' }, W, met)
+  const flatSame = sessionCost({ type: 'hardType', duration_min: '80' }, W, met)
   yes('a split is costed per tier, not at the hardest one', split.level === 'split', split.level)
   yes('...and therefore costs strictly less than the flat MET over the same minutes',
     split.kcal < flatSame.kcal, `split ${split.kcal} vs flat ${flatSame.kcal}`)
 
   yes('with neither, the flat MET over duration', flatSame.level === 'flat', flatSame.level)
   yes('no duration is UNKNOWN, never zero',
-    sessionCost({ type: 'bjj' }, W, met).kcal === null, String(sessionCost({ type: 'bjj' }, W, met).kcal))
+    sessionCost({ type: 'hardType' }, W, met).kcal === null, String(sessionCost({ type: 'hardType' }, W, met).kcal))
 
   // The precedence is an ORDER, so assert each level actually outranks the one below it rather
   // than merely working in isolation — the F-02 defect was a lower level answering for a higher.
   const both = sessionCost(
-    { type: 'bjj', kcal_override: '500', duration_min: '80', light_min: '60', hard_min: '20' }, W, met)
+    { type: 'hardType', kcal_override: '500', duration_min: '80', light_min: '60', hard_min: '20' }, W, met)
   yes('override outranks a split that is also present', both.kcal === 500, String(both.kcal))
-  const splitWins = sessionCost({ type: 'bjj', duration_min: '80', light_min: '80' }, W, met)
+  const splitWins = sessionCost({ type: 'hardType', duration_min: '80', light_min: '80' }, W, met)
   yes('a split outranks the flat MET that is also available',
     splitWins.level === 'split' && splitWins.kcal !== flatSame.kcal,
     `${splitWins.level} ${splitWins.kcal} vs flat ${flatSame.kcal}`)
@@ -756,9 +788,9 @@ console.log('\n5 · generated documents are current, and the model version is ho
   // which compiles into the shareable PDF. Assert the values are actually present, so deleting the
   // markers cannot quietly turn the check into a no-op.
   //
-  // ⚠ THE ASSERTION NAMES A TYPE READ OUT OF THE REGISTRY, NOT A LITERAL. It used to hardcode
-  // ``| `bjj` | **10.3** |`` — this athlete's sport, asserted in a shared suite (X-11) — and it
-  // would have gone red on any chart that does not grapple.
+  // ⚠ THE ASSERTION NAMES A TYPE READ OUT OF THE REGISTRY, NOT A LITERAL. It used to hardcode one
+  // athlete's sport and its MET value into a shared suite (X-11), which meant it would have gone
+  // red on every chart that did not happen to do that sport.
   const method = src('data/METHOD.md')
   const [firstType, firstMet] = Object.entries(metTable())[0]
   yes(`data/METHOD.md carries the generated MET table (checked via \`${firstType}\`)`,
@@ -783,8 +815,9 @@ console.log('\n5 · generated documents are current, and the model version is ho
     digest === METHOD_DIGEST,
     `recorded ${METHOD_DIGEST}\n           now      ${digest}\n\n`
     + 'A constant in the burn model changed and every historical energy.csv row still claims '
-    + `method_version ${METHOD_VERSION} — which is exactly what happened when bjj went 10.0 -> 10.3 `
-    + 'and when rehab was added (audit F-64). Bump METHOD_VERSION, paste the digest below into '
+    + `method_version ${METHOD_VERSION} — which is exactly what happens when a session type's MET `
+    + 'is corrected, or when a new type is registered (audit F-64). Bump METHOD_VERSION, paste the '
+    + 'digest below into '
     + 'METHOD_DIGEST, and record the change in decisions.md. The current model inputs are:\n\n'
     + modelInputsJson())
 

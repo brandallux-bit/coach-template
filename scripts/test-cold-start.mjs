@@ -52,6 +52,7 @@ import { fileURLToPath } from 'node:url'
 import { SPEC } from './lib/schema.mjs'
 import { NO_CHART_MESSAGE } from './lib/athlete.mjs'
 import { MIN_DAYS_FOR_OBSERVED_BURN, observedDailyBurn } from './lib/aggregate.mjs'
+import { weekdayKey } from './lib/weekdays.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -96,7 +97,25 @@ const FRESH_CHART = {
     // and two skills render it. A chart that omits it leaves those statements pointing at nothing,
     // which `test-single-home.mjs` reports — correctly, and it is why `skills/intake` writes it.
     adherenceRoutingPct: 80,
+    weeklyKcalBudget: 12_250,
+    /**
+     * ⚠ **`Mon`, NOT `mon`.** Every weekday lookup in this repo produces a capitalised
+     * three-letter key. The template documented these as `mon|tue|…` in two `_comment` strings
+     * AND in its own `_example`, so a chart that followed its own template had seven right numbers
+     * under seven wrong names — which is a chart where `generate-targets.mjs` exits 1 every
+     * morning and NO DAY HAS A CALORIE TARGET, forever. Nothing caught it because this fixture had
+     * no weekday map at all.
+     */
+    kcalByWeekday: { Mon: 1750, Tue: 1750, Wed: 1750, Thu: 1750, Fri: 1750, Sat: 1750, Sun: 1750 },
     _provenance: {
+      weeklyKcalBudget: {
+        class: 'derived', asOf: '2026-08-14', inputs: 'sum of plan.kcalByWeekday', source: 'intake',
+        note: 'Arithmetic over the weekday map, not a separate decision.',
+      },
+      kcalByWeekday: {
+        class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
+        note: 'The coach split the week flat; the athlete has not asked for a different shape.',
+      },
       proteinFloorG: {
         class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
         note: 'The coach set this at intake; the athlete has not ruled on it.',
@@ -112,6 +131,14 @@ const FRESH_CHART = {
       },
     },
   },
+  /**
+   * ⚠ **THE TWO WEEKDAY MAPS ARE HERE BECAUSE THEIR ABSENCE IS WHY THE WORST DEFECT IN THIS REPO
+   * SURVIVED.** This fixture carried `program: {}` and no `kcalByWeekday` at all, so the one path
+   * a new chart uses every single morning — `generate-targets.mjs` looking a day up by weekday key
+   * — was exercised by nothing. The template documented the keys as `mon|tue|…` in two comments
+   * and its own `_example` while every lookup in the code produces `Mon`, and a chart that
+   * followed its own template had no calorie target on any day, forever.
+   */
   triggers: { _provenance: {} },
   domains: { energyDeficit: 'Swim faster' },
   sessionTypes: {
@@ -119,7 +146,13 @@ const FRESH_CHART = {
     ergo: { met: 8.0, countsTowardFloor: true, domain: 'Swim faster', note: 'Rowing ergometer.' },
     stroll: { met: 0, energyCountedIn: 'steps', countsTowardFloor: false, domain: 'Swim faster', note: 'Counted in steps.' },
   },
-  program: {},
+  program: {
+    weeklyTemplate: {
+      Mon: { type: 'swim', session: 'Threshold 400s', focus: 'Aerobic threshold', durationMin: 45 },
+      Wed: { type: 'ergo', session: 'Steady 5k', focus: 'Steady state', durationMin: 40 },
+      Sat: { type: 'swim', session: 'Long swim', focus: 'Volume', durationMin: 60 },
+    },
+  },
   events: {},
   metrics: {},
 }
@@ -142,15 +175,6 @@ const NO_FEED_CHART = {
   ...FRESH_CHART,
   plan: {
     ...FRESH_CHART.plan,
-    weeklyKcalBudget: 12_250,
-    /**
-     * ⚠ **`Mon`, NOT `mon`.** Every weekday lookup in this repo produces a capitalised
-     * three-letter key, and this fixture is the only thing standing between the next person who
-     * writes `mon` and a chart whose `generate-targets.mjs` exits 1 every morning with "no entry
-     * for Mon". It shipped in the template's own `_comment` AND its `_example` and nothing caught
-     * it, because no fixture had a weekday map at all.
-     */
-    kcalByWeekday: { Mon: 1750, Tue: 1750, Wed: 1750, Thu: 1750, Fri: 1750, Sat: 1750, Sun: 1750 },
     targetRateLbPerWk: 0.75,
     maxRatePctBwPerWk: 1.0,
     sessionsPerWeekFloor: 3,
@@ -165,14 +189,6 @@ const NO_FEED_CHART = {
     // not be exercising it.
     _provenance: {
       ...FRESH_CHART.plan._provenance,
-      weeklyKcalBudget: {
-        class: 'derived', asOf: '2026-08-14', inputs: 'Σ plan.kcalByWeekday', source: 'intake',
-        note: 'Arithmetic over the weekday map, not a separate decision.',
-      },
-      kcalByWeekday: {
-        class: 'coach-proposed-unconfirmed', asOf: '2026-08-14', source: 'intake',
-        note: 'The coach split the week flat; the athlete has not asked for a different shape.',
-      },
       targetRateLbPerWk: {
         class: 'athlete-stated', asOf: '2026-08-14', quote: 'Slow is fine. Half a kilo a week at most.',
         source: 'intake session 2', note: 'Their own pace, in their own words.',
@@ -222,8 +238,9 @@ const daysEndingToday = (n, timeZone) => {
     new Date(end - (n - 1 - i) * 86_400_000).toISOString().slice(0, 10))
 }
 
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const weekdayOf = (date) => WEEKDAY[new Date(`${date}T12:00:00Z`).getUTCDay()]
+// Imported, never restated: `scripts/lib/weekdays.mjs` exists because this list had four homes and
+// the documentation describing it disagreed with all four.
+const weekdayOf = weekdayKey
 
 /**
  * Write a month of plausible rows for `NO_FEED_CHART` — and leave `steps.csv` with nothing in it
@@ -398,6 +415,20 @@ console.log('STATE A — a repo with no chart at all')
     ;(/skip /).test(all.out) && all.out.includes(NO_CHART_MESSAGE)
       ? ok('...and says which steps it skipped, and why')
       : fail('skipped steps must be visible', all.out.slice(-800))
+
+    /**
+     * ⚠ **A SUITE WHOSE FIXTURES ARE ENTIRELY INLINE MUST NOT SKIP HERE, AND THE DEFAULT IS
+     * BACKWARDS.** `step()`'s `needsChart` defaults to TRUE, so registering a chart-free suite
+     * plainly makes it skip on exactly the repo where its fixtures are the only thing exercising
+     * the engine — and `check-all` still exits 0, so the omission reads as a pass. Asserting the
+     * LINE rather than the exit status is the whole point: a green suite that skipped the step
+     * under test says nothing about it.
+     */
+    const inlineSuites = ['test-recent-work', 'test-suspensions', 'test-athlete-leak', 'validate-data']
+    const skipped = inlineSuites.filter((n) => new RegExp(`^skip\\s+${n}`, 'm').test(all.out))
+    skipped.length === 0
+      ? ok(`...and every suite with inline fixtures RAN: ${inlineSuites.join(', ')}`)
+      : fail('a suite that needs no chart must not be registered as if it did', skipped.join(', '))
   } finally {
     discard(dir)
   }
@@ -434,6 +465,34 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
 
     // The registry is what makes this athlete legible at all. Their own types are legal; this
     // chart's are not, which is F-15 inverted and is the assertion that proves the enum moved.
+    /**
+     * ⚠ **THE RED FIXTURE FOR THE WEEKDAY BUG, and without it the map above only proves the
+     * CORRECT spelling works — which the old code also did.**
+     *
+     * `validate-data.mjs` used to count seven numeric entries summing to the budget and never look
+     * at their names, so a chart keyed the way the template's own documentation described it
+     * passed every check and then failed every morning, in a different script, with a message
+     * about a key nobody had typed. This lower-cases the map and asserts the validator now says so
+     * BEFORE the chart is ever pushed.
+     */
+    const lower = JSON.parse(JSON.stringify(FRESH_CHART))
+    lower.plan.kcalByWeekday = Object.fromEntries(
+      Object.entries(FRESH_CHART.plan.kcalByWeekday).map(([k, v]) => [k.toLowerCase(), v]))
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(lower, null, 2)}\n`)
+    const lowered = runScript(repo, 'validate-data.mjs')
+    lowered.code !== 0 && /kcalByWeekday is keyed/.test(lowered.out)
+      ? ok('a lower-cased weekday map is REJECTED, naming the keys rather than counting them')
+      : fail('seven right numbers under seven wrong names must not pass', lowered.out.slice(0, 500))
+    ;(/Mon/).test(lowered.out)
+      ? ok('...and the error says which spelling the code actually looks up')
+      : fail('the error must name the key that is missing', lowered.out.slice(0, 400))
+    // And the generator is the script that would have failed every morning instead.
+    const gen = runScript(repo, 'generate-targets.mjs')
+    gen.code !== 0
+      ? ok('...which is the failure generate-targets.mjs would otherwise have produced daily')
+      : fail('a lower-cased map cannot produce a target', gen.out.slice(0, 300))
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(FRESH_CHART, null, 2)}\n`)
+
     const bundle = JSON.parse(readFileSync(join(repo, 'src', 'generated', 'data.json'), 'utf8'))
     const types = bundle.plan.sessionTypeList
     types.includes('swim') && types.includes('ergo') && types.includes('rest') && types.includes('other')

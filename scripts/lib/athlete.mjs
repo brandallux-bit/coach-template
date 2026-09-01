@@ -220,6 +220,41 @@ export const countsTowardFloorSet = () => new Set(
 )
 
 /**
+ * Session types that DO NOT tire the athlete out — the ones that break a consecutive-loading
+ * streak rather than extending it.
+ *
+ * ⚠ **THIS IS A THIRD QUESTION, AND THE TWO OBVIOUS SHORTCUTS BOTH ANSWER A DIFFERENT ONE.**
+ *
+ *   `countsTowardFloor`  — *does this earn credit against the sessions/week floor?*
+ *   `met > 0`            — *does this burn calories?*
+ *   `loading`            — *did this tire you out?*
+ *
+ * They come apart on real registries. A rehab block can carry a real MET and genuine fatigue while
+ * deliberately earning no floor credit, so the floor set would call it non-loading and undercount
+ * a streak. And a walking type priced at a real MET — which is correct on a chart with no step
+ * feed, where nothing else counts that movement — would be called LOADING by the MET test, so a
+ * week of walks would read as a week without a rest day.
+ *
+ * So the registry answers it explicitly. `skills/intake` defaults the flag from
+ * `met > 0 && energyCountedIn !== 'steps'` so nobody is asked twice, and a chart may override it —
+ * which is the case the default cannot get right on its own.
+ *
+ * Resolved over `sessionTypes()` rather than the raw registry, so the two universal types are
+ * included with their own MET. **An unregistered type is loading**: `other` is the fallback for
+ * real work nobody has classified, and treating an unknown session as rest would silently shorten
+ * every streak that contained one.
+ */
+export const isLoadingType = (def) => (def?.loading === undefined
+  // The default `skills/intake` writes the flag from, restated here so a chart that predates the
+  // flag behaves identically to one that answered it.
+  ? Number(def?.met) > 0 && def?.energyCountedIn === undefined
+  : def.loading === true)
+
+export const nonLoadingTypeSet = () => new Set(
+  Object.entries(sessionTypes()).filter(([, t]) => !isLoadingType(t)).map(([k]) => k),
+)
+
+/**
  * The MET table as documentation: value plus what it is, in registry order.
  *
  * ⚠ **The notes are the CHART's, not this file's, and that is the fix rather than an oversight.**

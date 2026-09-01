@@ -27,6 +27,7 @@ import {
 import { DAILY, SUPPLEMENTS, RESERVED_SESSIONS } from './lib/sessions.mjs'
 import { REQUIRED_PLAN_FIELDS, missingPlanFields } from './lib/schema.mjs'
 import { REAL_DATA, modeBanner } from './lib/test-mode.mjs'
+import { weekdayKey } from './lib/weekdays.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const src = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -229,8 +230,6 @@ const FIXTURE = {
 }
 
 const { plan, prescriptions, training } = FIXTURE
-const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const weekdayKey = (iso) => WD[new Date(`${iso}T12:00:00Z`).getUTCDay()]
 const addDays = (iso, d) => {
   const x = new Date(`${iso}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + d)
   return x.toISOString().slice(0, 10)

@@ -179,6 +179,15 @@ step('test-single-home   — one definition site per constant and formula', () =
 // not be able to reach main between deploys.
 step('test-suspensions   — the suspension grammar, on fixtures', () => run('test-suspensions.mjs'),
   { needsChart: false })
+// ⚠ **`needsChart: false`, AND THE DEFAULT IS BACKWARDS FOR THIS ONE.** `needsChart` defaults to
+// true, so registering it plainly would SKIP this suite on every chart-less repo — which is this
+// repo, where the fixtures are the only thing exercising the engine at all. Its cases are entirely
+// inline (`scripts/lib/test-mode.mjs`: a suite that asserts on one athlete's rows is red on every
+// new chart's first push), so there is nothing here for a missing chart to withhold.
+// `test-cold-start.mjs` STATE A asserts the LINE, not the exit status — a suite that skipped is
+// still a green run.
+step('test-recent-work   — does today repeat the last three days', () => run('test-recent-work.mjs'),
+  { needsChart: false })
 step('check-suspensions  — nothing prescribes what the block suspends', () => run('check-suspensions.mjs'))
 
 step('check-no-athlete-leak — nothing shared encodes one athlete', () => run('check-no-athlete-leak.mjs'))

@@ -141,35 +141,44 @@ const REPIN_PATH = 'athlete/leak-acknowledgements.json'
 // pronouns, quoted speech and 2026 dates. It over-reports — that is the correct direction for a
 // screen — and each hit is either de-athleted or explained out loud.
 
-const DEATHLETE_RE = /\*"|\b(he|him|his|she|her|hers)\b|\b20\d\d-\d\d-\d\d\b/i
-
 /**
- * ⚠ **`they`/`them`/`their` ARE DELIBERATELY ABSENT, AND THAT IS NOT AN OVERSIGHT.** They are this
- * repo's OWN de-athleted convention — every generic sentence here about an athlete uses them — so
- * including them would fire the screen on every correctly-written line and the screen would be
- * turned off within a day. The gendered sets are the signal: a template that has been de-athleted
- * contains none of them, and any that appears arrived with somebody's chart.
+ * Three clauses, each naming a different way one athlete's life crosses into shared code.
  *
- * The date clause was `2026-0` until a review pointed out that it matched nine months of one
- * particular year — blind to October onward, and blind to every other year, in a file whose whole
- * subject is not hard-coding one chart's specifics.
- */
-
-/**
- * Two narrowings, each with a reason, because a screen that cannot be satisfied gets deleted and a
- * screen with a general escape hatch is not a screen.
+ * **1 · A GENDERED PRONOUN, ANYWHERE ON THE LINE.** De-athleted prose in this repo uses they/them,
+ * so `he`/`him`/`his`/`she`/`her` is prose about a particular person that arrived with a chart.
+ * `they`/`them`/`their` are deliberately NOT here: they are this repo's own convention, so
+ * including them would fire on every correctly-written line and the screen would be off in a day.
  *
- * **A DATE IN A DATE-SHAPED FIELD IS DATA, NOT AN INCIDENT.** What the `2026-0` clause is hunting
- * is one athlete's dated events crossing into shared prose — *"On 2026-08-25 an automated job
- * reasoned its way to the opposite conclusion"*. A provenance marker's `asOf`, or a fixture
- * chart's `since`, is a structured field whose whole content is a date; flagging it reports the
- * schema. Anything in a SENTENCE still counts, which is where every real instance lives.
+ * **2 · A QUOTE IN THE FIRST PERSON.** A verbatim quote of a PERSON is speech, and speech about
+ * oneself is first-person. That separates *"I don't need an AI for that"* and *"Make the weekly
+ * 17,500 on my trip"* — real athlete quotes, both of which must never cross — from the quoted
+ * identifiers, UI strings and illustrative sentences that shared code legitimately contains:
+ * *"Must match build-findings.mjs's inputs exactly"* quotes a code comment, `**"0 / 3 · not
+ * started"**` quotes a rendered label. Bare `\*"` matched all of them, and matched `\s*"Mon"`
+ * inside a regex literal as well.
  *
- * **AND THIS FILE IS NOT SUBJECT TO ITS OWN PATTERN**, for the reason `banned-terms.mjs` already
+ * **3 · A DATE IN PROSE, NOT IN CODE.** The target is a dated incident — *"On <date> an automated
+ * job reasoned its way to the opposite conclusion"* — which lives in a sentence. A bare date
+ * literal in code is a fixture datum, and a ported test file is nothing but those: flagging them
+ * reported 15 lines of `day('2025-05-13', 'lifting')`. So the clause applies to comment lines and
+ * markdown only. (It was `2026-0` before a review pointed out that it went blind in October of one
+ * particular year, in a file whose whole subject is not hard-coding one chart's specifics.)
+ *
+ * ⚠ **AND THIS FILE IS NOT SUBJECT TO ITS OWN PATTERN**, for the reason `banned-terms.mjs` already
  * states and `test-athlete-leak.mjs` already asserts: the file that declares the rule is never
- * itself a violation of it. `DEATHLETE_RE` above necessarily contains `\bhe\b`.
+ * itself a violation of it.
  */
-const DEATHLETE_EXEMPT_LINE = /\b(asOf|since|date|dob|effective|updated|phaseEndDate)\s*[:=]\s*'20\d\d-\d\d(-\d\d)?'/
+const PRONOUN_RE = /\b(he|him|his|she|her|hers)\b/i
+const QUOTE_RE = /(^|[\s>])\*+"[^"]*\b(i|i'm|i'd|i'll|i've|my|me|myself|mine|we|our|us)\b/i
+const DATE_RE = /\b20\d\d-\d\d-\d\d\b/
+
+/** A comment line, or any line of a non-code file. Where a sentence about a person lives. */
+const isProse = (path, text) => !/\.(mjs|js|ts|tsx|json)$/.test(path) || /^\s*(\/\/|\*|\/\*|#)/.test(text)
+
+const deathleteHit = (path, text) => PRONOUN_RE.test(text)
+  || QUOTE_RE.test(text)
+  || (isProse(path, text) && DATE_RE.test(text))
+
 const DEATHLETE_EXEMPT_FILE = 'scripts/port-overlay.mjs'
 
 const gitHere = (args) => {
@@ -177,31 +186,44 @@ const gitHere = (args) => {
   return r.status === 0 ? r.stdout : null
 }
 
+/**
+ * Every path this port has touched since `BASE` — tracked edits AND untracked new files.
+ * One home, because both the leak-scan split and the de-athleting count ask the same question and
+ * each got a different answer when they asked it separately.
+ */
+const changedFiles = () => (gitHere(['rev-parse', '--verify', '--quiet', BASE])
+  ? [...new Set([
+    ...(gitHere(['diff', '--name-only', BASE, '--']) ?? '').split('\n'),
+    ...(gitHere(['ls-files', '--others', '--exclude-standard']) ?? '').split('\n'),
+  ].filter(Boolean))]
+  : [])
+
 const deathleteReport = () => {
   if (!gitHere(['rev-parse', '--verify', '--quiet', BASE])) {
     say(`── de-athleting count: SKIPPED — \`${BASE}\` does not resolve here.`)
     say('   Pass --changed-since <ref>. A skipped count is not a zero count.')
     return { skipped: true, hits: [] }
   }
-  const files = (gitHere(['diff', '--name-only', BASE, '--']) ?? '').split('\n').filter(Boolean)
+  const files = changedFiles()
   const hits = []
   for (const f of files) {
-    const diff = gitHere(['diff', '-U0', BASE, '--', f]) ?? ''
     if (f === DEATHLETE_EXEMPT_FILE) continue
-    for (const line of diff.split('\n')) {
-      if (!line.startsWith('+') || line.startsWith('+++')) continue
-      const text = line.slice(1)
-      if (!DEATHLETE_RE.test(text)) continue
-      // Strip the date-shaped fields, then ask again: a line that only matched through one of them
-      // has nothing left to answer for. A sentence around a date still does.
-      if (!DEATHLETE_RE.test(text.replace(new RegExp(DEATHLETE_EXEMPT_LINE, 'g'), ''))) continue
+    // A tracked file contributes its added lines; an untracked one is entirely new, so every line
+    // of it is an added line.
+    const isTracked = (gitHere(['ls-files', '--error-unmatch', '--', f]) ?? '').trim() !== ''
+    const lines = isTracked
+      ? (gitHere(['diff', '-U0', BASE, '--', f]) ?? '').split('\n')
+        .filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1))
+      : (existsSync(join(ROOT, f)) ? readFileSync(join(ROOT, f), 'utf8').split('\n') : [])
+    for (const text of lines) {
+      if (!deathleteHit(f, text)) continue
       hits.push({ path: f, text: text.trim().slice(0, 150) })
     }
   }
   say(`── de-athleting count over ${files.length} file(s) changed since ${BASE}: ${hits.length}`)
   for (const h of hits.slice(0, 40)) say(`   ${h.path}: ${h.text}`)
   if (hits.length > 40) say(`   … ${hits.length - 40} more`)
-  if (!hits.length) say('   zero — no added line carries a gendered pronoun, a quoted line, or a bare date.')
+  if (!hits.length) say('   zero — no added line carries a gendered pronoun, a first-person quote, or a dated incident.')
   return { skipped: false, hits }
 }
 
@@ -560,11 +582,17 @@ if (copied.size < SYSTEM_PATHS.length) {
 
 const leaks = scanForLeaks(clone, denylist, { only: copied })
 
-// Which of these files did THIS port change? Only those can be this port's fault. See BASE.
-const changedHere = new Set(
-  (gitHere(['rev-parse', '--verify', '--quiet', BASE])
-    ? (gitHere(['diff', '--name-only', BASE, '--']) ?? '')
-    : '').split('\n').filter(Boolean))
+/**
+ * Which of these files did THIS port change? Only those can be this port's fault. See BASE.
+ *
+ * ⚠ **A BRAND-NEW FILE IS NOT IN `git diff`, AND FILING ITS LEAKS AS "PRE-EXISTING" IS EXACTLY
+ * BACKWARDS.** `git diff --name-only` lists tracked changes; a file this port has just written and
+ * not yet committed appears on neither side, so its hits landed in the "already there, not this
+ * port's doing" bucket — the one bucket that is not fatal. Measured: a newly written test file's
+ * leak was reported as inherited on its very first run. Same lesson as the copy set, one function
+ * over.
+ */
+const changedHere = new Set(changedFiles())
 const mine = leaks.filter((f) => changedHere.has(f.path))
 const inherited = leaks.filter((f) => !changedHere.has(f.path))
 

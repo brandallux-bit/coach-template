@@ -1,3 +1,4 @@
+import { weekdayKey as weekdayKeyOf } from '../../scripts/lib/weekdays.mjs'
 import raw from '@/generated/data.json'
 import {
   allOnOrBefore as allRowsOnOrBefore, dayFraction, latestOnOrBefore as latestRowOnOrBefore,
@@ -313,11 +314,12 @@ export function fractionOfDayElapsed(): number {
   return dayFraction(at('hour'), at('minute'))
 }
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
-
-/** Athlete-local weekday key for a YYYY-MM-DD, to look up plan.weeklyTemplate. */
-export const weekdayKey = (iso: string) =>
-  WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()]
+/**
+ * Athlete-local weekday key for a YYYY-MM-DD, to look up plan.weeklyTemplate — **re-exported, not
+ * declared.** The list lived here and in three other files; `scripts/lib/weekdays.mjs` says why
+ * that stopped being acceptable. Same arrangement, same reason, as `sessionKey` in forecast.ts.
+ */
+export const weekdayKey: (iso: string) => string = weekdayKeyOf
 
 export const addDays = (iso: string, days: number) => {
   const d = new Date(`${iso}T12:00:00Z`)

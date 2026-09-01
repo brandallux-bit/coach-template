@@ -11,6 +11,7 @@ import {
   DAILY as SESSION_DAILY,
   RESERVED_SESSIONS as SESSION_RESERVED,
   SUPPLEMENTS as SESSION_SUPPLEMENTS,
+  sessionKey as sessionKeyOf,
 } from '../../scripts/lib/sessions.mjs'
 
 /**
@@ -61,29 +62,12 @@ export const SUPPLEMENTS = SESSION_SUPPLEMENTS
 const RESERVED_SESSIONS = new Set<string>(SESSION_RESERVED)
 
 /**
- * A session name reduced to the part three different files agree on.
- *
- * The chart writes the same session under three conventions, all of them legitimate:
- *   `training.csv`      "Session B — Upper Push/Pull + Core"   (what happened, described)
- *   `prescriptions.csv` "Session B"                            (what is prescribed)
- *   `sets.csv`          "Session B"                            (what was performed)
- * An exact-match lookup across them finds nothing, which would make every prescription and every
- * historical set invisible the moment the coach wrote a descriptive session name. Stripping the
- * parenthetical and everything after a spaced dash leaves the stem the three share.
- *
- * ORDER MATTERS: the parenthetical goes first, or the ` — ` inside
- * "Daily left-knee rehab block (Phase 1 — Settle)" truncates it mid-parenthesis.
- *
- * This is a fallback and never a first choice — every caller tries the exact name first, and
- * `rxSessionFor` refuses to use it when it is ambiguous.
+ * A session name reduced to the part three different files agree on — **re-exported, not declared.**
+ * `scripts/lib/sessions.mjs` holds it and says why: `scripts/` cannot import TypeScript, and the
+ * duration resolver there needs the same stem. Same arrangement, same reason, as `weekdayKey` in
+ * `data.ts`.
  */
-export const sessionKey = (s: string | null | undefined): string =>
-  (s ?? '')
-    .toLowerCase()
-    .replace(/\s*\(.*$/, '')
-    .replace(/\s+[—–-]\s+.*$/, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+export const sessionKey: (s: string | null | undefined) => string = sessionKeyOf
 
 export type PlannedItem = {
   label: string
