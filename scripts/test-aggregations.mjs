@@ -1336,8 +1336,8 @@ console.log('\n13 · a session performed but not timed')
   }
   {
     // ⚠ THE SESSION STEM, NOT THE WRITTEN NAME. "Block One — hinge and pull" and "Block One
-    // (knee-free)" are one session under two descriptions; treating them as two would have left
-    // a real gap with one comparable instead of two.
+    // (variation)" are one session under two descriptions; treating them as two would have left a
+    // real gap with one comparable instead of two.
     const mixed = buildDurationResolver({
       training: [
         timed('2026-01-05', 40, 'Block One — hinge and pull'),

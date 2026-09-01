@@ -265,6 +265,10 @@ names each one it finds; this is what to do about the ones shipped so far.
 |---|---|---|
 | `program.dailyRehabMin` | `sessionTypes.<type>.standingDurationMin`, and name that type in `program.dailyBlockType` | The block's length is a property of the ACTIVITY, not of the current block, and the ledger and the forward view now read it from one place instead of disagreeing |
 
+`data/energy.csv` gained a `session_estimated` column at the same time, so `npm run validate` will
+say it is missing one until you run `compute-energy.mjs` as above. That is the whole fix; nothing is
+wrong with your rows.
+
 Until you move it, an untimed session of that type is costed from its set count instead of from
 the length you declared, and the daily block drops out of the forward view. Nothing is lost and
 nothing is wrong — but two numbers you expected to match will not.

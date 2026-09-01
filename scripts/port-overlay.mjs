@@ -41,7 +41,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { denylistFrom, pinDigest, scanForLeaks } from './lib/athlete-leak.mjs'
+import { denylistFrom, pinDigest, scanForLeaks, termMatchers } from './lib/athlete-leak.mjs'
 import { COMPANION_PATHS, SYSTEM_PATHS } from './lib/system-paths.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -125,6 +125,20 @@ const WRITE_EXCEPTIONS = ['data/METHOD.md', 'logs/TEMPLATE-daily.md', 'logs/TEMP
  * invalidated, it is never this gate's leak verdict, and nothing else under `athlete/` is touched.
  */
 const REPIN_PATH = 'athlete/leak-acknowledgements.json'
+
+/**
+ * The second — and last — path this script rewrites in the clone: the chart's constants, and only
+ * to apply a migration `SETUP.md` documents.
+ *
+ * ⚠ **BECAUSE THE ALTERNATIVE IS A GATE THAT CAN NEVER GO GREEN AGAIN.** A template update that
+ * retires a constants key leaves every existing fork failing until its owner moves the key — which
+ * is correct, and is exactly what the new validator rule says. But this gate borrows an UNMIGRATED
+ * chart, so without applying the documented move it would report the port broken forever, for a
+ * migration the port itself ships instructions for. Applying it here tests what a fork actually
+ * has on merge day. Each step is applied only where the chart needs it and prints what it did, so
+ * a key retired WITHOUT a documented move still reds the gate.
+ */
+const MIGRATE_PATH = 'athlete/constants.json'
 
 // -------------------------------------------------------------------------------------------
 // The de-athleting count — local, instant, and the half no scanner can do
@@ -449,6 +463,38 @@ if (existsSync(ackPath)) {
   }
 }
 
+/**
+ * **Apply the migration `SETUP.md` documents, because that is what a real fork does on merge day.**
+ *
+ * ⚠ **AND EACH STEP IS APPLIED ONLY WHERE THE CHART ACTUALLY NEEDS IT, SO A MISSING MIGRATION IS
+ * STILL A RED GATE.** Silently normalising the chart would make this gate incapable of noticing
+ * that a constants key was retired without a documented move — which is the one thing it is here
+ * to notice. Each step below prints what it did; a chart already migrated prints nothing.
+ */
+const migrations = []
+{
+  const cPath = join(clone, 'athlete', 'constants.json')
+  const c = JSON.parse(readFileSync(cPath, 'utf8'))
+  // SETUP.md, "Constants a merge may ask you to move": the daily block's length is a property of
+  // the activity now, named by `program.dailyBlockType`.
+  const legacyMin = c.program?.dailyRehabMin
+  if (legacyMin != null && c.program?.dailyBlockType == null) {
+    const type = Object.entries(c.sessionTypes ?? {})
+      .filter(([k]) => !k.startsWith('_'))
+      .find(([, t]) => Number(t?.met) > 0 && t?.countsTowardFloor === false)?.[0]
+    if (!type) {
+      die('this chart carries the retired program.dailyRehabMin and no obvious type to move it to. '
+        + 'Migrate it by hand in a scratch clone, or teach this step which type it is.')
+    }
+    c.sessionTypes[type] = { ...c.sessionTypes[type], standingDurationMin: legacyMin }
+    c.program = { ...c.program, dailyBlockType: type }
+    delete c.program.dailyRehabMin
+    writeFileSync(cPath, `${JSON.stringify(c, null, 2)}\n`)
+    migrations.push(`moved program.dailyRehabMin (${legacyMin} min) to sessionTypes.${type}.standingDurationMin`)
+  }
+}
+if (migrations.length) for (const m of migrations) say(`migrated: ${m}`)
+
 const docs = run(process.execPath, ['scripts/build-docs.mjs'], clone)
 if (docs.status !== 0) die(`build-docs.mjs failed in the clone:\n${docs.stdout}\n${docs.stderr}`)
 say('regenerated the chart-derived blocks in data/METHOD.md (build-docs.mjs)')
@@ -459,7 +505,7 @@ say('regenerated the chart-derived blocks in data/METHOD.md (build-docs.mjs)')
 const touchedData = run('git', ['status', '--porcelain', '--',
   'data', 'athlete', 'logs', 'nutrition', 'program', 'photos', 'decisions.md'], clone)
   .stdout.split('\n').filter(Boolean)
-  .filter((l) => ![...WRITE_EXCEPTIONS, REPIN_PATH].some((w) => l.includes(w)))
+  .filter((l) => ![...WRITE_EXCEPTIONS, REPIN_PATH, MIGRATE_PATH].some((w) => l.includes(w)))
 if (touchedData.length) die(`the overlay modified chart data, which it must never do:\n${touchedData.join('\n')}`)
 
 // -------------------------------------------------------------------------------------------
@@ -496,7 +542,63 @@ const secrets = {
 if (BUILD) stage('npm ci', () => run('npm', ['ci', '--no-audit', '--no-fund'], clone))
 
 /**
- * ⚠ **`check-all` RUNS BEFORE `npm run build`, AND THE ORDER IS THE POINT.**
+ * **The ledger comparison, run explicitly rather than left to `check-all`'s staleness step.**
+ *
+ * ⚠ **THIS IS THE STRONGEST SIGNAL THIS GATE PRODUCES AND IT USED TO BE A SIDE EFFECT.** It asks:
+ * does THIS repo's `compute-energy.mjs` still reproduce, row for row, a ledger a real chart
+ * committed? Leaving it to the staleness step made it a boolean buried in a suite failure, and it
+ * also blocked every step after it — so a phase that legitimately changed the burn model could not
+ * see the other seventeen checks at all. Now the rows are compared column by column, the count is
+ * printed, and the suite runs afterwards on a regenerated ledger like any migrated fork's.
+ */
+const before = (run('git', ['show', 'HEAD:data/energy.csv'], clone).stdout || '').trim().split('\n')
+const regen = run(process.execPath, ['scripts/compute-energy.mjs'], clone)
+if (regen.status !== 0) die(`compute-energy.mjs failed in the clone:\n${regen.stderr}`)
+const after = readFileSync(join(clone, 'data', 'energy.csv'), 'utf8').trim().split('\n')
+{
+  /**
+   * ⚠ **`method_version` IS EXCLUDED, AND IT IS THE ONE EXCLUSION.** It is a version STAMP, not a
+   * figure: a chart bumps it when its own model moves, and this repo deliberately stays at 1
+   * because it has no rows to keep interpretable. Comparing it would report all 26 rows as drifted
+   * on every run and bury the two that actually were. Every column that carries a NUMBER is
+   * compared; a column present on one side only is not comparable and is listed as such.
+   */
+  const STAMP = ['method_version']
+  const shared = before[0].split(',')
+    .filter((col) => after[0].split(',').includes(col) && !STAMP.includes(col))
+  const onlyOneSide = [...new Set([...before[0].split(','), ...after[0].split(',')])]
+    .filter((c) => !STAMP.includes(c) && !shared.includes(c))
+  const pick = (header, line) => {
+    const cols = header.split(',')
+    const vals = line.split(',')
+    return shared.map((c) => vals[cols.indexOf(c)]).join(',')
+  }
+  const bRows = new Map(before.slice(1).map((l) => [l.split(',')[0], pick(before[0], l)]))
+  const aRows = new Map(after.slice(1).map((l) => [l.split(',')[0], pick(after[0], l)]))
+  const differing = [...aRows].filter(([d, v]) => bRows.has(d) && bRows.get(d) !== v)
+  say()
+  say(`── ledger: ${aRows.size} row(s) recomputed; ${aRows.size - differing.length} identical to the `
+    + `chart's committed figures across ${shared.length} compared column(s)`
+    + `${onlyOneSide.length ? `; ${onlyOneSide.join(', ')} exist on one side only` : ''}`)
+  for (const [d] of differing.slice(0, 8)) {
+    say(`   ${d}\n     chart : ${bRows.get(d)}\n     ported: ${aRows.get(d)}`)
+  }
+  if (differing.length > 8) say(`   … ${differing.length - 8} more`)
+  if (differing.length && !LEDGER_DRIFT) {
+    failed = true
+    say('::error::this repo\'s compute-energy.mjs does not reproduce the ledger the chart committed.')
+    say('  A real finding on any phase that did not mean to change the burn model. If this phase')
+    say('  DID mean to, re-run with --allow-ledger-drift and say so in the phase report.')
+  }
+  const add = run('git', ['add', 'data/energy.csv'], clone)
+  const ci = run('git', ['-c', 'user.email=overlay@local', '-c', 'user.name=port-overlay',
+    'commit', '-qm', 'port-overlay: regenerate the ledger, as SETUP.md tells a fork to on merge'], clone)
+  if (add.status !== 0 || ci.status !== 0) die(`could not commit the regenerated ledger:\n${ci.stderr}`)
+}
+
+/**
+ * The suite, on a migrated chart with a regenerated ledger — the state a real fork is in on merge
+ * day, and the only state in which its result means anything.
  *
  * `prebuild` runs `npm run data`, which rewrites `data/energy.csv` in the clone. Build first and
  * `check-all`'s staleness gate compares the regenerated ledger against itself and passes for free —
@@ -506,52 +608,10 @@ if (BUILD) stage('npm ci', () => run('npm', ['ci', '--no-audit', '--no-fund'], c
  * A phase that deliberately changes the burn model makes that step fail on purpose. `--allow-ledger-drift`
  * is how you say so, out loud, per run — never by reordering these two stages.
  */
-let suite = stage('node scripts/check-all.mjs', () => run(process.execPath, ['scripts/check-all.mjs'], clone))
+const suite = stage('node scripts/check-all.mjs', () => run(process.execPath, ['scripts/check-all.mjs'], clone))
 
 /** `check-all` prints `ok`/`skip` on stdout and `FAIL` on stderr. Reading one stream reads half. */
 const bothStreams = (r) => `${r?.stdout || ''}\n${r?.stderr || ''}`
-
-if (suite && suite.status !== 0 && /FAIL\s+energy\.csv/.test(bothStreams(suite))) {
-  if (!LEDGER_DRIFT) {
-    say()
-    say('::error::this repo\'s compute-energy.mjs does not reproduce the ledger the chart committed.')
-    say('  That is a real finding on any phase that did not mean to change the burn model. If this')
-    say('  phase DID mean to, re-run with --allow-ledger-drift and say so in the phase report.')
-  } else {
-    say()
-    say('⚠ ledger drift ALLOWED for this run (--allow-ledger-drift): this repo\'s compute-energy.mjs')
-    say('  produces a different energy.csv than the chart committed. Regenerating the ledger and')
-    say('  re-running, so the remaining steps are exercised rather than hidden behind the first.')
-    /**
-     * ⚠ **REGENERATE THE LEDGER EXPLICITLY; DO NOT RE-RUN THE SUITE IN BOT MODE.**
-     *
-     * `--regen-energy` was the obvious move and it is wrong, because that flag does TWO things.
-     * Besides regenerating `energy.csv` it turns `check-targets-gap` from a hard failure into a
-     * silent auto-fill (`check-all.mjs`, the bot-mode note). Its only trace is an indented line the
-     * step-line filter below discards — so a chart under test with a day that has NO CALORIE
-     * TARGET would fail at the energy step first, take this branch, get its gap quietly filled,
-     * and report `0 failed`. That is the 2026-08-15 defect `CLAUDE.md` §0.3 exists for, made
-     * invisible by the flag every run of this port has to pass.
-     *
-     * Regenerating the one derived file and re-running the suite UNCHANGED narrows the allowance to
-     * exactly what the flag's name claims.
-     */
-    const regen = run(process.execPath, ['scripts/compute-energy.mjs'], clone)
-    if (regen.status !== 0) die(`compute-energy.mjs failed in the clone:\n${regen.stderr}`)
-    // The staleness step compares against `git diff -- data/energy.csv`, so a regenerated file that
-    // is merely written is still stale by its definition. Commit it, in the throwaway clone.
-    const add = run('git', ['add', 'data/energy.csv'], clone)
-    const ci = run('git', ['-c', 'user.email=overlay@local', '-c', 'user.name=port-overlay',
-      'commit', '-qm', 'port-overlay: regenerate the ledger under this repo\'s burn model'], clone)
-    if (add.status !== 0 || ci.status !== 0) {
-      die(`could not commit the regenerated ledger:\n${add.stderr}\n${ci.stderr}`)
-    }
-    failed = false
-    results.pop()
-    suite = stage('node scripts/check-all.mjs (ledger regenerated)', () =>
-      run(process.execPath, ['scripts/check-all.mjs'], clone))
-  }
-}
 
 if (BUILD) {
   stage('npx tsc --noEmit', () => run('npx', ['tsc', '--noEmit'], clone))
@@ -687,6 +747,54 @@ if (inherited.length) {
   say('  way at the comparison ref. NOT this port\'s doing and not fixed by it, recorded so a')
   say('  regression is visible against a number:')
   for (const f of inherited) say(`    ${f.path} — ${f.hits.length}`)
+}
+
+/**
+ * ⚠ **THE HALF THE LEAK SCAN CANNOT DO: THE CHART'S OWN VOCABULARY, IN THE LINES THIS PORT ADDED,
+ * COMMENTS INCLUDED.**
+ *
+ * `scanForLeaks` strips comments from every `.mjs|.js|.ts|.tsx` before matching, and the crossing
+ * content in a port like this is overwhelmingly comments. The de-athleting screen at the top of
+ * this run covers the shapes that need no chart to recognise — gendered pronouns, first-person
+ * quotes, dated incidents — but it has no denylist and so cannot see a session name, an activity,
+ * an injury site or a place. A review found exactly that: a comment reading `"Block One
+ * (knee-free)"` in an added line, reported as zero by a screen that never looked for `knee`.
+ *
+ * Here there IS a chart, so there is a denylist. Run it over the added lines WITHOUT stripping
+ * anything. Derived from the chart, never a list typed into this repo — a hardcoded set of one
+ * athlete's words inside the tool that prevents one athlete's words from crossing would be the
+ * defect wearing the uniform.
+ */
+const addedLines = []
+for (const f of changedHere) {
+  const isTracked = (gitHere(['ls-files', '--error-unmatch', '--', f]) ?? '').trim() !== ''
+  const lines = isTracked
+    ? (gitHere(['diff', '-U0', BASE, '--', f]) ?? '').split('\n')
+      .filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1))
+    : (existsSync(join(ROOT, f)) ? readFileSync(join(ROOT, f), 'utf8').split('\n') : [])
+  lines.forEach((text, i) => addedLines.push({ path: f, i, text }))
+}
+// ⚠ The scanner's OWN matcher, imported — see `termMatchers`. A hand-rolled copy here omitted the
+// boundary logic, so a two-word session name matched two ordinary words that happened to start
+// the same way — the false positive that function's own comment records already fixing once.
+const vocabRe = termMatchers(denylist)
+const vocabHits = []
+for (const { path, text } of addedLines) {
+  const hits = vocabRe.filter((v) => v.re.test(text))
+  const phrases = hits.filter((v) => v.kind === 'phrase')
+  const words = hits.filter((v) => v.kind !== 'phrase')
+  const terms = [...phrases, ...(words.length >= 2 ? words : [])].map((v) => v.term)
+  if (terms.length) vocabHits.push({ path, terms, text: text.trim().slice(0, 140) })
+}
+say()
+say(`── the chart's own vocabulary in this port's added lines, COMMENTS INCLUDED: ${vocabHits.length}`)
+if (!vocabHits.length) {
+  say('   none — no line this port wrote uses a word derived from this chart.')
+} else {
+  for (const h of vocabHits.slice(0, 30)) say(`   ${h.path} [${h.terms.join(', ')}] ${h.text}`)
+  if (vocabHits.length > 30) say(`   … ${vocabHits.length - 30} more`)
+  say('   ⚠ Judge each: a registry key that is also ordinary English is usually fine in a sentence,')
+  say('     a session name or an activity is not. This is a SCREEN — it reports, you decide.')
 }
 
 say()

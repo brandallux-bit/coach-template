@@ -406,12 +406,23 @@ const isChartInstance = (root, rel) => {
  *
  * Every other caller omits it and gets the SCOPE walk with both skips intact.
  */
-export function scanForLeaks(root, denylist = denylistFrom(root), { only = null } = {}) {
+/**
+ * The matcher for one denylist entry — **the one home for what "this term appears here" means.**
+ *
+ * ⚠ **EXPORTED BECAUSE A SECOND CALLER REBUILT IT AND GOT IT WRONG IMMEDIATELY.**
+ * `port-overlay.mjs` screens a port's added lines (comments included, which this scanner strips)
+ * against the same denylist, and its own hand-rolled regex omitted the boundary logic below — so
+ * a two-word session name matched two ordinary words that happened to start the same way, which
+ * is the exact false positive the note inside this function records having already been fixed once. Two
+ * implementations of "does this line carry this term" is two answers, and this file exists to say
+ * that is not allowed.
+ */
+export function termMatchers(denylist) {
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   /** `\b` only where the phrase's own first/last character is a word character. */
   const bound = (pattern, raw) =>
     (/^\w/.test(raw) ? '\\b' : '') + pattern + (/\w$/.test(raw) ? '\\b' : '')
-  const patterns = denylist.map((d) => ({
+  return denylist.map((d) => ({
     ...d,
     // A word matches with boundaries, case-insensitively, and tolerates a plural: `Peloton`,
     // a key, its upper-cased form, and a plural against a singular heading are one leak. A PHRASE matches on
@@ -431,6 +442,11 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
       ? new RegExp(bound(esc(d.term).replace(/\\?\s+/g, '\\s+'), d.term), 'i')
       : new RegExp(`(?<![A-Za-z])${esc(d.stem ?? d.term)}s?(?![A-Za-z])`, 'i'),
   }))
+}
+
+export function scanForLeaks(root, denylist = denylistFrom(root), { only = null } = {}) {
+  const patterns = termMatchers(denylist)
+
   const found = []
 
   /**
@@ -481,7 +497,8 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
       // was tried and reverted. `asData` is generous by design: its unquoted-key branch matches
       // `identifier =`, so `const walk = (dir, out = []) => {` (a directory walker, in this very
       // file) reads as data. Enabling it produced **10 hits in 8 files, all but one noise** —
-      // a `walk` helper, `rehab MET on file`, `walks are counted in steps`. That is the 27-hit
+      // a directory-walker variable, a comment about a MET value, a sentence saying where an
+      // activity's energy is already counted. That is the 27-hit
       // result the rule below already records, reproduced at smaller scale. A check that reports
       // its own loop variable is a check that gets muted, and a muted check is worth less than
       // this hole.

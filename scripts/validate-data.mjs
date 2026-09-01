@@ -66,7 +66,18 @@ for (const [file, spec] of Object.entries(SPEC)) {
   const headerLine = readFileSync(path, 'utf8').split('\n')[0].trim()
   const expected = spec.header.join(',')
   if (headerLine !== expected) {
-    err(file, `header mismatch\n    expected: ${expected}\n    got:      ${headerLine}`)
+    // ⚠ **A DERIVED FILE WITH A STALE HEADER IS A MIGRATION, NOT A MALFORMED FILE, AND THE MESSAGE
+    // HAS TO SAY WHICH.** `energy.csv` is generated; when a template update adds a column, every
+    // existing fork's committed copy is one column short the moment it merges — and "header
+    // mismatch, expected …, got …" tells someone their data is broken when in fact one command
+    // fixes it. The regenerator cannot run first: `check-all` validates before it computes, by
+    // design, because a stale ledger is cheaper to detect than to recompute.
+    const stale = expected.startsWith(`${headerLine},`)
+    err(file, stale && file === 'energy.csv'
+      ? `is generated and its columns have changed — it is missing ${expected.slice(headerLine.length + 1)}.\n`
+        + '    Run `node scripts/compute-energy.mjs` and commit the result. Nothing is wrong with\n'
+        + '    your data; see SETUP.md, "After a merge, regenerate what is derived".'
+      : `header mismatch\n    expected: ${expected}\n    got:      ${headerLine}`)
     continue
   }
 
@@ -292,6 +303,51 @@ try {
           `program.dailyBlockType is "${prog.dailyBlockType}" but that type declares no `
           + 'standingDurationMin, so the block has no length and the forward view drops it. Give '
           + 'the type a standing duration, or remove dailyBlockType.')
+      }
+    }
+  }
+
+  /**
+   * A key that USED to mean something and no longer does, and a declaration the record contradicts.
+   * Both are silent failures: nothing errors, and a figure quietly stops being used.
+   */
+  {
+    const prog = constants?.program ?? {}
+    // ⚠ **`program.dailyRehabMin` IS RETIRED, AND ITS LEFTOVER IS THE DEFAULT STATE OF EVERY
+    // EXISTING FORK the moment it merges the commit that retired it.** The block's length moved to
+    // `sessionTypes.<type>.standingDurationMin` with `program.dailyBlockType` naming the type. With
+    // the old key still sitting there and no new one, `addDailyBlock` returns early and the daily
+    // block vanishes from every day of the forward view — which is exactly the outcome the
+    // `dailyBlockType` checks above refuse to allow, arrived at from the other direction.
+    if (prog.dailyRehabMin !== undefined) {
+      err('athlete/constants.json',
+        'program.dailyRehabMin is retired and nothing reads it. The daily block\'s length is now a '
+        + 'property of the ACTIVITY: move the figure to sessionTypes.<type>.standingDurationMin and '
+        + 'name that type in program.dailyBlockType. Until you do, the block is priced on the '
+        + 'ledger and absent from the forward view, with nothing else saying so. See SETUP.md, '
+        + '"Constants a merge may ask you to move".')
+    }
+
+    // ⚠ **A STANDING DURATION THE RECORD CONTRADICTS IS A WRONG NUMBER ON BOTH SIDES.** Declaring
+    // it says the activity always runs that long, and the resolver now prefers it over observed
+    // comparables precisely so the ledger and the forward view agree. That is only safe if a
+    // declaration the timed rows disagree with gets said out loud. A WARNING, not an error: which
+    // figure is right is a conversation, and a check that cannot go green without someone choosing
+    // a number must not be written (INVARIANTS.md X-12).
+    const timed = readCsv(join(DATA, 'training.csv'))
+      .filter((r) => r.status === 'completed' && num(r.duration_min) != null)
+    for (const [type, def] of Object.entries(constants?.sessionTypes ?? {})) {
+      const declared = num(def?.standingDurationMin)
+      if (type.startsWith('_') || declared == null) continue
+      const mins = timed.filter((r) => r.type === type).map((r) => num(r.duration_min))
+      if (mins.length < 3) continue
+      const mean = mins.reduce((a, b) => a + b, 0) / mins.length
+      if (Math.abs(mean - declared) / declared > 0.25) {
+        warn('athlete/constants.json',
+          `sessionTypes.${type}.standingDurationMin is ${declared} min, but the ${mins.length} `
+          + `timed "${type}" sessions on file average ${Math.round(mean)} min. The declaration is `
+          + 'what the ledger AND the forward view both price this session at, so one of the two is '
+          + 'wrong: correct the declaration, or drop it and let the resolver average the record.')
       }
     }
   }

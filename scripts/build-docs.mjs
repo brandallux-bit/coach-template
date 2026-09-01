@@ -26,10 +26,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { metTableDoc, metByIntensityDoc, UNIVERSAL_TYPES, hasChart, NO_CHART_MESSAGE } from './lib/athlete.mjs'
+import { metTableDoc, metByIntensityDoc, UNIVERSAL_TYPES, hasChart, NO_CHART_MESSAGE,
+  setRestSec } from './lib/athlete.mjs'
 import { SPEC } from './lib/schema.mjs'
 import { PROGRAM_DIR, readChartDocs } from './lib/chart-docs.mjs'
 import { OFFER_MARK, extractSuspensions, reportableSuspensions } from './lib/suspensions.mjs'
+import { COMP_WINDOW } from './lib/session-duration.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const CHECK = process.argv.includes('--check')
@@ -118,6 +120,29 @@ const BLOCKS = {
     return `${types.size} of this chart's session types carry a sourced per-tier table, each entry `
       + 'citing the compendium code its value came from. Every other type falls back to its flat '
       + 'MET on every tier, so logging a split for one is harmless rather than wrong.'
+  },
+
+  /**
+   * The duration-reconstruction rungs, with the rest figure THIS chart uses.
+   *
+   * ⚠ **GENERATED BECAUSE A HAND-WRITTEN COPY MADE ANSWERING AN INTAKE QUESTION A RED BUILD.**
+   * `data/METHOD.md` stated the fallback as `(sets − 1) × 70 s rest` — a literal. `setRestSec` is
+   * a key a chart may legitimately set, and `test-single-home`'s FIGURES rule compares prose
+   * against the constant, so a chart whose athlete answered with a different figure could not commit until
+   * somebody found and hand-edited a sentence in a file nothing had told them about. That is the
+   * same dilemma the METHOD_DIGEST note refuses for the digest — every fork red on day one for
+   * making a legal edit — reintroduced one file over. Generating it removes the copy.
+   */
+  'duration-rungs': () => {
+    const rest = setRestSec()
+    return 'A session that was performed but not timed is reconstructed, in this order: the mean of '
+      + `the **last ${COMP_WINDOW} timed sessions sharing its stem**, else the **next ${COMP_WINDOW}** `
+      + 'after it where that history does not exist yet, else the **standing duration this chart '
+      + 'declares for that session type** (`sessionTypes.<type>.standingDurationMin`), else '
+      + `**\`sets × work + (sets − 1) × ${rest} s rest\`** — where the rest figure is `
+      + '`program.setRestSec` and the work per set is the median implied by the sessions this chart '
+      + 'has actually timed, never a number anybody typed. Whatever still cannot be costed leaves '
+      + '`session_kcal` **blank** and the day `complete=n`.'
   },
 
   /**

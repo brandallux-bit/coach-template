@@ -19,14 +19,17 @@
  * no history to average. So the rungs, in order, and each one says which it used:
  *
  *   1. `recorded`      the row has a `duration_min`. Nothing here fires.
- *   2. `comps-prior`   the mean of the last `COMP_WINDOW` timed sessions sharing this session's
- *                      `sessionKey`, strictly before this date. The primary rule.
- *   3. `comps-next`    the mean of the next `COMP_WINDOW` after it, for a gap early enough in the
+ *   2. `prescribed`    a session type whose duration the chart DECLARES —
+ *                      `sessionTypes.<type>.standingDurationMin`. Above the comparables on
+ *                      purpose: the forward view has no history to average and always uses the
+ *                      declaration, so anything else here makes the two sides disagree about the
+ *                      same session forever. Declaring it says the activity always runs that long;
+ *                      `validate-data.mjs` warns when the timed rows say otherwise, rather than
+ *                      quietly routing around a declaration that is wrong.
+ *   3. `comps-prior`   the mean of the last `COMP_WINDOW` timed sessions sharing this session's
+ *                      `sessionKey`, strictly before this date.
+ *   4. `comps-next`    the mean of the next `COMP_WINDOW` after it, for a gap early enough in the
  *                      series that the history does not exist yet.
- *   4. `prescribed`    a session type whose duration the chart already declares —
- *                      `sessionTypes.<type>.standingDurationMin`, which the forward view already
- *                      costs it at. Not an estimate and not new: it is one figure, finally used on
- *                      both sides so the ledger and the forecast stop disagreeing about it.
  *   5. `from-sets`     `minutesFromSets`, over the sets actually logged that day.
  *   6. `unknown`       none of the above. The cost stays null and the CALLER must keep it out of
  *                      `session_kcal` rather than adding zero — see `compute-energy.mjs`.
@@ -79,7 +82,12 @@ export function buildDurationResolver({
   // averaging schedules into a ledger figure would quietly make the plan its own evidence.
   const timed = training
     .filter((r) => r?.status === 'completed' && n(r.duration_min) != null && r.date)
-    .map((r) => ({ date: r.date, key: sessionKey(r.session), minutes: n(r.duration_min) }))
+    // `session` is kept beside `key` because the two consumers below need different things: the
+    // comparables group by STEM, and `setCountOn` prefers an EXACT session match before falling
+    // back to the stem. Passing the stem where the name belongs made the work-per-set fit count
+    // every same-stem session on a date as one — two sessions of 10 and 5 sets fitted as 15, which
+    // is a threefold error in the rung it feeds.
+    .map((r) => ({ date: r.date, session: r.session, key: sessionKey(r.session), minutes: n(r.duration_min) }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
   const byKey = timed.reduce((m, r) => ((m[r.key] ??= []).push(r), m), {})
@@ -94,7 +102,7 @@ export function buildDurationResolver({
     return (exact.length ? exact : day.filter((s) => sessionKey(s.session) === key)).length
   }
   const workFit = impliedSetWorkSec(
-    timed.map((r) => ({ minutes: r.minutes, sets: setCountOn(r.date, r.key) })), restSec,
+    timed.map((r) => ({ minutes: r.minutes, sets: setCountOn(r.date, r.session) })), restSec,
   )
 
   return function resolveSessionMinutes(row) {
@@ -111,6 +119,26 @@ export function buildDurationResolver({
     const key = sessionKey(row?.session)
     const history = byKey[key] ?? []
     const date = row?.date ?? ''
+
+    // ⚠ **A DECLARED STANDING DURATION OUTRANKS OBSERVED COMPARABLES, AND THE ORDER IS THE POINT.**
+    // It sat below them, which made the ledger prefer the mean of past timed sessions while
+    // `addDailyBlock` in `src/lib/forecast.ts` always used the declaration — so on a chart with a
+    // 20-minute declaration and three timed rows at 32/34/36, the ledger costed 34 and the forward
+    // view projected 20, forever, with nothing raising the contradiction. That is the
+    // ledger-versus-forecast disagreement this rung exists to end, produced BY this rung.
+    //
+    // Declaring `standingDurationMin` is a statement that the activity always runs that long; if
+    // the timed rows disagree, the DECLARATION is what is wrong, and `validate-data.mjs` warns
+    // about exactly that rather than quietly routing around it.
+    const prescribed = n(prescribedMinFor(row))
+    if (prescribed != null) {
+      return {
+        minutes: prescribed,
+        level: 'prescribed',
+        basis: `the ${prescribed} min this chart declares for a "${row?.type}" session — the same `
+          + 'figure the forward view costs it at',
+      }
+    }
 
     const prior = history.filter((r) => r.date < date).slice(-compWindow)
     if (prior.length === compWindow) {
@@ -132,16 +160,6 @@ export function buildDurationResolver({
       }
     }
 
-    const prescribed = n(prescribedMinFor(row))
-    if (prescribed != null) {
-      return {
-        minutes: prescribed,
-        level: 'prescribed',
-        basis: `the ${prescribed} min this chart declares for a "${row?.type}" session — the same `
-          + 'figure the forward view costs it at',
-      }
-    }
-
     const setCount = setCountOn(date, row?.session)
     if (setCount > 0 && workFit) {
       const minutes = minutesFromSets(setCount, workFit.workSec, restSec)
@@ -159,8 +177,8 @@ export function buildDurationResolver({
     return {
       minutes: null,
       level: 'unknown',
-      basis: `no duration, fewer than ${compWindow} timed "${key}" sessions either side, `
-        + 'and no sets logged',
+      basis: `no duration, no standing duration declared for "${row?.type}", fewer than `
+        + `${compWindow} timed "${key}" sessions either side, and no sets logged`,
     }
   }
 }

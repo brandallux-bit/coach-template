@@ -329,7 +329,7 @@ const planDayIn = (b, date) => {
   const sess = sessions.reduce((a, s) => a + cost(s), 0)
   const blockType = plan.dailyBlockType
   const blockMin = blockType ? plan.sessionTypeDetail?.[blockType]?.standingDurationMin : null
-  const rehab = effectiveRx(DAILY, date).length && blockMin
+  const dailyBlock = effectiveRx(DAILY, date).length && blockMin
     ? sessionKcal(plan.metByType[blockType], blockMin, lb) : 0
   const steps = plan.stepsPerDayTarget * plan.kcalPerStepPerLb * lb
   const primary = sessions[0] ?? null
@@ -341,9 +341,9 @@ const planDayIn = (b, date) => {
     min: primary?.min ?? null,
     met: primary ? (t?.met != null && primary.type === t.type ? t.met : plan.metByType?.[primary.type] ?? null) : null,
     sess,
-    rehab,
+    dailyBlock,
     steps,
-    total: sess + rehab + steps,
+    total: sess + dailyBlock + steps,
     rx: rxFor(primary?.session, date).length,
   }
 }
@@ -395,19 +395,19 @@ const planDay = (date) => planDayIn(FIXTURE, date)
   // pins the two ways the block can vanish. Either half failing is a silent 400 kcal/week of
   // forecast appearing or disappearing.
   eq('a daily block with a live prescription and a duration is costed on all 7 days',
-    week.filter((d) => d.rehab > 0).length, 7)
+    week.filter((d) => d.dailyBlock > 0).length, 7)
 
   const noMinutes = { ...FIXTURE, plan: { ...plan, sessionTypeDetail: { mobility: {} } } }
   const withoutMinutes = Array.from({ length: 7 }, (_, i) =>
     planDayIn(noMinutes, addDays(FIX_TODAY, i)))
   eq('...and on none of them once the chart drops the duration',
-    withoutMinutes.filter((d) => d.rehab > 0).length, 0)
+    withoutMinutes.filter((d) => d.dailyBlock > 0).length, 0)
 
   const noBlock = { ...FIXTURE, prescriptions: prescriptions.filter((p) => p.session !== DAILY) }
   const withoutBlock = Array.from({ length: 7 }, (_, i) =>
     planDayIn(noBlock, addDays(FIX_TODAY, i)))
   eq('...and on none of them when no daily block is prescribed at all',
-    withoutBlock.filter((d) => d.rehab > 0).length, 0)
+    withoutBlock.filter((d) => d.dailyBlock > 0).length, 0)
 
   // A template day's pinned MET describes that day's own session. A written row that substitutes a
   // different TYPE must not inherit it — a strength session landing on a pinned ride day was
@@ -985,7 +985,7 @@ if (REAL_DATA) {
     : new Date().toISOString().slice(0, 10)
   const week = Array.from({ length: 7 }, (_, i) => planDayIn(live, addDays(todayIso, i)))
   console.log(`  ·    next 7 days: ${week.map((d) => Math.round(d.total)).join(' · ')} kcal projected`)
-  console.log(`  ·    daily block costed on ${week.filter((d) => d.rehab > 0).length}/7 days`)
+  console.log(`  ·    daily block costed on ${week.filter((d) => d.dailyBlock > 0).length}/7 days`)
   console.log(`  ·    sessions named: ${week.map((d) => d.session ?? '—').join(' · ')}`)
 
   // The one live ASSERTION kept, because it is about the code and not about the chart: a day that

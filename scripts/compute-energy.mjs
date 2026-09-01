@@ -18,6 +18,7 @@ import {
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
 import { METHOD_VERSION } from './lib/method-version.mjs'
 import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
+import { SPEC } from './lib/schema.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -130,7 +131,14 @@ for (const date of dates) {
   // been built to read.
   const costs = daySessions
     .filter(sessionBurns)
-    .map((t) => sessionCostFor(withResolvedDuration(t, resolveDuration(t)), weightLb))
+    .map((t) => {
+      const duration = resolveDuration(t)
+      const cost = sessionCostFor(withResolvedDuration(t, duration), weightLb)
+      // ⚠ A reconstruction only counts as one where it actually PRICED the row. A walk's cost is
+      // `counted-elsewhere` and a rest day's is `not-performed`; neither reads a duration, so
+      // marking them estimated would put a caveat on a figure that never needed one.
+      return { ...cost, reconstructed: cost.level === 'flat' && duration.level !== 'recorded' }
+    })
   const sessionUnknown = costs.some((c) => c.level === 'unknown')
   const sessionKcal = sessionUnknown
     ? null
@@ -156,14 +164,28 @@ for (const date of dates) {
     // prices every unfinished day and every rate-of-loss projection. A claim that every input
     // existed has to look at every input.
     complete: tef != null && stepsKcal != null && !sessionUnknown ? 'y' : 'n',
+    /**
+     * ⚠ **THE HALF `complete` CANNOT CARRY.** A day whose session was costed from a reconstructed
+     * duration has every input present, so it is complete — and it enters `observedDailyBurn`,
+     * whose whole purpose is to average days that were MEASURED so the mean can price the days
+     * that were not. Without this column that mean silently contains estimates and no surface can
+     * say so. Excluding such days from the mean instead was the alternative and it is worse: a
+     * chart that rarely times its sessions would get null forever.
+     */
+    session_estimated: costs.some((c) => c.reconstructed) ? 'y' : 'n',
     method_version: METHOD_VERSION,
   })
 }
 
-const header = ['date', 'rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'session_kcal',
-  'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'complete', 'method_version']
-
-writeFileSync(join(DATA, 'energy.csv'), toCsv(header, out))
+/**
+ * ⚠ **THE SPEC'S HEADER, NOT A SECOND COPY OF IT.** This was a literal array, so
+ * `scripts/lib/schema.mjs` declared the columns and this file declared them again — and the two
+ * disagreed the moment a column was added: the validator demanded the new header and the generator
+ * kept writing the old one, which is a build that can never go green and cannot say why. The
+ * generator writes what the schema says a row is; there is no version of this where it should be
+ * allowed to differ.
+ */
+writeFileSync(join(DATA, 'energy.csv'), toCsv(SPEC['energy.csv'].header, out))
 console.log(`energy.csv: ${out.length} days (method_version ${METHOD_VERSION})`)
 for (const r of out) {
   const flag = r.complete === 'y' ? ' ' : '~'

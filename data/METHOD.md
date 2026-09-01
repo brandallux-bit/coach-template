@@ -675,18 +675,29 @@ recalibration) beats **the intensity split** beats **the flat MET over `duration
 > measurements while actually being floors. The mean they drag down prices every unfinished day and
 > every rate-of-loss projection on the chart, and it drags it in the flattering direction.
 >
-> `scripts/lib/session-duration.mjs` now resolves the duration, in this order: the mean of the
-> **last three timed sessions sharing this session's stem**, else the **next three** after it where
-> the history does not exist yet, else the **standing duration this chart declares for that session
-> type** (`sessionTypes.<type>.standingDurationMin` — for an activity that always runs the same
-> length), else **`sets × work + (sets − 1) × 70 s rest`** — where the rest figure is
-> `program.setRestSec` where a chart sets one, and work per set is the median implied by the
-> sessions that chart *has* timed, never a figure a coach typed. Whatever still cannot be costed
-> leaves `session_kcal` **blank** and the day `complete=n`, which is what the rest of this file has
-> always promised the column would do.
+> `scripts/lib/session-duration.mjs` resolves it, and the rungs — with the rest figure this chart
+> actually uses — are generated rather than restated here:
+
+<!-- GENERATED:duration-rungs — from scripts/build-docs.mjs. Do not edit between the markers. -->
+<!-- /GENERATED:duration-rungs -->
+
+> Every reconstructed row says which rung answered it, in `kcalBasis` — the string Today and
+> History render beside the figure — so a reconstructed duration is never shown as a recorded one.
 >
-> Every reconstructed row says which rung answered it, so no surface renders a reconstruction as a
-> measurement.
+> ⚠ **ONE UNCOSTABLE SESSION BLANKS THE WHOLE DAY'S `session_kcal`, INCLUDING THE SESSIONS ON IT
+> THAT WERE COSTED.** Deliberate, and the same rule as everywhere else here: the column holds the
+> day's session burn, and if one session cannot be costed the day's session burn is not known.
+> Writing the partial sum there would be a floor presented as a total — the X-1 error one level up
+> from the zero this whole section is about. The day is `complete=n` and `burnUnderstated` is true,
+> which is how every surface knows the total is short.
+>
+> ⚠ **A RECONSTRUCTED DAY IS STILL `complete=y`, AND `session_estimated` IS HOW A SURFACE KNOWS.**
+> `complete` asks whether every input the chart has is present, and a reconstruction is present. But
+> `observedDailyBurn` averages complete days precisely so estimates stay out of the figure that
+> prices every unfinished day, so the ledger carries the distinction in its own column rather than
+> leaving the mean to imply it. Excluding those days outright was the alternative and it is worse:
+> on a chart that rarely times its sessions it would return null forever, which is the whole
+> quantitative half going inert to avoid marking a number.
 
 > **The precedence has one home: `sessionCost()` in `scripts/lib/aggregate.mjs`.** Both
 > `compute-energy.mjs` (the ledger) and `build-data-json.mjs` (the per-session figure Today and

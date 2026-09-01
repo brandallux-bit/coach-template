@@ -425,14 +425,24 @@ function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
   const minutes = type ? plan.sessionTypeDetail?.[type]?.standingDurationMin ?? null : null
   if (!dailyRx.length || !type || !minutes) return
   const met = plan.metByType?.[type] ?? null
+  // ⚠ **A MET OF 0 IS A DECISION, NOT AN ABSENCE, AND COLLAPSING THE TWO IS A NAMED DEFECT.** A
+  // walking type carries `met: 0` with `energyCountedIn: 'steps'` — its energy is already counted,
+  // so the block's cost is legitimately nothing and the day's total is COMPLETE without it. Reading
+  // that as `unknown` marks a correct total as short. `plannedTotal`'s own docstring records this
+  // exact collapse as what "let a day's Total read as a confident figure while silently omitting a
+  // session". Only reachable since `dailyBlockType` accepts any registry type; the hardcoded
+  // predecessor could never be a MET-0 activity.
+  const countedElsewhere = met === 0
   items.push({
     label: 'Daily block',
     detail: `${minutes} min · ${dailyRx.length} items`,
     kcal: met ? sessionKcal(met, minutes, weightLb) : null,
-    kcalAbsence: met ? undefined : ABSENT_UNKNOWN,
+    kcalAbsence: met ? undefined : (countedElsewhere ? ABSENT_COUNTED_ELSEWHERE : ABSENT_UNKNOWN),
     basis: met
       ? `MET ${met} × ${minutes} min — the standing duration this chart declares for "${type}"`
-      : `no MET on file for "${type}"`,
+      : countedElsewhere
+        ? `"${type}" is priced at MET 0 — its energy is already counted elsewhere, so the day's total is complete without it`
+        : `no MET on file for "${type}"`,
   })
 }
 

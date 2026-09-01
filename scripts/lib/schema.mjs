@@ -202,12 +202,17 @@ export const SPEC = {
    */
   'energy.csv': {
     records: 'measurement',
+    // `session_estimated` — 'y' where any of the day's session costs came from a RECONSTRUCTED
+    // duration rather than a recorded one. It is not `complete`'s job: complete asks whether every
+    // input the chart has is present, and a reconstruction is present. This asks whether the figure
+    // was measured, which is what `observedDailyBurn`'s mean has to be able to declare.
     header: ['date', 'rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'session_kcal',
-      'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'complete', 'method_version'],
+      'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'complete', 'session_estimated',
+      'method_version'],
     uniqueDate: true,
     numeric: ['rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'session_kcal',
       'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'method_version'],
-    enums: { complete: ['y', 'n'] },
+    enums: { complete: ['y', 'n'], session_estimated: ['y', 'n'] },
     ranges: { rmr_kcal: [0, 6000], tef_kcal: [0, 2000], neat_other_kcal: [0, 2000],
       steps_kcal: [0, 5000], session_kcal: [0, 5000], burn_total_kcal: [0, 12000],
       intake_kcal: [0, 15000], deficit_kcal: [-10000, 10000], method_version: [1, 999] },

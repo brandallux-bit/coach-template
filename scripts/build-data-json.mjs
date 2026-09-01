@@ -90,7 +90,20 @@ const training = trainingRows.map((row) => {
     // `counted-elsewhere` (the day's total is complete without it), a blank duration is `unknown`
     // (the total is short by a real cost), and a planned row is `not-performed`.
     kcalLevel: cost.level,
-    kcalBasis: cost.explain,
+    /**
+     * WHY the figure is what it is — **and, where the duration was reconstructed, that it was.**
+     *
+     * ⚠ **THIS IS THE ONLY ONE OF THESE FIELDS ANY PAGE RENDERS, WHICH IS WHY THE RECONSTRUCTION
+     * HAS TO BE IN IT.** `durationLevel` and `durationBasis` above are machine-readable and were
+     * read by nothing: `src/app/today/page.tsx` and `src/app/history/page.tsx` show `kcalBasis`.
+     * So a session costed from a reconstructed duration rendered as `MET 8 × 44 min` — a figure
+     * that appears in no row of the chart — on a line whose duration cell reads `—`. That is not
+     * silence about an estimate, it is a measurement claimed. X-15: a number no page shows has
+     * failed the same way as a number never written, and here the unshown number was the caveat.
+     */
+    kcalBasis: cost.level === 'flat' && duration.level !== 'recorded'
+      ? `${cost.explain} — the minutes are RECONSTRUCTED, not recorded: ${duration.basis}`
+      : cost.explain,
   }
 })
 

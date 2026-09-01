@@ -45,6 +45,20 @@ export const PROVENANCE_CLASSES = [
 export const PROVENANCE_SECTIONS = ['baseline', 'plan', 'triggers']
 
 /**
+ * Individual keys OUTSIDE those sections that still require a marker, by dotted path.
+ *
+ * ⚠ **A BURN-MODEL INPUT NEEDS A MARKER WHEREVER IT LIVES.** `program` as a whole is not covered —
+ * a weekly template is a schedule, not a threshold, and demanding provenance on every entry would
+ * be the "check that cannot go green without inventing data" the note above refuses. But
+ * `program.setRestSec` reconstructs the duration of a session that was performed but not timed, so
+ * it changes a burn figure — and the whole point of asking about it at intake is that the shipped
+ * 70 is the COACH's proposal, not the athlete's. Without this, a chart could set it with nothing
+ * recording whose number it is, which is exactly what X-16 exists to prevent. A chart that never
+ * answers has no key and nothing to mark; one that answers must say who answered.
+ */
+export const PROVENANCE_KEYS = ['program.setRestSec']
+
+/**
  * How long a coach-produced number gets to be a live proposal before it becomes a finding.
  *
  * A number proposed this morning belongs in the conversation, not in a list — surfacing it
@@ -73,6 +87,34 @@ const realKeys = (obj) => Object.keys(obj ?? {}).filter((k) => !k.startsWith('_'
  *
  * Returns `[{ section, key, problem }]`. Empty means every value names its source.
  */
+/**
+ * What is wrong with one marker, if anything. One home, because `auditProvenance` now applies these
+ * rules from two places and two copies of them would drift the first time a class was added.
+ */
+function markerProblems(section, key, m) {
+  const out = []
+  const flag = (problem) => out.push({ section, key, problem })
+  if (!PROVENANCE_CLASSES.includes(m.class)) {
+    flag(`class ${JSON.stringify(m.class)} is not one of ${PROVENANCE_CLASSES.join(' | ')}`)
+  }
+  if (!DATE_RE.test(m.asOf ?? '')) {
+    flag(`asOf must be a YYYY-MM-DD date, got ${JSON.stringify(m.asOf)}`)
+  }
+  if (!isText(m.source)) flag('source must name where the reasoning is written down')
+  if (!isText(m.note)) flag('note must say, in prose, whose number this is')
+  // The evidence each class is worthless without. An `athlete-stated` marker with no quote and no
+  // measurement asserts authorship and proves nothing, which is worse than an honest
+  // `coach-proposed-unconfirmed`.
+  if ((m.class === 'athlete-stated' || m.class === 'athlete-confirmed')
+    && !isText(m.quote) && !isText(m.measured)) {
+    flag(`${m.class} requires a quote (their words about THIS number) or measured (the row and protocol it was read from)`)
+  }
+  if (m.class === 'derived' && !isText(m.inputs)) {
+    flag('derived requires inputs — name the numbers it was computed from, not just the result')
+  }
+  return out
+}
+
 export function auditProvenance(constants) {
   const problems = []
   const flag = (section, key, problem) => problems.push({ section, key, problem })
@@ -96,31 +138,28 @@ export function auditProvenance(constants) {
         flag(section, key, 'has no provenance marker: nothing records whether the athlete said this or the coach did')
         continue
       }
-      if (!PROVENANCE_CLASSES.includes(m.class)) {
-        flag(section, key, `class ${JSON.stringify(m.class)} is not one of ${PROVENANCE_CLASSES.join(' | ')}`)
-      }
-      if (!DATE_RE.test(m.asOf ?? '')) {
-        flag(section, key, `asOf must be a YYYY-MM-DD date, got ${JSON.stringify(m.asOf)}`)
-      }
-      if (!isText(m.source)) flag(section, key, 'source must name where the reasoning is written down')
-      if (!isText(m.note)) flag(section, key, 'note must say, in prose, whose number this is')
-
-      // The evidence each class is worthless without. An `athlete-stated` marker with no quote and
-      // no measurement is the 185 lb ceiling wearing a badge — it asserts authorship and proves
-      // nothing, which is worse than an honest `coach-proposed-unconfirmed`.
-      if (m.class === 'athlete-stated' || m.class === 'athlete-confirmed') {
-        if (!isText(m.quote) && !isText(m.measured)) {
-          flag(section, key, `${m.class} requires a quote (their words about THIS number) or measured (the row and protocol it was read from)`)
-        }
-      }
-      if (m.class === 'derived' && !isText(m.inputs)) {
-        flag(section, key, 'derived requires inputs — name the numbers it was computed from, not just the result')
-      }
+      problems.push(...markerProblems(section, key, m))
     }
 
     for (const key of realKeys(marks)) {
       if (!(key in block)) flag(section, key, 'marker describes a value that no longer exists in this section')
     }
+  }
+
+  // ⚠ **THE NAMED KEYS OUTSIDE THOSE SECTIONS.** Same marker rules, reached by dotted path — see
+  // PROVENANCE_KEYS for why a burn-model input in `program` is covered while the rest of `program`
+  // is not. A key the chart has not set is not a failure: there is no number to attribute.
+  for (const path of PROVENANCE_KEYS) {
+    const [section, key] = path.split('.')
+    const block = constants?.[section]
+    if (!block || typeof block !== 'object' || !(key in block)) continue
+    const m = block._provenance?.[key]
+    if (!m || typeof m !== 'object') {
+      flag(section, key, 'has no provenance marker: nothing records whether the athlete said this '
+        + 'or the coach did, and this value changes a burn figure')
+      continue
+    }
+    problems.push(...markerProblems(section, key, m))
   }
 
   return problems

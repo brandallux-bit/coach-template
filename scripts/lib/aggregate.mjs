@@ -315,8 +315,8 @@ export function minutesFromSets(setCount, workSec, restSec) {
  * the alternative is a literal "about 90 seconds a set" that would be one more coach-invented
  * figure filed as the athlete's (INVARIANTS.md X-12). Every timed session inverts the formula
  * above — `(minutes × 60 − (sets − 1) × restSec) ÷ sets` — and the MEDIAN of those is returned,
- * because on real ledgers a dense circuit and a heavy strength session sit a factor of three apart
- * in seconds per set, and a mean would let either end drag the answer.
+ * because on real ledgers a dense conditioning session and a heavy lifting session sit a factor of
+ * three apart in seconds per set, and a mean would let either end drag the answer.
  *
  * ⚠ **AND IT IS A WEAK ESTIMATOR — `n` AND `spreadSec` ARE RETURNED SO A SURFACE MUST SAY SO.**
  * Measured on one real chart's timed strength sessions, the regression of duration on set count
@@ -383,6 +383,14 @@ export function observedDailyBurn(energyRows, minDays = MIN_DAYS_FOR_OBSERVED_BU
   return {
     meanKcal: meanOrNull(complete.map((r) => n(r.burn_total_kcal))),
     days: complete.length,
+    /**
+     * **How many of those days had a session cost reconstructed rather than recorded.** Above zero
+     * means this mean is part estimate, and a surface rendering it owes the reader that — the same
+     * contract `estimatedBurnDays` carries one level up. Reported rather than excluded: dropping
+     * these days would return null on any chart that rarely times its sessions, which is the whole
+     * quantitative half going inert in order to avoid marking a number.
+     */
+    estimatedDays: complete.filter((r) => r.session_estimated === 'y').length,
     from: dates[0] ?? null,
     to: dates[dates.length - 1] ?? null,
   }

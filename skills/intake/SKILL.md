@@ -358,9 +358,12 @@ Run these in order, once, when the interview is finished and the values are real
    - **`program.setRestSec`** — ONE question, and only where the chart has a training domain:
      *"Roughly how long do you rest between working sets?"* The system ships **70 seconds** and it
      works without an answer, so this is a confirmation rather than a requirement. Write what they
-     say, marked `athlete-stated`. If they do not know or do not care — a common and reasonable
-     answer — write nothing, and the shipped default applies with its own provenance already
-     recorded as `coach-proposed-unconfirmed`. **Never file the 70 as theirs.** It reconstructs the
+     say, with a `program._provenance.setRestSec` marker beside it carrying their words, class
+     `athlete-stated` — `test-provenance` requires a marker for this key specifically, because it
+     changes a burn figure. Then run `node scripts/build-docs.mjs`, so `data/METHOD.md` states
+     their figure rather than the shipped one. If they do not know or do not care — a common and
+     reasonable answer — write nothing at all, and the default applies. **Never file the 70 as
+     theirs.** It reconstructs the
      duration of a session that was performed but not timed, so it is a real input to the burn
      model, and a number the coach chose must not arrive in the record wearing the athlete's name.
 

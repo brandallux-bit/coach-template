@@ -588,6 +588,42 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
     rejects('a non-numeric setRestSec is REJECTED', badRest.out, badRest.code,
       /setRestSec must be a non-negative number/)
 
+    /**
+     * ⚠ **ANSWERING THE ONE NEW INTAKE QUESTION MUST NOT TURN THE BUILD RED.**
+     *
+     * `data/METHOD.md` stated the rest figure as a literal `70 s`, and `test-single-home`'s FIGURES
+     * rule compares prose against the constant — so a chart answering with a different figure, the
+     * exact thing intake asks for, could not commit until somebody found and hand-edited a sentence
+     * in a file nothing had told them about. That is the same dilemma this repo refuses for the
+     * method digest, one file over. The sentence is generated now; this asserts it.
+     */
+    const answered = JSON.parse(JSON.stringify(FRESH_CHART))
+    answered.program = {
+      ...answered.program,
+      setRestSec: 90,
+      // The marker `PROVENANCE_KEYS` requires. It is the whole point of asking: the shipped 70 is
+      // the coach's proposal, and a chart that answers records whose number the 90 is.
+      _provenance: {
+        setRestSec: {
+          class: 'athlete-stated', asOf: '2026-08-14', quote: 'About a minute and a half between sets.',
+          source: 'intake session 2', note: 'Their own figure, replacing the shipped default.',
+        },
+      },
+    }
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(answered, null, 2)}\n`)
+    const regen = runScript(repo, 'build-docs.mjs')
+    const answeredCheck = runCheckAll(repo)
+    regen.code === 0 && answeredCheck.code === 0
+      ? ok('a chart that ANSWERS the rest question builds green, after the documented build-docs run')
+      : fail('answering an intake question must not require hand-editing a generated document',
+        `build-docs ${regen.code}\n${answeredCheck.out.slice(-900)}`)
+    ;(/90 s rest/).test(readFileSync(join(repo, 'data', 'METHOD.md'), 'utf8'))
+      ? ok('...and the method document now states THEIR figure, not the shipped default')
+      : fail('the generated rung text must carry the chart\'s own rest figure',
+        readFileSync(join(repo, 'data', 'METHOD.md'), 'utf8').match(/.{0,80}s rest.{0,40}/)?.[0] ?? '(no match)')
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(FRESH_CHART, null, 2)}\n`)
+    runScript(repo, 'build-docs.mjs')
+
     // ⚠ **AND THE GENERATOR IS THE SCRIPT THAT WOULD HAVE FAILED EVERY MORNING INSTEAD** — the
     // whole point of moving the check upstream is that this failure never reaches a user. Asserting
     // its MESSAGE, not merely a non-zero exit: any unrelated breakage in generate-targets.mjs would
@@ -712,6 +748,34 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
       ? ok('an untimed session of a type with a standing duration is COSTED, not left blank')
       : fail('rung 4 of the duration resolver did not fire — standingDurationMin was not read',
         JSON.stringify(mobilityRows.map((r) => [r.date, r.session_kcal])))
+
+    /**
+     * ⚠ **A RECONSTRUCTED DURATION MUST REACH THE PAGE, NOT JUST THE BUNDLE.**
+     *
+     * `durationLevel`, `durationMinUsed` and `durationBasis` are published and read by nothing —
+     * what Today and History render is `kcalBasis`. So a session costed from a reconstructed
+     * duration showed as `MET 2.5 × 20 min`, a figure appearing in no row of the chart, on a line
+     * whose duration cell reads `—`. That is not silence about an estimate; it is a measurement
+     * claimed. X-15: a number no page shows has failed the same way as a number never written, and
+     * here the unshown number was the caveat.
+     *
+     * And the ledger has to carry it too, because `observedDailyBurn` averages `complete` days
+     * precisely so estimates stay out of the figure that prices every unfinished day.
+     */
+    const bundleC = JSON.parse(readFileSync(join(repo, 'src', 'generated', 'data.json'), 'utf8'))
+    const reconstructed = bundleC.training.filter((t) => t.durationLevel && t.durationLevel !== 'recorded')
+    reconstructed.length > 0 && reconstructed.every((t) => /RECONSTRUCTED/.test(t.kcalBasis))
+      ? ok(`the ${reconstructed.length} reconstructed row(s) say so in the string the pages render`)
+      : fail('a reconstructed duration rendered as a recorded one',
+        JSON.stringify(reconstructed.map((t) => [t.date, t.durationLevel, t.kcalBasis]).slice(0, 3)))
+    rows.filter((r) => mobilityDays.includes(r.date)).every((r) => r.session_estimated === 'y')
+      ? ok('...and the ledger marks those days estimated, so the burn mean can declare itself')
+      : fail('a reconstructed day must not enter observedDailyBurn as a measurement',
+        JSON.stringify(rows.filter((r) => mobilityDays.includes(r.date)).map((r) => [r.date, r.session_estimated])))
+    rows.filter((r) => !mobilityDays.includes(r.date)).every((r) => r.session_estimated === 'n')
+      ? ok('...while a day whose sessions were all timed is not marked estimated')
+      : fail('a recorded duration must not be marked as reconstructed',
+        JSON.stringify(rows.filter((r) => r.session_estimated !== 'n').map((r) => r.date)))
 
     /**
      * ⚠ **THE PRECONDITION FOR THE CRASH THIS STATE WAS BUILT ON, ASSERTED DIRECTLY — because the
