@@ -37,6 +37,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { git, gitTry } from './lib/git.mjs'
+import { SYSTEM_PATHS } from './lib/system-paths.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FETCH = process.argv.includes('--fetch')
@@ -46,39 +47,6 @@ const PIN = process.argv.includes('--pin')
 /** The remote the template lives on. `SETUP.md` §1 renames the template clone's origin to this. */
 const REF = process.env.TEMPLATE_REF || 'upstream/main'
 
-/**
- * The system layer: everything that is the same on every chart, and therefore everything a
- * divergence is a bug in.
- *
- * WHAT IS DELIBERATELY NOT HERE, and why the omissions matter more than the inclusions.
- * `athlete/`, `data/*.csv`, `logs/`, `decisions.md`, `nutrition/`, `program/`, `photos/` are the
- * chart — they are SUPPOSED to differ, completely, on every chart, and listing them would drown
- * the signal in exactly the noise that makes a check get ignored. `docs/` is per-chart except for
- * the two design documents shared code cites by name.
- *
- * TO ADD A PATH: it belongs here if the answer to "should another athlete's chart have this same
- * file?" is yes. If the answer is "yes but with their content in it", it does not belong here —
- * it belongs in the chart, and a `TEMPLATE-*` form belongs in the template.
- */
-const SYSTEM_PATHS = [
-  'scripts',
-  'src',
-  'skills',
-  '.claude/agents',
-  '.claude/launch.json',
-  '.github/workflows',
-  'CLAUDE.md',
-  'README.md',
-  'data/METHOD.md',
-  'logs/TEMPLATE-daily.md',
-  'logs/TEMPLATE-weekly-review.md',
-  'package.json',
-  'next.config.mjs',
-  'tsconfig.json',
-  '.gitignore',
-  'docs/SURFACES.md',
-  'docs/INVARIANTS.md',
-]
 
 /**
  * Divergences somebody has looked at and decided are correct.

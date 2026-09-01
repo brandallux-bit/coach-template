@@ -368,7 +368,29 @@ const isChartInstance = (root, rel) => {
   return false
 }
 
-export function scanForLeaks(root, denylist = denylistFrom(root)) {
+/**
+ * `only` — scan exactly this set of repo-relative paths, and consult neither `isChartInstance` nor
+ * the SCOPE walk to decide the file set.
+ *
+ * ⚠ **FOR ONE CALLER, AND IT IS NOT A LOOSENING — IT IS THE OPPOSITE.** `port-overlay.mjs` copies
+ * the TEMPLATE's shared files on top of a real chart so a denylist exists to check them against.
+ * The moment the template's `skills/library/` lands in that clone, `isChartInstance()` starts
+ * returning true for every one of the chart's own promoted skills and agents — so a scan that
+ * trusted it would silently exempt files that ARE scanned in both real repos, and measure a file
+ * set neither of them has. Passing the exact list of paths that were copied removes the guess: the
+ * question the overlay asks is "is the template's copy of this file clean of this athlete?", and
+ * the chart's own instance files are not the template's copies of anything.
+ *
+ * ⚠ **`NEVER_SCANNED` IS ALSO BYPASSED, DELIBERATELY.** Its `scripts/test-` entry rests on a
+ * CHART's argument — a red fixture drawn from the real case it reproduces is X-10 working. The
+ * template has no real case to reproduce, so one athlete's numbers in its fixtures would be a
+ * leak that ships to every fork, and this is the only scan positioned to see it. The build
+ * artifacts the other two entries name are untracked, so they never reach `only` in the first
+ * place.
+ *
+ * Every other caller omits it and gets the SCOPE walk with both skips intact.
+ */
+export function scanForLeaks(root, denylist = denylistFrom(root), { only = null } = {}) {
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   /** `\b` only where the phrase's own first/last character is a word character. */
   const bound = (pattern, raw) =>
@@ -398,8 +420,11 @@ export function scanForLeaks(root, denylist = denylistFrom(root)) {
   for (const { dir, mode, kind } of SCOPE) {
     for (const full of walk(join(root, dir))) {
       const rel = relative(root, full)
-      if (NEVER_SCANNED.some((n) => rel.startsWith(n.path))) continue
-      if (isChartInstance(root, rel)) continue
+      if (only) { if (!only.has(rel)) continue }
+      else {
+        if (NEVER_SCANNED.some((n) => rel.startsWith(n.path))) continue
+        if (isChartInstance(root, rel)) continue
+      }
       const raw = readFileSync(full, 'utf8')
       const isCode = kind === 'code' && /\.(mjs|js|ts|tsx)$/.test(rel)
       const text = isCode ? stripComments(raw) : raw
