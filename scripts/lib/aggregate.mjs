@@ -51,17 +51,38 @@ export function meanOrNull(values) {
 /**
  * The columns `energy.csv`'s `burn_total_kcal` is built from, in the order the model adds them.
  *
- * `clockDriven` is the proration rule, not a display hint: RMR and non-step NEAT accrue with the
- * clock, so a day in progress holds a fraction of them. The other three exist only once the meal,
- * the step feed or the session has been logged, so they are accrued-to-date by construction.
+ * `clockDriven` is the proration rule, not a display hint: resting metabolism, background NEAT and
+ * incidental movement accrue with the clock, so a day in progress holds a fraction of them. The
+ * others exist only once the meal, the feed or the session has been logged, so they are
+ * accrued-to-date by construction.
+ *
+ * ⚠ **TWO OF THESE ARE ONE SLOT.** `steps_kcal` and `incidental_kcal` are alternative fillings of
+ * the same term in the decomposition — a counted day versus a described one — and **exactly one of
+ * them is ever non-blank on a well-formed row.** A chart with a wearable feed writes the first and
+ * leaves the second blank forever; a chart without one does the reverse. They are marked
+ * `movement: true` and `missingBurnComponents` reads the PAIR, which is what lets both
+ * configurations reach `complete = y` without any consumer knowing which one it is looking at.
  */
 export const BURN_COMPONENTS = [
   { column: 'rmr_kcal', label: 'resting metabolism', clockDriven: true },
-  { column: 'neat_other_kcal', label: 'non-step movement', clockDriven: true },
+  { column: 'neat_other_kcal', label: 'background movement', clockDriven: true },
   { column: 'tef_kcal', label: 'the thermic effect of food', clockDriven: false },
-  { column: 'steps_kcal', label: 'the step count', clockDriven: false },
+  { column: 'steps_kcal', label: 'daily movement outside sessions', clockDriven: false, movement: true },
+  { column: 'incidental_kcal', label: 'daily movement outside sessions', clockDriven: true, movement: true },
   { column: 'session_kcal', label: 'session burn', clockDriven: false },
 ]
+
+/**
+ * The movement pair, and the column reported when NEITHER of them is present.
+ *
+ * ⚠ **ONE LABEL FOR BOTH, WHICH IS THE USER-VISIBLE HALF OF THIS FIX.** Before this, a chart with
+ * no wearable was told every day, forever, that *"the step count"* was missing from its burn — an
+ * input it never had and was never going to have. The label now names the SLOT rather than one way
+ * of filling it, so it is true in both configurations, and the findings layer names the cause: a
+ * feed that has stopped arriving is `WORKFLOW_FEEDS`, an unanswered movement question is the
+ * provenance finding. A second marker for one cause is how a card stops being read.
+ */
+const MOVEMENT_COLUMNS = BURN_COMPONENTS.filter((c) => c.movement).map((c) => c.column)
 
 /**
  * Which burn components are absent from an `energy.csv` row — i.e. counted as zero in its total.
@@ -78,8 +99,13 @@ export const BURN_COMPONENTS = [
  * athlete would reasonably conclude he was eating over maintenance and cut further.
  */
 export function missingBurnComponents(energyRow) {
-  if (!energyRow) return BURN_COMPONENTS.map((c) => c.column)
-  return BURN_COMPONENTS.filter((c) => n(energyRow[c.column]) == null).map((c) => c.column)
+  const present = (column) => energyRow != null && n(energyRow[column]) != null
+  // The pair collapses to its first column: reporting both would print one label twice and would
+  // claim a chart is missing an input it does not have. See MOVEMENT_COLUMNS above.
+  const movementMissing = !MOVEMENT_COLUMNS.some(present)
+  return BURN_COMPONENTS
+    .filter((c) => (c.movement ? movementMissing && c.column === MOVEMENT_COLUMNS[0] : !present(c.column)))
+    .map((c) => c.column)
 }
 
 /** The human-readable names for what `missingBurnComponents` returned. */
@@ -342,6 +368,42 @@ export function impliedSetWorkSec(samples = [], restSec = 0) {
     spreadSec: implied[implied.length - 1] - implied[0],
   }
 }
+
+/**
+ * The chart's OWN mean daily step count, from `steps.csv`. The step twin of `observedDailyBurn`.
+ *
+ * ⚠ **IT EXISTS BECAUSE THE FORWARD VIEW WAS PRICING STEPS AT THE TARGET.** The movement term on
+ * every future day was `stepsPerDayTarget × kcalPerStepPerLb × weight` — the plan, restated as a
+ * prediction — while `steps.csv` held weeks of what the athlete actually walks. A target is a
+ * decision; a trailing mean is evidence, and on the one burn component that is measured every
+ * single day, the forward view has no business preferring the decision. The target stays as the
+ * reference line beside it.
+ *
+ * `minSteps` is the implausibility threshold PASSED IN by the caller, not restated here: a day the
+ * feed truncated to a handful of steps is a broken reading, and averaging it in drags the forward
+ * figure down for a week. Below it the row is skipped rather than corrected — a step count nobody
+ * confirmed is not this function's to invent.
+ *
+ * Every row in `steps.csv` is a FINISHED day by construction (the feed writes the previous day's
+ * completed total), so there is no in-progress day to exclude here the way `meanOfAccumulating`
+ * must.
+ *
+ * Null on a chart with no feed, which is not a degraded state: that chart's movement term comes
+ * from `scripts/lib/movement.mjs` instead, and nothing here is expected to answer.
+ */
+export function observedDailySteps(stepRows, minSteps = 0) {
+  const usable = (stepRows ?? [])
+    .filter((r) => n(r?.steps) != null && n(r.steps) >= minSteps)
+  if (!usable.length) return null
+  const dates = usable.map((r) => r.date).filter(Boolean).sort()
+  return {
+    meanSteps: meanOrNull(usable.map((r) => n(r.steps))),
+    days: usable.length,
+    from: dates[0] ?? null,
+    to: dates[dates.length - 1] ?? null,
+  }
+}
+
 
 /**
  * How many COMPLETE days a chart needs before its own burn figures beat the plan's estimate.

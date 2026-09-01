@@ -144,7 +144,13 @@ const FRESH_CHART = {
   sessionTypes: {
     swim: { met: 7.0, countsTowardFloor: true, domain: 'Swim faster', note: 'Pool swimming, moderate.' },
     ergo: { met: 8.0, countsTowardFloor: true, domain: 'Swim faster', note: 'Rowing ergometer.' },
-    stroll: { met: 0, energyCountedIn: 'steps', countsTowardFloor: false, domain: 'Swim faster', note: 'Counted in steps.' },
+    // ⚠ **A WALKING TYPE ON A CHART WITH NO FEED IS PRICED AT A REAL MET, AND `loading: false`.**
+    // The other spelling — `met: 0, energyCountedIn: 'steps'` — promises the energy is counted in a
+    // column this chart will never fill, so the movement is counted NOWHERE. `validate-data.mjs`
+    // now rejects that combination and the red fixture below is the one that proves it does. The
+    // default `loading` rule would call this MET-3.5 entry loading and read a week of walks as a
+    // week with no rest day, which is the one case that default cannot get right on its own.
+    stroll: { met: 3.5, countsTowardFloor: false, loading: false, domain: 'Swim faster', note: 'Easy walking. Nothing else counts it on this chart.' },
   },
   program: {
     weeklyTemplate: {
@@ -164,12 +170,17 @@ const FRESH_CHART = {
  * running — a weekday calorie map and a weekly template — and deliberately **no
  * `plan.stepsPerDayTarget`**, because they never set up a feed.
  *
- * ⚠ **`stroll` KEEPS `energyCountedIn: 'steps'` ON A CHART WITH NO STEPS, AND THAT IS THE POINT.**
- * It is what intake writes today, and on a chart with a feed it is correct — the walk is priced
- * once, in the step count, and pricing it again as a session would double-count it. With no feed
- * there is nothing on the other side of that promise, so the movement is priced NOWHERE. The
- * fixture reproduces the defect rather than tidying it away; a fixture tuned until it passes
- * asserts nothing (X-10).
+ * ⚠ **THE WALKING TYPE IS PRICED AS A SESSION HERE, WHICH IS WHAT NO FEED MEANS.** It used to
+ * carry `met: 0, energyCountedIn: 'steps'` — correct on a chart WITH a feed, where the walk is
+ * priced once in the step count — and this fixture kept it deliberately, to reproduce the defect
+ * rather than tidy it away: with no feed there is nothing on the other side of that promise, so
+ * the movement was priced nowhere. `validate-data.mjs` now rejects the combination outright, so
+ * the defect has moved from this fixture to a red one in State B, which is where a caught defect
+ * belongs. The chart itself is now the configuration it always should have been.
+ *
+ * It also declares `plan.movementOutsideExerciseLevel` — the incidental movement nothing else
+ * counts. The two are not the same thing and both are needed: the level covers being on their feet
+ * around the house, the session covers the walk they chose to go on.
  */
 const NO_FEED_CHART = {
   ...FRESH_CHART,
@@ -179,9 +190,13 @@ const NO_FEED_CHART = {
     maxRatePctBwPerWk: 1.0,
     sessionsPerWeekFloor: 3,
     sessionsPerWeekTarget: 5,
-    // No `stepsPerDayTarget`. Absent, not zero: they have no feed and never answered a step
-    // question, and `data/METHOD.md` rule 6 is explicit that a blank and a measured zero are
-    // different claims.
+    // No `stepsPerDayTarget` and no `stepFeed`. Absent, not zero: they have no feed and never
+    // answered a step question, and `data/METHOD.md` rule 6 is explicit that a blank and a
+    // measured zero are different claims.
+    //
+    // What they DID answer is how much they move outside deliberate exercise. That is the movement
+    // term on a chart like this one, and it is what makes `complete=y` reachable here at all.
+    movementOutsideExerciseLevel: 'active',
     //
     // Every value above carries a marker, because `test-provenance.mjs` requires one of every
     // threshold on a live chart and this fixture IS a live chart as far as that check is
@@ -192,6 +207,12 @@ const NO_FEED_CHART = {
       targetRateLbPerWk: {
         class: 'athlete-stated', asOf: '2026-08-14', quote: 'Slow is fine. Half a kilo a week at most.',
         source: 'intake session 2', note: 'Their own pace, in their own words.',
+      },
+      movementOutsideExerciseLevel: {
+        class: 'athlete-stated', asOf: '2026-08-14',
+        quote: 'I am up and down all day, and I walk part of the way in.',
+        source: 'intake session 2',
+        note: 'Their own description of an ordinary day, outside anything they would call exercise.',
       },
       maxRatePctBwPerWk: {
         class: 'external', asOf: '2026-08-14', source: 'CLAUDE.md §5.2',
@@ -589,6 +610,63 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       /setRestSec must be a non-negative number/)
 
     /**
+     * ⚠ **THE MOVEMENT DECLARATION — THREE WAYS TO GET THE BURN MODEL'S LARGEST DISCRETIONARY TERM
+     * WRONG, none of which anything used to notice.**
+     *
+     * `FRESH_CHART` is the no-feed configuration, which is what most forks are. Each fixture below
+     * breaks one thing about that and asserts the build says so.
+     */
+    const strayCounted = withMap((c) => {
+      c.sessionTypes = {
+        ...c.sessionTypes,
+        stroll: { met: 0, energyCountedIn: 'steps', countsTowardFloor: false, loading: false, domain: 'Swim faster', note: 'Counted in steps.' },
+      }
+    })
+    rejects('a walking type counted in a step feed this chart does not have is REJECTED — that '
+      + 'movement is counted NOWHERE',
+      strayCounted.out, strayCounted.code, /energyCountedIn is "steps", but this chart declares no/)
+
+    const unknownLevel = withMap((c) => { c.plan = { ...c.plan, movementOutsideExerciseLevel: 'quite active' } })
+    rejects('a movement level that is not one of the described ones is REJECTED, naming them',
+      unknownLevel.out, unknownLevel.code, /movementOutsideExerciseLevel is "quite active", which is not one of/)
+
+    const both = withMap((c) => {
+      c.plan = { ...c.plan, stepFeed: 'apple-health-shortcut', movementOutsideExerciseLevel: 'light' }
+    })
+    rejects('a described level BESIDE a declared feed is REJECTED — the feed already counts it',
+      both.out, both.code, /is set AND plan\.stepFeed names/)
+
+    /**
+     * ⚠ **AND THE OTHER CONFIGURATION IS STILL FIRST-CLASS.** A chart WITH a wearable declares the
+     * feed and prices its walking type at MET 0, and that has to stay green — the point of this
+     * phase is that neither configuration is the fallback for the other. Without this fixture the
+     * three red cases above could all be satisfied by a validator that simply banned step feeds.
+     */
+    const withFeed = JSON.parse(JSON.stringify(FRESH_CHART))
+    withFeed.plan.stepFeed = 'apple-health-shortcut'
+    withFeed.plan.stepsPerDayTarget = 9000
+    withFeed.plan._provenance.stepFeed = {
+      class: 'athlete-stated', asOf: '2026-08-14', quote: 'I wear the watch every day anyway.',
+      source: 'intake session 1', note: 'Their own device and their own decision to wire it up.',
+    }
+    withFeed.plan._provenance.stepsPerDayTarget = {
+      class: 'athlete-stated', asOf: '2026-08-14', quote: 'Nine thousand feels right.',
+      source: 'intake session 1', note: 'Their own figure.',
+    }
+    withFeed.sessionTypes.stroll = {
+      met: 0, energyCountedIn: 'steps', countsTowardFloor: false, loading: false,
+      domain: 'Swim faster', note: 'Counted in the step feed, so never priced twice.',
+    }
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(withFeed, null, 2)}\n`)
+    runScript(repo, 'build-docs.mjs')
+    const feedCheck = runCheckAll(repo)
+    feedCheck.code === 0
+      ? ok('a chart WITH a wearable feed is equally green — neither configuration is the fallback')
+      : fail('the wearable path must stay first-class', feedCheck.out.slice(-900))
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(FRESH_CHART, null, 2)}\n`)
+    runScript(repo, 'build-docs.mjs')
+
+    /**
      * ⚠ **ANSWERING THE ONE NEW INTAKE QUESTION MUST NOT TURN THE BUILD RED.**
      *
      * `data/METHOD.md` stated the rest figure as a literal `70 s`, and `test-single-home`'s FIGURES
@@ -726,12 +804,41 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
       : fail('a chart with no feed must not record a measured zero for steps',
         JSON.stringify(rows.filter((r) => r.steps_kcal !== '').slice(0, 3)))
 
-    // ⚠ **RECORDED AS THE CURRENT STATE, NOT ASSERTED AS CORRECT.** Today `complete` is gated on
-    // `stepsKcal != null`, so it is 'n' on every row of this chart forever and everything
-    // downstream of it — `observedDailyBurn`, the OUT side of the weekly energy card, the burn
-    // projection, the budget-vs-goal finding — is inert. That is a defect, not a property.
+    /**
+     * ⚠ **AND THE MOVEMENT SLOT IS FILLED ANYWAY — WHICH IS THE ENTIRE PHASE.**
+     *
+     * `steps_kcal` blank is honest and was never the problem. The problem was that nothing else
+     * filled the slot, so a day with no wearable had NO movement term at all: burn understated by
+     * the largest single component after resting metabolism, systematically, on every day forever.
+     * `incidental_kcal` is that slot's other filling, priced from the level this chart described.
+     *
+     * A blank here would mean the described level was not read, which is indistinguishable in the
+     * ledger from the old behaviour — so it is asserted directly, on every row, rather than
+     * inferred from `complete`.
+     */
+    rows.every((r) => r.incidental_kcal !== '' && Number(r.incidental_kcal) > 0)
+      ? ok('...and incidental_kcal fills the movement slot on every one of them')
+      : fail('a chart with no feed must still have a movement term — that is the whole phase',
+        JSON.stringify(rows.filter((r) => !(Number(r.incidental_kcal) > 0)).map((r) => [r.date, r.incidental_kcal]).slice(0, 3)))
+
+    /**
+     * ⚠ **THE ASSERTION THAT USED TO BE A `console.log` OF A KNOWN DEFECT.**
+     *
+     * It read: *"Today `complete` is gated on `stepsKcal != null`, so it is 'n' on every row of
+     * this chart forever and everything downstream of it — `observedDailyBurn`, the OUT side of the
+     * weekly energy card, the burn projection, the budget-vs-goal finding — is inert. That is a
+     * defect, not a property."* It printed `0/28`. It is now a check, and the number it prints is
+     * the number of days this chart can actually reason about.
+     *
+     * Not every row: the last three are the untimed `mobility` days, complete but estimated, and
+     * the first day of the fixture may hold a session with nothing logged against it. What must
+     * hold is that a chart with no wearable reaches complete days AT ALL, which it could not before.
+     */
     const complete = rows.filter((r) => r.complete === 'y').length
-    console.log(`       (${complete}/${rows.length} rows complete — a no-feed chart's known state)`)
+    complete >= MIN_DAYS_FOR_OBSERVED_BURN
+      ? ok(`${complete} of ${rows.length} days are COMPLETE on a chart with no wearable — it was 0`)
+      : fail('a no-feed chart must be able to have a complete day, or its whole quantitative half is inert',
+        `${complete}/${rows.length}; first incomplete: ${JSON.stringify(rows.find((r) => r.complete !== 'y'))}`)
 
     /**
      * ⚠ **THE UNTIMED SESSIONS ARE COSTED, AND FROM THE RUNG THE CHART DECLARED.**
@@ -778,27 +885,38 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
         JSON.stringify(rows.filter((r) => r.session_estimated !== 'n').map((r) => r.date)))
 
     /**
-     * ⚠ **THE PRECONDITION FOR THE CRASH THIS STATE WAS BUILT ON, ASSERTED DIRECTLY — because the
-     * crash itself is NOT REPRODUCIBLE IN THIS REPO YET AND SAYING OTHERWISE WOULD BE A LIE.**
+     * ⚠ **THE ASSERTION THIS STATE WAS BUILT TO INVERT.**
      *
-     * The failure was `test-aggregations.mjs` building a detail string with `mean.days` as an eager
-     * argument, so it threw a TypeError even on the passing path. That line does not exist here: it
-     * arrives with the port of the blank-not-zero work, and its fix arrives beside it. What IS true
-     * here, today, is the condition that makes any such caller explode — `observedDailyBurn`
-     * returns null, permanently, on every chart without a feed — and a guard on a green string is
-     * worth nothing next to the fact itself.
+     * It used to read `observedDailyBurn(rows) === null`, with a docstring recording that a chart
+     * without a feed returns null *permanently* and that every caller therefore has to handle it.
+     * That was the defect stated as a property, which was the honest thing to do at the time and is
+     * not the honest thing to do now: the mean exists.
      *
-     * So this asserts the fact. When the caller lands, it lands on a ledger already known to return
-     * null, and the crash is a named failure here instead of a stack trace at step 11 of 18 in
-     * somebody's live chart.
+     * ⚠ **THE NULL CASE IS NOT ABANDONED — IT MOVED.** A chart genuinely can produce a null mean
+     * (fewer than `MIN_DAYS_FOR_OBSERVED_BURN` complete days, which every chart is on its first
+     * week), and `scripts/test-aggregations.mjs` covers that directly on fixtures. What is gone is
+     * the *permanent* null, which is not a case any chart should ever have been in.
      */
-    observedDailyBurn(rows) === null && rows.length >= MIN_DAYS_FOR_OBSERVED_BURN
-      ? ok(`observedDailyBurn is null on ${rows.length} rows — every caller must handle that, and`
-        + ' this is the only fixture where it is true')
-      : fail('a no-feed chart must expose the null-mean case, or this state is not covering it',
-        `${rows.length} rows, mean=${JSON.stringify(observedDailyBurn(rows))}`)
+    const mean = observedDailyBurn(rows)
+    mean && mean.meanKcal > 0 && mean.days >= MIN_DAYS_FOR_OBSERVED_BURN
+      ? ok(`observedDailyBurn returns ${Math.round(mean.meanKcal)} kcal/day over ${mean.days} days `
+        + '— it returned null forever before, and everything downstream of it was inert')
+      : fail('a no-feed chart with a month of rows must produce a burn mean',
+        `${rows.length} rows, mean=${JSON.stringify(mean)}`)
+
+    /**
+     * ⚠ **AND THE FORWARD VIEW HAS A MOVEMENT ROW, which is a separate failure from the ledger's.**
+     * `addMovement` early-returned on a chart with no `stepsPerDayTarget`, so Next 7 Days and
+     * today's Proposed table costed every future day with no movement in them at all — a different
+     * code path, on a different side of the bundle, failing the same way for the same reason.
+     */
+    const movementItem = (bundleC.plan.movementKcal ?? null)
+    movementItem != null && movementItem > 0 && /step-equivalents/.test(bundleC.plan.movementBasis ?? '')
+      ? ok(`...and the forward view prices movement at ${Math.round(movementItem)} kcal/day, with its basis`)
+      : fail('the forward view must have a movement term too, and must never print it bare',
+        JSON.stringify([bundleC.plan.movementKcal, bundleC.plan.movementBasis]))
     ;!(/TypeError|Cannot read properties of null/).test(all.out)
-      ? ok('...and no suite dereferences it')
+      ? ok('...and no suite dereferences a null aggregate')
       : fail('a null aggregate must be handled, not dereferenced', all.out.slice(-1200))
   } finally {
     discard(dir)

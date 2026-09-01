@@ -1,6 +1,7 @@
 import {
   COUNTS_TOWARD_FLOOR, addDays, allOf, n, plan, prescriptions, training, weekdayKey, type Row,
 } from './data'
+import { movementBasis, movementLevel } from './movement'
 import {
   ABSENT_COUNTED_ELSEWHERE, ABSENT_UNKNOWN, plannedTotal, sessionCost, sessionKcal as kcalFor,
   type IntensityTier, type KcalAbsence,
@@ -311,7 +312,7 @@ export function planDay(date: string, todayIso: string): PlannedDay {
   // the forecast because the walk happened to be written first.
   sessions.forEach((s, i) => addSessionItem(items, s, writtenRows[i] ?? null, date, weightLb))
   addDailyBlock(items, dailyRx, weightLb)
-  addSteps(items, weightLb)
+  addMovement(items, weightLb)
 
   const primary = sessions[0] ?? null
   const total = plannedTotal(items)
@@ -446,15 +447,62 @@ function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
   })
 }
 
-function addSteps(items: PlannedItem[], weightLb: number) {
-  const stepTarget = plan.stepsPerDayTarget ?? null
+/**
+ * ⚠ **THE DAY'S MOVEMENT OUTSIDE SESSIONS — THE TERM THAT USED TO REQUIRE A WEARABLE.**
+ *
+ * Two configurations, and the chart's declaration picks one. Neither is the fallback for the other.
+ *
+ *   **With a step feed** the row is priced at what the athlete ACTUALLY WALKS — the trailing mean
+ *   from `steps.csv` — with the target named beside it as the reference. It used to be priced at
+ *   the target alone, which is the plan restated as a prediction, on the one burn component that is
+ *   measured every single day. The target is still the right line to compare against; it was never
+ *   the right figure to forecast with.
+ *
+ *   **Without one** — the majority configuration — the row is priced from the level the athlete
+ *   described at intake. That row used to not exist at all: `stepsPerDayTarget` defaults to 0 in
+ *   the template, so this function early-returned and the forward view had NO movement term, on a
+ *   chart whose ledger also had none. The whole quantitative half of the system was inert.
+ *
+ * ⚠ **NEVER BOTH.** `plan.movementKcal` is already null whenever a feed is declared — the
+ * exclusivity is decided once, in `scripts/lib/athlete.mjs`, not re-decided here — but this
+ * function still branches on the feed rather than on which figure happens to be non-null, so a
+ * chart that somehow carried both prices the counted one and not the described one.
+ */
+function addMovement(items: PlannedItem[], weightLb: number) {
   const perStep = plan.kcalPerStepPerLb ?? null
-  if (!stepTarget || !perStep) return
+  const feed = (plan.stepFeed ?? '').trim()
+
+  if (feed) {
+    const target = plan.stepsPerDayTarget ?? null
+    const observed = plan.observedSteps ?? null
+    const steps = observed?.meanSteps ?? target ?? null
+    if (!steps || !perStep) return
+    const rounded = Math.round(steps)
+    items.push({
+      label: 'Steps',
+      detail: observed
+        ? `${rounded.toLocaleString()} typical${target ? ` · ${target.toLocaleString()} target` : ''}`
+        : `${rounded.toLocaleString()} target`,
+      kcal: steps * perStep * weightLb,
+      basis: observed
+        ? `${rounded.toLocaleString()} × ${perStep} × ${weightLb} lb — the mean over `
+          + `${observed.days} recorded day${observed.days === 1 ? '' : 's'}`
+          + `${observed.from ? ` (${observed.from} to ${observed.to})` : ''}, not the target`
+          + `${target ? `. The ${target.toLocaleString()} target is the line beside it.` : ''}`
+        : `${rounded.toLocaleString()} × ${perStep} × ${weightLb} lb — the target, `
+          + 'because data/steps.csv holds no usable day to average yet',
+    })
+    return
+  }
+
+  const kcal = plan.movementKcal ?? null
+  if (kcal == null) return
   items.push({
-    label: 'Steps',
-    detail: `${stepTarget.toLocaleString()} target`,
-    kcal: stepTarget * perStep * weightLb,
-    basis: `${stepTarget.toLocaleString()} × ${perStep} × ${weightLb} lb`,
+    label: 'Daily movement',
+    detail: movementLevel(plan.movementOutsideExerciseLevel)?.label ?? 'outside deliberate exercise',
+    kcal,
+    basis: plan.movementBasis
+      ?? movementBasis(plan.movementOutsideExerciseLevel, weightLb, perStep),
   })
 }
 

@@ -10,14 +10,15 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildFindings } from './lib/findings.mjs'
+import { IMPLAUSIBLE_STEPS, buildFindings } from './lib/findings.mjs'
 import { collectFindingsInputs } from './lib/findings-inputs.mjs'
 import { readCsv, num } from './lib/csv.mjs'
 import { missingPlanFields } from './lib/schema.mjs'
-import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
+import { latestOnOrBefore, observedDailySteps, sessionBurns } from './lib/aggregate.mjs'
 import { ageOn, constants, hasChart, rmrFloorKcal, sessionCostFor, stripNotes, metTable,
   KCAL_PER_STEP_PER_LB, KCAL_PER_LB_FAT, metByIntensityTable, localToday, sessionTypeEnum,
   prescribedSessionMin, sessionTypes, setRestSec, countsTowardFloorSet,
+  movementKcalFor, movementBasisFor,
 } from './lib/athlete.mjs'
 import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 
@@ -121,6 +122,12 @@ const latestWeightLb =
   body.map((r) => num(r.weight_lb)).filter((v) => v != null).at(-1) ?? c.baseline.weightLb
 const asOf = body.at(-1)?.date
 
+// ⚠ **READ BEFORE `plan`, WHICH DERIVES THE OBSERVED STEP MEAN FROM IT.** `const` is in its
+// temporal dead zone until this line runs, so a `plan` built above it throws a ReferenceError
+// the moment a chart exists — and NOT on the template, where `hasChart` short-circuits the read
+// before it happens. That is the shape of bug that ships green and breaks the first fork.
+const steps = readCsv(join(DATA, 'steps.csv'))
+
 const plan = {
   ...c.plan,
   ...c.triggers,
@@ -146,6 +153,24 @@ const plan = {
   metByType: metTable(),
   metByIntensity: metByIntensityTable(),
   kcalPerStepPerLb: KCAL_PER_STEP_PER_LB,
+  /**
+   * ⚠ **WHAT THE ATHLETE ACTUALLY WALKS, so the forward view stops pricing movement at the plan.**
+   * Computed here rather than in `src/lib/forecast.ts` for the same reason the MET table is: one
+   * implementation, shared with the ledger's suite, instead of a TypeScript copy nothing property-
+   * tests. Null on a chart with no step feed — that chart's movement term is the described level
+   * below, and the two are mutually exclusive by construction (scripts/lib/movement.mjs).
+   */
+  observedSteps: hasChart ? observedDailySteps(steps, IMPLAUSIBLE_STEPS) : null,
+  /**
+   * The movement term for a chart with NO feed, in kcal/day, and the derivation behind it.
+   *
+   * Derived here and stored nowhere: `data/METHOD.md` rule 5 puts a maintenance-shaped figure at
+   * `derived` even though the coach chose its coefficients, and a second home for it in
+   * `constants.json` would be a number that could disagree with the ledger's. The chart stores the
+   * LEVEL — the athlete's own words — and this is what that level costs at today's weight.
+   */
+  movementKcal: hasChart ? movementKcalFor(latestWeightLb) : null,
+  movementBasis: hasChart ? movementBasisFor(latestWeightLb) : null,
   // The 3,500 kcal/lb modelling constant, re-exported for the same reason as the MET table above:
   // the weekly card converts a projected calorie gap into pounds, and a `3500` typed into a page
   // would be a second home for a constant whose docstring says it must not have one (X-8).
@@ -190,8 +215,6 @@ const plan = {
   // sourcing keys, so only the copy itself reaches the bundle.
   copy: c.copy ?? {},
 }
-
-const steps = readCsv(join(DATA, 'steps.csv'))
 
 const bundle = {
   plan,

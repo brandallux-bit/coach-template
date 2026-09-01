@@ -66,7 +66,11 @@ const MIN_READINGS_PER_WINDOW = 3
  * TRUE and is recorded without argument (see `scripts/log-steps-row.mjs` for where that boundary
  * sits and why). This asks the coach to check it, once, in conversation.
  */
-const IMPLAUSIBLE_STEPS = 1500
+// Exported so `scripts/build-data-json.mjs` can pass it into `observedDailySteps` rather than
+// keeping a second copy: the mean the forward view prices movement at and the finding that reports
+// a broken reading must agree about which readings are broken, or the forward figure is dragged
+// down by rows the coach was told to ignore.
+export const IMPLAUSIBLE_STEPS = 1500
 
 /** How far back to look for implausible step days. One review cycle; older ones are history. */
 const STEPS_PLAUSIBILITY_WINDOW_DAYS = 14
@@ -176,12 +180,20 @@ const WORKFLOW_FEEDS = [
     workflow: '.github/workflows/log-steps.yml',
     file: 'data/steps.csv',
     what: 'the daily step count',
-    // The contract is YESTERDAY's completed total, written when he first picks up the phone, so
-    // the newest row is normally dated today-1 and today's row does not exist yet by design.
-    // Two clear days of silence is the first unambiguous signal.
+    // ⚠ **ONLY A CHART THAT DECLARES A FEED HAS ONE TO LOSE.** Without this, the entry fires at a
+    // chart that never had a wearable, about an automation it never installed.
+    declaredBy: 'stepFeed',
+    // The contract is YESTERDAY's completed total, written when the athlete first picks up the
+    // phone, so the newest row is normally dated today-1 and today's row does not exist yet by
+    // design. Two clear days of silence is the first unambiguous signal.
     staleAfterDays: 2,
-    consequence: 'Without a steps row the burn model runs on a floor — roughly 420 kcal/day '
-      + 'understated on this chart — and every deficit figure downstream of it is low.',
+    // ⚠ **NO FIGURE HERE, AND THAT IS DELIBERATE.** This used to name one athlete's step burn in
+    // kcal/day. It is not a property of the system — it is what one person's watch happened to
+    // record — and shipped to every chart it is a number nobody measured, stated as if somebody
+    // had. The SHAPE of the harm is shared and is what belongs here; the magnitude is the chart's
+    // own and is on its ledger.
+    consequence: 'Without a steps row the burn model has no movement term for that day, so the '
+      + 'day\'s burn is a floor and every deficit figure downstream of it is low.',
   },
   {
     workflow: '.github/workflows/daily-rollover.yml',
@@ -713,14 +725,45 @@ export function buildFindings({
 
     for (const feed of WORKFLOW_FEEDS) {
       if (!today) continue
+      // A feed nobody declared is not a feed that broke. `declaredBy` names the constants key that
+      // says this chart HAS this automation; an entry without one is unconditional.
+      if (feed.declaredBy && !String(constants?.plan?.[feed.declaredBy] ?? '').trim()) continue
       const newest = newestDate(rowsFor[feed.file] ?? [])
 
-      // A feed that has NEVER written a row is deliberately not reported. It is indistinguishable
-      // from a feed this chart does not use — nothing in data/ says whether the athlete ever wired
-      // up the phone automation — and reporting it would be the check asserting a fact about their
-      // setup that nobody recorded. Staleness is unambiguous by comparison: it was arriving, and
-      // it stopped. All three production incidents this table exists for are that shape.
-      if (!newest) continue
+      /**
+       * ⚠ **A DECLARED FEED THAT HAS NEVER WRITTEN A ROW IS NOW REPORTED, AND THE DECLARATION IS
+       * WHAT MADE THAT POSSIBLE.** This case used to be skipped outright, with a comment saying it
+       * was "indistinguishable from a feed this chart does not use — nothing in data/ says whether
+       * the athlete ever wired up the phone automation". That was true and is no longer: the chart
+       * now says so, in `plan.stepFeed`, and the guard above has already sent every undeclared feed
+       * home. What is left is an automation the athlete believes they set up which has produced
+       * nothing at all — the worst-timed failure there is, because it is silent on day one, when
+       * nobody yet knows what a working day looks like.
+       *
+       * ⚠ **AND ONLY WHERE THERE IS A DECLARATION TO READ.** An entry with no `declaredBy` — the
+       * daily target rollover, which ships with the template and is not opt-in — is back in the
+       * indistinguishable case, and is skipped exactly as before: a chart whose targets file is
+       * still empty is a chart on its first morning, not a broken workflow. The declaration is
+       * what made the steps case reportable, so the declaration is what gates the report.
+       */
+      if (!newest && !feed.declaredBy) continue
+      if (!newest) {
+        add({
+          id: `workflow-never-${feed.file.replace(/[^a-z0-9]+/gi, '-')}`,
+          severity: 'attention',
+          headline: `${feed.file} is empty, but this chart declares the feed that writes it.`,
+          detail: `athlete/constants.json declares plan.${feed.declaredBy}, so ${feed.what} is `
+            + `expected to arrive — and ${feed.file} has never held a single row. ${feed.workflow} `
+            + `is what writes it. Either the automation was never finished, or it has failed every `
+            + `time it ran. ${feed.consequence}`,
+          action: 'Either finish wiring up the automation, or clear the declaration so nothing '
+            + 'here expects it — SETUP.md describes both configurations and neither is the lesser '
+            + 'one. Do not leave it declared and empty: that is the one state where the chart says '
+            + 'a number is arriving and none is.',
+          source: `${feed.file}; ${feed.workflow}; athlete/constants.json plan.${feed.declaredBy}`,
+        })
+        continue
+      }
 
       const silentFor = daysBetween(newest, today)
       if (!Number.isFinite(silentFor) || silentFor <= feed.staleAfterDays) continue

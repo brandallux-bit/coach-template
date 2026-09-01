@@ -142,7 +142,7 @@ export default function HistoryPage() {
 
       <Card
         title="Calories out — estimated"
-        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + non-step movement + steps + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{plan.estMaintenanceKcal.toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a gap of ~2,600 kcal/week that exists whatever you do. A measured maintenance figure replaces it at the 2026-08-27 recalibration.</>}
+        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + background movement + the day&rsquo;s movement outside sessions (a step feed where this chart has one, the described level where it does not) + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{plan.estMaintenanceKcal.toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a gap of ~2,600 kcal/week that exists whatever you do. A measured maintenance figure replaces it at the 2026-08-27 recalibration.</>}
       >
         <Legend items={[{ label: 'Estimated burn', color: 'var(--series-1)' }]} />
         {weeks.length ? (

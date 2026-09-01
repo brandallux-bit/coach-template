@@ -43,10 +43,16 @@ import { fileURLToPath } from 'node:url'
 import {
   ABSENT_COUNTED_ELSEWHERE, ABSENT_UNKNOWN, BURN_COMPONENTS, MIN_DAYS_FOR_OBSERVED_BURN,
   balancedDays, dayFraction, dayFractionDomain, meanOfAccumulating, meanOfPointReadings,
-  meanOrNull, missingBurnComponents, n, observedDailyBurn, partialBurnFrom, pctOfTarget,
+  describeMissing, meanOrNull, missingBurnComponents, n, observedDailyBurn, partialBurnFrom,
+  pctOfTarget,
   plannedTotal, sessionKcal, sumOrNull, weekBalance, weekEnergy, weekIntake, weeklyBudget,
   costDependsOnDuration, impliedSetWorkSec, minutesFromSets,
+  observedDailySteps,
 } from './lib/aggregate.mjs'
+import {
+  DEFAULT_MOVEMENT_LEVEL, MOVEMENT_LEVELS, MOVEMENT_LEVEL_KEYS, movementBasis, movementKcal,
+  movementLevel,
+} from './lib/movement.mjs'
 import { fillableGaps, targetGaps } from './lib/targets.mjs'
 import { readCsv } from './lib/csv.mjs'
 import { SPEC } from './lib/schema.mjs'
@@ -111,22 +117,44 @@ console.log('1 · null propagation, one input at a time')
   // partialBurnFrom: null each burn column in turn. The figure stays a FLOOR (data/METHOD.md
   // deliberately counts an unknown component as zero), so the contract is the `missing` list.
   const full = Object.fromEntries(BURN_COMPONENTS.map((c) => [c.column, '100']))
+  const MOVEMENT = BURN_COMPONENTS.filter((c) => c.movement).map((c) => c.column)
 
   for (const c of BURN_COMPONENTS) {
     const holed = { ...full, [c.column]: '' }
     const out = partialBurnFrom(holed, 500, 0.5)
+    // ⚠ **THE MOVEMENT PAIR FILLS ONE SLOT, so nulling either alone leaves the slot filled.**
+    // `steps_kcal` and `incidental_kcal` are alternatives — a counted day versus a described one —
+    // and a chart that has one is not missing the other. Nulling BOTH is the case that reports,
+    // and it reports ONCE, under one label: telling a chart with no wearable that "the step count"
+    // is missing, forever, is the defect this pair was introduced to end.
+    if (c.movement) {
+      yes(`nulling ${c.column} alone reports NOTHING — the other half of the pair still fills the slot`,
+        out.missing.length === 0, JSON.stringify(out.missing))
+      continue
+    }
     yes(`nulling ${c.column} is reported in \`missing\``, out.missing.includes(c.column),
       JSON.stringify(out.missing))
     yes(`...and the figure it produces is strictly lower, i.e. a floor`,
       out.burnSoFarKcal < partialBurnFrom(full, 500, 0.5).burnSoFarKcal)
   }
 
+  {
+    const noMovement = { ...full }
+    for (const col of MOVEMENT) noMovement[col] = ''
+    const out = partialBurnFrom(noMovement, 500, 0.5)
+    is('nulling BOTH movement columns reports exactly one', out.missing, [MOVEMENT[0]])
+    is('...under a label that names the slot, not one way of filling it',
+      describeMissing(out.missing), ['daily movement outside sessions'])
+    yes('...and the figure is a floor', out.burnSoFarKcal < partialBurnFrom(full, 500, 0.5).burnSoFarKcal)
+  }
+
   is('a complete row reports nothing missing', partialBurnFrom(full, 500, 0.5).missing, [])
   is('nulled intake is reported too', partialBurnFrom(full, null, 0.5).missing, ['intake'])
   is('no energy row at all yields null, never 0', partialBurnFrom(undefined, 500, 0.5).burnSoFarKcal, null)
   is('...and null deficit with it', partialBurnFrom(undefined, 500, 0.5).deficitSoFarKcal, null)
-  is('...and says every component is absent',
-    partialBurnFrom(undefined, 500, 0.5).missing, BURN_COMPONENTS.map((c) => c.column))
+  is('...and says every component is absent, the movement pair counted once',
+    partialBurnFrom(undefined, 500, 0.5).missing,
+    BURN_COMPONENTS.filter((c) => !c.movement || c.column === MOVEMENT[0]).map((c) => c.column))
 
   // The proration rule itself: clock-driven components scale, accrued ones do not.
   const e = { rmr_kcal: '1000', neat_other_kcal: '0', tef_kcal: '0', steps_kcal: '400', session_kcal: '200' }
@@ -138,11 +166,24 @@ console.log('1 · null propagation, one input at a time')
 
 {
   // missingBurnComponents is what every surface marker is keyed off.
+  const base = { rmr_kcal: '1', neat_other_kcal: '1', tef_kcal: '1', session_kcal: '0' }
   is('a row with every component reports nothing missing',
     missingBurnComponents(Object.fromEntries(BURN_COMPONENTS.map((c) => [c.column, '1']))), [])
-  is('a blank steps_kcal is the live case — no phone automation, ~420 kcal/day understated',
-    missingBurnComponents({ rmr_kcal: '1', neat_other_kcal: '1', tef_kcal: '1', steps_kcal: '', session_kcal: '0' }),
-    ['steps_kcal'])
+
+  /**
+   * ⚠ **THE TWO CONFIGURATIONS, ASSERTED SIDE BY SIDE, because the whole fix is that they are
+   * equally complete.** One chart's movement is counted by a wearable; the other's is described at
+   * intake and priced from that description. Neither is missing anything. Before this, the second
+   * row reported `steps_kcal` missing on every day it would ever have, `complete` was `n` forever,
+   * `observedDailyBurn` was null forever, and the OUT side of the weekly card was blank forever —
+   * on the configuration most charts are actually in.
+   */
+  is('a chart with a wearable feed is complete',
+    missingBurnComponents({ ...base, steps_kcal: '400', incidental_kcal: '' }), [])
+  is('a chart with NO feed and a described level is EQUALLY complete',
+    missingBurnComponents({ ...base, steps_kcal: '', incidental_kcal: '225' }), [])
+  is('...and a day with neither reports the slot once, not both columns',
+    missingBurnComponents({ ...base, steps_kcal: '', incidental_kcal: '' }), ['steps_kcal'])
   is('a measured zero is NOT missing', missingBurnComponents(
     Object.fromEntries(BURN_COMPONENTS.map((c) => [c.column, '0']))), [])
 }
@@ -1547,6 +1588,87 @@ console.log('\n13 · a session performed but not timed')
     is('a chart with no timed session that logged sets cannot fit one',
       impliedSetWorkSec([], REST), null)
   }
+}
+
+// =================================================================================================
+console.log('\nthe movement term — two configurations, and neither is the fallback for the other')
+// The forward view priced movement at `stepsPerDayTarget × constant` on a chart WITH a feed, which
+// is the plan restated as a prediction; and at nothing at all on a chart without one, which is the
+// majority configuration. Both halves are covered here because neither was covered anywhere.
+// =================================================================================================
+
+{
+  const r = (date, steps) => ({ date, steps: String(steps) })
+  const o = observedDailySteps([r('2026-04-01', 9000), r('2026-04-02', 11000)], 1500)
+  is('the mean is over the rows on file', o.meanSteps, 10000)
+  is('...and it says how many days that is', o.days, 2)
+  is('...and which', [o.from, o.to], ['2026-04-01', '2026-04-02'])
+  {
+    // A feed sometimes sends a running total instead of a completed day. Averaging one in would
+    // drag the forward figure down for a week, so it is skipped — not corrected.
+    const withPartial = observedDailySteps(
+      [r('2026-04-01', 9000), r('2026-04-02', 11000), r('2026-04-03', 16)], 1500)
+    is('an implausible reading never enters the mean', withPartial.meanSteps, 10000)
+    is('...and is not counted in the day count either', withPartial.days, 2)
+  }
+  is('a chart with no rows yet has no mean, and the forecast falls back to the target',
+    observedDailySteps([], 1500), null)
+
+  // --- the described level, for a chart with no feed at all ------------------------------------
+  is('a described level prices in kcal/day, scaled by bodyweight',
+    Math.round(movementKcal('light', 180, 0.00025)), 225)
+  is('...and a more active day prices higher, in the same units',
+    movementKcal('on-feet', 180, 0.00025) > movementKcal('seated', 180, 0.00025), true)
+  is('a level nobody recognises is null, never a guess', movementKcal('quite active', 180, 0.00025), null)
+  is('...and so is a missing weight — an estimate needs something to scale',
+    movementKcal('light', null, 0.00025), null)
+  yes('the basis names the level in the athlete\'s own words, not just a number',
+    /step-equivalents/.test(movementBasis('light', 180, 0.00025))
+    && movementBasis('light', 180, 0.00025).includes(movementLevel('light').label),
+    movementBasis('light', 180, 0.00025))
+  yes('...and says out loud that it is an estimate from a description',
+    /estimate from a description, not a count/.test(movementBasis('light', 180, 0.00025)))
+
+  /**
+   * ⚠ **THE LEVELS ARE ORDERED, AND NOTHING ELSE CHECKS THAT.** They are described in ordinary
+   * words and picked from a list, so a step-equivalent typed out of order would price the most
+   * active level below the least active one — a wrong burn on every day of that chart, with the
+   * description on the page still reading correctly.
+   */
+  yes('each level prices strictly above the one before it',
+    MOVEMENT_LEVELS.every((l, i) => i === 0 || l.stepEquivalent > MOVEMENT_LEVELS[i - 1].stepEquivalent),
+    JSON.stringify(MOVEMENT_LEVELS.map((l) => [l.key, l.stepEquivalent])))
+  yes('the shipped default is one of them',
+    MOVEMENT_LEVEL_KEYS.includes(DEFAULT_MOVEMENT_LEVEL), DEFAULT_MOVEMENT_LEVEL)
+
+  /**
+   * ⚠ **`src/lib/forecast.ts` IS MIRRORED BY `scripts/test-views.mjs`, NOT RUN BY IT** — that
+   * suite's own header says its logic is mirrored and must be hand-updated. So these read the
+   * SOURCE. They are shape assertions, not behaviour: what they can catch is the mirror silently
+   * going out of date, which is the failure mode a mirrored suite actually has.
+   */
+  const forecast = code('src/lib/forecast.ts')
+  yes('the forward step row reads the observed mean',
+    /plan\.observedSteps/.test(forecast),
+    'pricing the forward row at stepsPerDayTarget states the plan as a prediction, on the one burn '
+    + 'component that is measured every single day')
+  yes('...and still names the target beside it rather than deleting it',
+    /stepsPerDayTarget/.test(forecast),
+    'the target is a process goal a chart may be graded on weekly; it is the reference line, not '
+    + 'the forecast')
+  yes('...falling back to the target where there is no record at all',
+    /observed\?\.meanSteps \?\? target/.test(forecast))
+  yes('the mean is computed once in the aggregate module, not again in the view',
+    /observedDailySteps/.test(code('scripts/build-data-json.mjs'))
+    && !/observedDailySteps/.test(forecast),
+    'a second mean computed in TypeScript is a second answer (X-8)')
+  yes('and the no-feed branch exists at all, keyed off the declaration',
+    /plan\.stepFeed/.test(forecast) && /plan\.movementKcal/.test(forecast),
+    'a forward view with no movement term on a chart with no wearable is the defect this phase '
+    + 'exists to close, and it is a different code path from the ledger\'s')
+  yes('...and it prices from the declaration rather than from whichever figure is non-null',
+    /if \(feed\) \{/.test(forecast),
+    'branching on the non-null figure would price BOTH on a chart that somehow carried both')
 }
 
 console.log(failed ? `\naggregations: ${failed} FAILED.` : '\naggregations: all checks passed.')

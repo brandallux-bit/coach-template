@@ -13,6 +13,7 @@ import { DATE_RE, SPEC } from './lib/schema.mjs'
 import { WEEKDAYS, checkWeekdayKeys } from './lib/weekdays.mjs'
 import { noDailyTargetReason } from './lib/targets.mjs'
 import { sessionTypeEnum } from './lib/athlete.mjs'
+import { MOVEMENT_LEVEL_KEYS } from './lib/movement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -275,6 +276,68 @@ try {
     for (const [i, t] of readCsv(join(DATA, 'training.csv')).entries()) {
       if (t.type && !legal.has(t.type)) {
         err('training.csv', `row ${i + 2}: type "${t.type}" is not in constants.json sessionTypes`)
+      }
+    }
+  }
+
+  /**
+   * ⚠ **THE MOVEMENT DECLARATION — WHICH OF THE TWO CONFIGURATIONS THIS CHART IS IN.**
+   *
+   * `plan.stepFeed` names the automation that writes `data/steps.csv`, or is absent. `plan.
+   * movementOutsideExerciseLevel` describes an ordinary day for a chart that has no such feed. They
+   * fill ONE slot in the burn model between them, and the errors below are the three ways a chart
+   * can end up with that slot wrong in a way nothing else would notice.
+   */
+  {
+    const plan = constants?.plan ?? {}
+    const feed = String(plan.stepFeed ?? '').trim()
+
+    if (plan.stepFeed !== undefined && typeof plan.stepFeed !== 'string') {
+      err('athlete/constants.json',
+        `plan.stepFeed must be the NAME of the automation that writes data/steps.csv (a string), `
+        + `not ${JSON.stringify(plan.stepFeed)}. It is a name rather than a true/false so a second `
+        + 'writer added later is a new value here, not a new branch through every consumer. Omit '
+        + 'it, or leave it empty, on a chart with no wearable feed — which is the common case.')
+    }
+
+    if (plan.movementOutsideExerciseLevel !== undefined
+      && !MOVEMENT_LEVEL_KEYS.includes(String(plan.movementOutsideExerciseLevel))) {
+      err('athlete/constants.json',
+        `plan.movementOutsideExerciseLevel is ${JSON.stringify(plan.movementOutsideExerciseLevel)}, `
+        + `which is not one of ${MOVEMENT_LEVEL_KEYS.join(' | ')}. It describes how much this `
+        + 'athlete moves OUTSIDE deliberate exercise — a logged walk is priced as a session, so a '
+        + 'level covering it too would count that walk twice. The descriptions are in '
+        + 'scripts/lib/movement.mjs and skills/intake asks the question.')
+    }
+
+    // ⚠ **A LEVEL BESIDE A FEED IS TWO ANSWERS TO ONE QUESTION.** The feed already counts the
+    // movement the level describes. `movementKcalFor` resolves it in the feed's favour rather than
+    // adding both, so this never becomes a wrong burn — but a chart carrying a level nothing reads
+    // is a chart whose owner believes a number is in force when it is not, and that belief is the
+    // thing that outlives the file.
+    if (feed && plan.movementOutsideExerciseLevel !== undefined) {
+      err('athlete/constants.json',
+        `plan.movementOutsideExerciseLevel is set AND plan.stepFeed names "${feed}". The feed `
+        + 'counts that movement already, so the level is ignored — delete one. Keep the feed if it '
+        + 'is really arriving; delete the feed and keep the level if it is not.')
+    }
+
+    // ⚠ **`energyCountedIn: "steps"` ON A CHART WITH NO STEP FEED IS MOVEMENT COUNTED NOWHERE.**
+    // The registry entry says "do not cost this as a session, its energy is already in the step
+    // column" — and on a chart with no feed that column is blank forever. The activity then costs
+    // nothing, anywhere, and the day it happened looks like a rest day with a name on it. This is
+    // the exact double-count rule read from the other side, and it is the half a chart hits when
+    // it copies a registry from a chart that DOES have a feed.
+    if (!feed) {
+      for (const [type, def] of Object.entries(constants?.sessionTypes ?? {})) {
+        if (String(def?.energyCountedIn ?? '').trim() === 'steps') {
+          err('athlete/constants.json',
+            `sessionTypes.${type}.energyCountedIn is "steps", but this chart declares no `
+            + 'plan.stepFeed — so data/steps.csv is empty and that energy is counted NOWHERE. '
+            + 'Either declare the feed, or give the type a real MET: with no feed, nothing else '
+            + 'is counting this movement, so pricing it as a session is correct (and set '
+            + '`loading: false` if it is not the kind of session that tires anyone out).')
+        }
       }
     }
   }

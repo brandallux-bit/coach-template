@@ -37,6 +37,12 @@
     "_max_rate_note": "CLAUDE.md §5.2 hard floor. Do not raise it.",
     "adherenceRoutingPct": 80,
     "_adherenceRoutingPct_note": "Not the athlete's number and not the coach's — it is CLAUDE.md §7's routing rule, so it ships filled in and its provenance class is `external`. Below this, a week routes to the adherence agent instead of the domain specialists, because a plan that is not being followed is not a programming problem. scripts/test-single-home.mjs checks that every document stating this figure states the same one; leave the value here and cite the key elsewhere rather than retyping 80.",
+    "_movement_note": "THE MOVEMENT SLOT IN THE BURN MODEL, AND EVERY CHART FILLS IT ONE OF TWO WAYS. `stepFeed` names the automation that writes data/steps.csv \u2014 today that is the iOS Shortcut behind .github/workflows/log-steps.yml, so the value is \"apple-health-shortcut\". It is a NAME rather than true/false so a second writer added later is a new value, not a new branch. Leave it out on a chart with no wearable: that is the common configuration, it is not a lesser one, and check-steps.yml then stops mailing a failure every morning about a file nothing writes. `movementOutsideExerciseLevel` is the other filling \u2014 how much this athlete moves on an ordinary day OUTSIDE deliberate exercise, one of: seated | light | active | on-feet (descriptions in scripts/lib/movement.mjs, and skills/intake asks the question). OUTSIDE DELIBERATE EXERCISE IS NOT PHRASING: a walk they chose to go on is logged as a session and priced as one, so a level that also covered it would count that walk twice. Set exactly one of the two \u2014 validate-data.mjs rejects both together, because the feed already counts what the level describes. A chart that sets NEITHER runs on the shipped default level, marked coach-proposed-unconfirmed, which is a question waiting to be answered rather than a number filed as the athlete's. The kcal/day figure itself is DERIVED from the level and stored nowhere; a second copy in this file could disagree with the ledger.",
+    "_movement_example": {
+      "_comment": "Copy ONE of these two into plan, never both. Shown as an example rather than shipped live because an empty stepFeed is not a declaration and a provenance marker on one would be recording an answer nobody gave \u2014 whereas a chart that HAS a feed states it, and then owes a marker like any other value.",
+      "a chart with a wearable": { "stepFeed": "apple-health-shortcut", "stepsPerDayTarget": 9000 },
+      "a chart without one": { "movementOutsideExerciseLevel": "light" }
+    },
     "stepsPerDayTarget": 0,
     "sessionsPerWeekFloor": 0,
     "sessionsPerWeekTarget": 0,
@@ -48,6 +54,13 @@
         "asOf": "2026-08-17",
         "source": "CLAUDE.md §5.2, 'No sustained loss rate above 1.0% of bodyweight per week'",
         "note": "The charter's safety floor, not this athlete's preference and not the coach's judgement. It ships with the template at 1.0 and is enforced against the athlete's own instruction; it is not negotiable downward by either party."
+      },
+      "_movementOutsideExerciseLevel_example": {
+        "class": "athlete-stated",
+        "asOf": "<the day they said it>",
+        "quote": "<their words about an ordinary day \u2014 not about exercise>",
+        "source": "<the intake session or log where they said it>",
+        "note": "Their own description. The kcal figure it prices at is the coach's arithmetic over it and is `derived`, which is why it is not stored: data/METHOD.md rule 5 is explicit that a maintenance-shaped figure is derived or external even though the coach chose its coefficients. If nobody has answered yet, the shipped default applies and its marker is `coach-proposed-unconfirmed` with the date it started standing in."
       },
       "adherenceRoutingPct": {
         "class": "external",

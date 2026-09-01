@@ -51,6 +51,27 @@ export type Plan = {
   kcalByWeekday?: Record<string, number>
   targetRateLbPerWk?: number[]
   maxRatePctBwPerWk?: number
+  /**
+   * ⚠ **WHICH AUTOMATION COUNTS THIS CHART'S MOVEMENT, OR ABSENT.** A name rather than a boolean,
+   * so a second writer is a new value and not a new branch. Absent is the majority configuration
+   * and not a lesser one: that chart's movement term is `movementKcal` below.
+   */
+  stepFeed?: string
+  /**
+   * How much this athlete moves OUTSIDE deliberate exercise, in their own words — one of the keys
+   * in `scripts/lib/movement.mjs`. Only meaningful with no `stepFeed`; a logged walk is priced as
+   * a session, so a level that also covered it would count that walk twice.
+   */
+  movementOutsideExerciseLevel?: string
+  /** What that level costs at the current weight, in kcal/day. Derived; never stored. */
+  movementKcal?: number | null
+  /** The derivation behind `movementKcal`, so no surface ever prints it as a bare total. */
+  movementBasis?: string | null
+  /**
+   * What the athlete's step feed has actually recorded — the trailing mean, not the target.
+   * Null on a chart with no feed. See `observedDailySteps` in `scripts/lib/aggregate.mjs`.
+   */
+  observedSteps?: { meanSteps: number; days: number; from: string | null; to: string | null } | null
   stepsPerDayTarget?: number
   sessionsPerWeekFloor?: number
   sessionsPerWeekTarget?: number

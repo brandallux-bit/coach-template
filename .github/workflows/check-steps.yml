@@ -1,22 +1,27 @@
 name: Check steps gap
 
-# data/steps.csv is written by an on-device iOS Shortcut automation (log-steps.yml), triggered
-# off Apple Health, independent of any coaching session. When that automation doesn't fire —
-# as happened on 2026-08-08 and 2026-08-09, see logs/2026-08-10.md — the row goes silently
-# missing and the burn model quietly runs on a floor instead of a fact until someone notices.
+# data/steps.csv is written by an on-device automation (log-steps.yml), triggered off the
+# athlete's health app, independent of any coaching session. When that automation doesn't fire,
+# the row goes silently missing and the burn model quietly runs on a floor instead of a fact
+# until someone notices.
 #
 # This is the repo-side safety net: check every morning, fail loudly if yesterday's row is
 # missing. It cannot fix the on-device automation — that's outside this repo entirely — but a
 # missing row becomes a CI failure (and GitHub's default email to the repo owner) the next
 # morning instead of sitting silent until a coaching session stumbles onto it.
+#
+# ⚠ ONLY A CHART THAT DECLARES plan.stepFeed HAS A FEED TO BE LATE. scripts/check-steps-gap.mjs
+# exits cleanly on any other, so this workflow is harmless on a chart with no wearable — but it
+# is also pointless there, and SETUP.md §4a says to delete BOTH this file and log-steps.yml.
+# Deleting only the writer leaves this, the one that mails you the failure.
 
 on:
   schedule:
     # ~13:00 America/Los_Angeles. Cron is fixed UTC and does not shift for DST: this lands at
     # 13:00 during PDT (Mar-Nov) and 12:00 during PST — earlier in winter, never later.
     #
-    # Deliberately midday, not dawn. The Shortcut now sends *yesterday's* completed total when
-    # the athlete first picks up the phone, so yesterday's row does not exist until he does.
+    # Deliberately midday, not dawn. The Shortcut sends *yesterday's* completed total when the
+    # athlete first picks up the phone, so yesterday's row does not exist until they do.
     # A 07:00 check would fire before that write and fail every morning on a day that was
     # about to be fine — and a safety net that false-alarms daily is one he learns to ignore.
     # Midday clears any plausible wake time in both offsets.

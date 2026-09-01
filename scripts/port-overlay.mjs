@@ -492,6 +492,42 @@ const migrations = []
     writeFileSync(cPath, `${JSON.stringify(c, null, 2)}\n`)
     migrations.push(`moved program.dailyRehabMin (${legacyMin} min) to sessionTypes.${type}.standingDurationMin`)
   }
+
+  /**
+   * SETUP.md, "Constants a merge may ask you to move": the movement declaration.
+   *
+   * ⚠ **INFERRED FROM THE ROWS, NOT ASSUMED.** A chart whose `data/steps.csv` holds rows HAS a
+   * feed, whatever it calls it — that file has exactly one writer. A chart with no rows is left
+   * alone and takes the described-level path, which is the correct answer for it. Guessing either
+   * way round would be this step deciding a fact about somebody's setup; reading the rows is
+   * reading what already happened.
+   *
+   * The name written here is the automation this repo ships. A chart fed by something else renames
+   * it by hand — which is exactly why the key is a name and not a boolean.
+   */
+  if (String(c.plan?.stepFeed ?? '').trim() === '') {
+    const stepsPath = join(clone, 'data', 'steps.csv')
+    const rows = existsSync(stepsPath)
+      ? readFileSync(stepsPath, 'utf8').trim().split('\n').slice(1).filter(Boolean).length
+      : 0
+    if (rows > 0) {
+      c.plan = { ...c.plan, stepFeed: 'apple-health-shortcut' }
+      c.plan._provenance = {
+        ...c.plan._provenance,
+        stepFeed: {
+          class: 'derived',
+          asOf: new Date().toISOString().slice(0, 10),
+          inputs: `${rows} row(s) already in data/steps.csv — the file has one writer`,
+          source: 'SETUP.md, "Constants a merge may ask you to move"',
+          note: 'Not stated by anyone: read off the fact that the feed has been writing. Confirm '
+            + 'the name with the athlete and re-mark it if they say otherwise.',
+        },
+      }
+      writeFileSync(cPath, `${JSON.stringify(c, null, 2)}\n`)
+      migrations.push(`declared plan.stepFeed — data/steps.csv already holds ${rows} row(s), so `
+        + 'this chart has a feed and keeps the counted movement term')
+    }
+  }
 }
 if (migrations.length) for (const m of migrations) say(`migrated: ${m}`)
 

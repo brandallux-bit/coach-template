@@ -13,9 +13,9 @@ import { fileURLToPath } from 'node:url'
 import { readCsv, num, toCsv } from './lib/csv.mjs'
 import {
   KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, TEF_RATE, hasChart, localToday, NO_CHART_MESSAGE,
-  prescribedSessionMin, rmrKcal, sessionCostFor, setRestSec,
+  movementKcalFor, prescribedSessionMin, rmrKcal, sessionCostFor, setRestSec,
 } from './lib/athlete.mjs'
-import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
+import { latestOnOrBefore, missingBurnComponents, sessionBurns } from './lib/aggregate.mjs'
 import { METHOD_VERSION } from './lib/method-version.mjs'
 import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 import { SPEC } from './lib/schema.mjs'
@@ -109,6 +109,14 @@ for (const date of dates) {
   const stepCount = num(daySteps[0]?.steps)
   const stepsKcal = stepCount == null ? null : stepCount * KCAL_PER_STEP_PER_LB * weightLb
 
+  // ⚠ **THE OTHER WAY TO FILL THE MOVEMENT SLOT, AND THE ONE MOST CHARTS WILL USE.** A chart with
+  // no wearable feed has no `steps_kcal` — not a zero, and not a gap either: it is an input that
+  // chart does not have. `movementKcalFor` prices the level the athlete described instead, and
+  // returns null on a chart that DOES have a feed, so the two can never both be counted. See
+  // scripts/lib/movement.mjs for the level table and the "outside deliberate exercise" clause the
+  // whole thing rests on.
+  const incidentalKcal = movementKcalFor(weightLb)
+
   // Only completed sessions burn anything, and what one cost is `sessionCostFor` — the three-level
   // precedence (kcal_override -> per-tier MET over the intensity split -> flat MET over duration),
   // which used to be written out here and NOWHERE ELSE. `build-data-json.mjs` implemented only its
@@ -146,24 +154,38 @@ for (const date of dates) {
 
   // Unknown components are treated as zero in the total, which makes burn a FLOOR on days with
   // gaps. The column-level blanks are what tell you the total is incomplete.
-  const burnTotal = rmr + (tef ?? 0) + neatOther + (stepsKcal ?? 0) + (sessionKcal ?? 0)
+  const burnTotal = rmr + (tef ?? 0) + neatOther + (stepsKcal ?? 0) + (incidentalKcal ?? 0)
+    + (sessionKcal ?? 0)
 
-  out.push({
+  const row = {
     date,
     rmr_kcal: r0(rmr),
     tef_kcal: r0(tef),
     neat_other_kcal: r0(neatOther),
     steps_kcal: r0(stepsKcal),
+    incidental_kcal: r0(incidentalKcal),
     session_kcal: r0(sessionKcal),
     burn_total_kcal: r0(burnTotal),
     intake_kcal: r0(intake),
     deficit_kcal: intake == null ? '' : r0(burnTotal - intake),
-    // ⚠ **`sessionUnknown` IS NEW HERE AND IT IS HALF THE FIX.** This flag is what
-    // `observedDailyBurn` gates on, and it used to name only TEF and steps — so a day whose
-    // session cost was unknowable was still flagged complete and still entered the mean that
-    // prices every unfinished day and every rate-of-loss projection. A claim that every input
-    // existed has to look at every input.
-    complete: tef != null && stepsKcal != null && !sessionUnknown ? 'y' : 'n',
+  }
+
+  out.push({
+    ...row,
+    /**
+     * ⚠ **ASKED OF THE ROW BY THE ONE FUNCTION THAT KNOWS WHAT A BURN COMPONENT IS, rather than
+     * re-stated here.** This used to read `tef != null && stepsKcal != null && !sessionUnknown`,
+     * which is `missingBurnComponents` written out a second time from memory — and it had already
+     * been wrong once, naming only TEF and steps while a session nobody could cost went in as a
+     * full measurement. `scripts/test-aggregations.mjs` asserts the two agree on every row of the
+     * ledger, which is a check that only exists because they are two things that could disagree.
+     * Now there is one rule: **a day is complete when nothing this chart HAS is absent from it.**
+     *
+     * That phrasing is the whole of the no-wearable fix. A chart with no step feed has no
+     * `steps_kcal` and is not missing one — `incidental_kcal` fills the same slot — so it reaches
+     * `complete = y` and `observedDailyBurn` returns a mean instead of null forever.
+     */
+    complete: missingBurnComponents(row).length === 0 ? 'y' : 'n',
     /**
      * ⚠ **THE HALF `complete` CANNOT CARRY.** A day whose session was costed from a reconstructed
      * duration has every input present, so it is complete — and it enters `observedDailyBurn`,

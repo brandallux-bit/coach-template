@@ -2,6 +2,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { kgFromLb, n, sessionCost } from './aggregate.mjs'
+import {
+  DEFAULT_MOVEMENT_LEVEL, movementBasis, movementKcal,
+} from './movement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -326,6 +329,54 @@ export const KCAL_PER_STEP_PER_LB = 0.00025
  * them instead of being a second coach-supplied number filed as theirs.
  */
 export const SET_REST_SEC = 70
+
+/**
+ * ⚠ **WHETHER ANYTHING AUTOMATIC COUNTS THIS ATHLETE'S MOVEMENT, AND WHICH THING.**
+ *
+ * A NAME, NOT A BOOLEAN, and that is the seam. `data/steps.csv` happens to be written today by an
+ * iOS Shortcut off Apple Health; an Oura or a Fitbit writer added later is a new VALUE here, not a
+ * new branch through every consumer. A chart with no feed leaves the key absent or empty, which is
+ * the majority configuration and is not a lesser one.
+ *
+ * Everything that assumes a step feed is gated on this: the daily gap check, the stale-feed
+ * finding, the forward view's movement term, and `energy.csv`'s movement column.
+ */
+export const stepFeed = () => (hasChart ? String(constants.plan?.stepFeed ?? '').trim() : '')
+
+export const hasStepFeed = () => stepFeed() !== ''
+
+/**
+ * The movement-outside-exercise level in force on this chart: its own, or the shipped default.
+ *
+ * ⚠ **ONLY MEANINGFUL WITHOUT A FEED.** With a feed, the athlete's real movement is counted, and
+ * pricing a described level on top of it would count the same walking twice. `movementKcalFor`
+ * below is where that exclusivity is enforced, once, rather than at each caller.
+ */
+export const movementLevelKey = () => (
+  hasChart
+    ? String(constants.plan?.movementOutsideExerciseLevel ?? '').trim() || DEFAULT_MOVEMENT_LEVEL
+    : DEFAULT_MOVEMENT_LEVEL
+)
+
+/**
+ * This chart's incidental-movement term in kcal/day, or `null` where a feed already counts it.
+ *
+ * ⚠ **THE TWO CONFIGURATIONS ARE MUTUALLY EXCLUSIVE AND THIS IS THE ONE PLACE THAT SAYS SO.**
+ * A chart with a feed gets `null` here and its movement arrives as `steps_kcal`; a chart without
+ * one gets a figure here and `steps_kcal` stays blank forever. Both fill the same slot in the
+ * decomposition, exactly one of them is ever non-blank, and `missingBurnComponents` reads that
+ * pair rather than the declaration — so no consumer has to know which configuration it is in.
+ */
+export const movementKcalFor = (weightLb) => (
+  hasStepFeed() ? null : movementKcal(movementLevelKey(), weightLb, KCAL_PER_STEP_PER_LB)
+)
+
+/** The same figure's derivation, for the surfaces that may never print a bare total. */
+export const movementBasisFor = (weightLb) => (
+  hasStepFeed()
+    ? `counted in the step feed (${stepFeed()}) rather than estimated`
+    : movementBasis(movementLevelKey(), weightLb, KCAL_PER_STEP_PER_LB)
+)
 
 /** The rest figure in force on this chart: its own, or the shipped default. One home, one answer. */
 export const setRestSec = () => (hasChart ? n(constants.program?.setRestSec) ?? SET_REST_SEC : SET_REST_SEC)

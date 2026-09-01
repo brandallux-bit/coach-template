@@ -24,7 +24,11 @@ export const n: (v: string | undefined) => number | null = agg.n
 export const sumOrNull: (values: (number | null)[]) => number | null = agg.sumOrNull
 export const meanOrNull: (values: (number | null)[]) => number | null = agg.meanOrNull
 
-export type BurnComponent = { column: string; label: string; clockDriven: boolean }
+export type BurnComponent = {
+  column: string; label: string; clockDriven: boolean
+  /** `steps_kcal` and `incidental_kcal` — two ways to fill ONE slot. See BURN_COMPONENTS. */
+  movement?: boolean
+}
 export const BURN_COMPONENTS: BurnComponent[] = agg.BURN_COMPONENTS
 
 /** Which of `energy.csv`'s burn columns are absent from a row, i.e. counted as zero in its total. */

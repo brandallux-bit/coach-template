@@ -284,9 +284,16 @@ is built and no view can accidentally render it.
 > (awakenings, time back to sleep, morning grogginess) is usually what actually answers the "does
 > duration track quality" question.
 
-### `steps.csv` — one row per day. Machine-written.
+### `steps.csv` — one row per day. Machine-written. **Only on a chart with a step feed.**
 Written by `.github/workflows/log-steps.yml` from an iOS Shortcut off Apple Health. **Never edit
 by hand.** Columns: `date,steps`.
+
+> A chart that declares no `plan.stepFeed` leaves this file empty for good, and nothing treats that
+> as a fault: its movement term is `incidental_kcal` instead (see the burn model below), the daily
+> gap check exits cleanly rather than mailing a failure every morning, and the stale-feed finding
+> never fires. What a declared feed buys is the opposite: a feed that has never once written a row
+> is now reported, because the declaration is what makes "it broke" distinguishable from "there
+> isn't one".
 
 > ⚠ **`steps` is a COMPLETED day's total, and that is the column's whole meaning.** The feed's
 > contract is *yesterday's* finished count; `compute-energy.mjs` multiplies it straight into
@@ -539,13 +546,22 @@ serves.** The validator rejects an unregistered metric and a registry entry with
 domain, because a metric no domain needs is a chore the coach invented (CLAUDE.md §1.1).
 
 ### `energy.csv` — one row per day. **Generated. Do not edit.**
-`date,rmr_kcal,tef_kcal,neat_other_kcal,steps_kcal,session_kcal,burn_total_kcal,intake_kcal,deficit_kcal,complete,method_version`
+`date,rmr_kcal,tef_kcal,neat_other_kcal,steps_kcal,incidental_kcal,session_kcal,burn_total_kcal,intake_kcal,deficit_kcal,complete,session_estimated,method_version`
 
-- `complete`: `y` when every burn component on the row has a value; `n` when one is blank and was
-  therefore counted as zero. **A row with `complete=n` has a `burn_total_kcal` that is a FLOOR, not
-  an estimate**, and every deficit downstream of it is understated by the same amount. With no step
-  feed at all that is ~420 kcal/day, which is enough to flip this chart's weekly balance from a
-  +169 kcal deficit to a −1,702 kcal surplus.
+- `complete`: `y` when every burn component **this chart has** is present on the row; `n` when one
+  is blank and was therefore counted as zero. **A row with `complete=n` has a `burn_total_kcal`
+  that is a FLOOR, not an estimate**, and every deficit downstream of it is understated by the same
+  amount. Movement outside sessions is the largest term this can happen to after resting
+  metabolism, so a run of `complete=n` days is enough to turn a real weekly deficit into an
+  apparent surplus and invite a cut that is not needed.
+
+  > ⚠ **"THIS CHART HAS" IS THE LOAD-BEARING PHRASE, AND IT USED TO SAY "EVERY COMPONENT".**
+  > `steps_kcal` and `incidental_kcal` are two ways to fill ONE slot — see the movement section
+  > below — and exactly one of them is non-blank on a well-formed row. Under the old wording a
+  > chart with no wearable was missing `steps_kcal` on every day it would ever have, so `complete`
+  > was `n` forever, the observed-burn mean was null forever, and the OUT side of the weekly energy
+  > card, the loss-rate projection and the budget-versus-goal finding were all inert — on the
+  > configuration most charts are in. An input a chart does not have is not a gap.
 
   **Any surface rendering a burn or deficit figure from a `complete=n` row must mark it.** Until
   2026-08-14 the column was computed, stored and aggregated into `WeekRoll.complete` and read by no
@@ -634,7 +650,10 @@ recalibrate is worth vastly more than one recomputed from scratch, differently, 
 conversation.
 
 ```
-burn_total = rmr + tef + neat_other + steps_kcal + session_kcal
+burn_total = rmr + tef + neat_other + <movement> + session_kcal
+
+<movement> = steps_kcal        on a chart with a declared step feed
+           = incidental_kcal   on a chart without one
 ```
 
 **`rmr` — Mifflin-St Jeor, recomputed daily from that day's weight.**
@@ -661,7 +680,36 @@ profile records high daily NEAT; this is the conservative floor for it.
 
 **`steps_kcal = steps × 0.00025 × weight_lb`** — around 0.04–0.05 kcal/step for a typical adult
 bodyweight, i.e. roughly 100 kcal per 2,100-step mile. Scales with bodyweight, so it falls as the
-athlete does.
+athlete does. **Only on a chart that declares `plan.stepFeed`**; blank forever on any other, which
+is not a gap.
+
+**`incidental_kcal = step-equivalents(level) × 0.00025 × weight_lb`** — the same slot, on a chart
+with no wearable, which is the common configuration. The athlete describes an ordinary day in
+ordinary words and that description maps to a step-equivalent; `scripts/lib/movement.mjs` holds the
+four levels and their figures.
+
+> ⚠ **IT IS A STEP SUBSTITUTE, NEVER AN `RMR × N` MULTIPLIER.** A maintenance estimate of that form
+> already contains all activity, so mixing one into this decomposition would count everything at
+> once — the rule this document states in bold elsewhere, arrived at from a new direction. It also
+> introduces no second energy-per-movement constant: it is priced with the same `0.00025` the line
+> above uses.
+>
+> ⚠ **"OUTSIDE DELIBERATE EXERCISE" IS THE WHOLE OF WHY IT DOES NOT DOUBLE-COUNT.** A walk the
+> athlete chose to go on is a session and is priced as one. The level covers only what nothing else
+> counts: being on their feet around the house, the stairs, the walk to the car. The intake
+> question, the constants comment and the validator all repeat the clause, because a level answered
+> as a whole day's movement would price that walk twice.
+>
+> ⚠ **THE LEVEL IS THE ATHLETE'S; THE NUMBER IS THE COACH'S.** Per rule 5 below, the described
+> level is `athlete-stated` and lives in `athlete/constants.json`; the kcal figure is `derived`
+> from it and is stored nowhere, so there is no second copy to disagree with the ledger. A chart
+> that has not answered runs on the shipped default, marked `coach-proposed-unconfirmed` with a
+> date — visible and waiting, not filed as theirs.
+>
+> The bands behind the four levels are Tudor-Locke & Bassett's step index (2004); reading them as
+> movement *outside exercise* is the coach's, and the figures sit at or under the index's
+> boundaries for that reason. Not a measurement. An estimate that says so, on every surface that
+> renders it.
 
 **`session_kcal`** — MET-based: `kcal = MET × 3.5 × weight_kg / 200 × minutes`, under a three-level
 precedence: **`kcal_override`** (a device reading — a bike, a watch, a rower — or a logged
@@ -765,9 +813,14 @@ run `node scripts/build-docs.mjs`)_
 > split later reproduces roughly the same number, that agreement is what validates the override
 > rather than merely accepting it.
 
-> ⚠ **3. The double-count trap, stated once so it doesn't get re-introduced.** Walking is already
-> in `steps_kcal`, which is why a walking type is registered at **MET 0** — counting it again as a
-> session is the trap. The same applies at the plan level: a maintenance estimate of the `RMR × N`
+> ⚠ **3. The double-count trap, stated once so it doesn't get re-introduced.** On a chart with a
+> step feed, walking is already in `steps_kcal`, which is why a walking type there is registered at
+> **MET 0** — counting it again as a session is the trap. **On a chart with no feed the answer is
+> the opposite and equally load-bearing:** nothing else counts that movement, so the walking type
+> carries a real MET, and `energyCountedIn: "steps"` is rejected outright because it would promise
+> the energy to a column nothing will ever write. The movement level covers only what is left —
+> incidental movement outside deliberate exercise — which is why that clause is repeated everywhere
+> the question is asked. The same applies at the plan level: a maintenance estimate of the `RMR × N`
 > form *already contains* all activity, so that shortcut and this decomposition must never be
 > mixed. This model deliberately starts from bare RMR and adds each activity explicitly.
 

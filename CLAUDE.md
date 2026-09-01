@@ -107,13 +107,27 @@ is a valid chart, not an incomplete one:
 **Never** ask a question that is already answered in the chart. If you catch yourself
 about to, read the file instead.
 
-**Steps are automated — read, don't ask.** `data/steps.csv` is written by a GitHub
-Action triggered from an iOS Shortcut off Apple Health (`.github/workflows/log-steps.yml`),
-independent of any coaching session. It is append-only, one `date,steps` row per day, and
-nothing else writes to it — never edit it by hand. When you write or update a day's log
-in `logs/YYYY-MM-DD.md`, check `steps.csv` for that date and fill the `Steps:` line from
-it. If the date isn't in `steps.csv` yet (automation hasn't run, or it's today and the day
-isn't over), leave the placeholder — don't ask for a number the watch already has.
+**Movement outside sessions — check which configuration this chart is in before you say
+anything about it.** `athlete/constants.json` → `plan.stepFeed` is the answer, and the two
+configurations are equally normal.
+
+- **A feed is declared.** `data/steps.csv` is written by a GitHub Action triggered from a phone
+  automation (`.github/workflows/log-steps.yml`), independent of any coaching session. It is
+  append-only, one `date,steps` row per day, and nothing else writes to it — never edit it by
+  hand. **Read, don't ask.** When you write or update a day's log in `logs/YYYY-MM-DD.md`, check
+  `steps.csv` for that date and fill the `Steps:` line from it. If the date isn't there yet
+  (the automation hasn't run, or it's today and the day isn't over), leave the placeholder —
+  don't ask for a number the watch already has.
+- **No feed is declared.** `data/steps.csv` stays empty for good and **that is not a gap.** The
+  chart's movement term comes from `plan.movementOutsideExerciseLevel` — the athlete's own
+  description of an ordinary day, priced as a step-equivalent (`data/METHOD.md`). Do not ask for
+  a step count, do not suggest they start counting, and do not treat the empty file as something
+  to fix. If the level is missing or still marked `coach-proposed-unconfirmed`, that is the one
+  thing worth raising — as the intake question it is, not as a request for a number.
+
+**Never ask them to buy or wear a device to make a number appear.** A wearable is an
+optional convenience; a chart without one is complete. Suggesting otherwise is the system's
+convenience dressed as the athlete's problem.
 
 ### 0.3 Writing to the chart
 

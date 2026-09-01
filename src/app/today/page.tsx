@@ -10,6 +10,7 @@ import { viewFindings } from '@/lib/findings'
 import {
   DAILY, SUPPLEMENTS, effectiveRx, orderedSessions, planDay, primarySession, rxFor, setsForSession,
 } from '@/lib/forecast'
+import { movementLevel } from '@/lib/movement'
 import { partialBurn, rollDay, rollWeek } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
@@ -128,7 +129,14 @@ export default function TodayPage() {
   // scripts/build-data-json.mjs through the SAME `sessionCost` precedence compute-energy.mjs uses
   // — kcal_override, then the intensity split, then the flat MET — which is what stopped this
   // surface reading 1,328 kcal for a session the ledger counted at 774 (audit F-02).
-  const recordedSteps = n(oneOf(energy, now)?.steps_kcal)
+  const todayEnergy = oneOf(energy, now)
+  const recordedSteps = n(todayEnergy?.steps_kcal)
+  // ⚠ **THE OTHER FILLING OF THE SAME SLOT.** On a chart with no wearable this is what the ledger
+  // holds and `steps_kcal` is blank forever — so a hardcoded "Steps · not reported yet" row read
+  // as a permanent gap on the configuration most charts are in. One row, whichever way it is
+  // filled; see BURN_COMPONENTS in scripts/lib/aggregate.mjs.
+  const recordedIncidental = n(todayEnergy?.incidental_kcal)
+  const hasFeed = (plan.stepFeed ?? '').trim() !== ''
   const recorded = [
     ...sessions.map((sn) => ({
       label: sn.session || sn.type,
@@ -140,19 +148,33 @@ export default function TodayPage() {
       shortfall: sn.kcalLevel === 'unknown',
       basis: sn.kcalBasis,
     })),
-    {
-      label: 'Steps',
-      detail: d.steps == null ? 'not reported yet' : `${d.steps.toLocaleString()} steps`,
-      kcal: recordedSteps,
-      absence: 'TBD',
-      // Deliberately NOT a shortfall: the step feed lands the morning after by design, so marking
-      // today's blank as a gap would put the marker on this page every single day, which is how a
-      // marker stops being read (see DayRoll.burnUnderstated for the same argument).
-      shortfall: false,
-      basis: recordedSteps == null
-        ? 'the step feed writes yesterday\u2019s total each morning — nothing for today yet'
-        : `steps \u00d7 ${plan.kcalPerStepPerLb} kcal per step per lb of bodyweight, from the ledger`,
-    },
+    hasFeed
+      ? {
+        label: 'Steps',
+        detail: d.steps == null ? 'not reported yet' : `${d.steps.toLocaleString()} steps`,
+        kcal: recordedSteps,
+        absence: 'TBD' as const,
+        // Deliberately NOT a shortfall: the step feed lands the morning after by design, so
+        // marking today's blank as a gap would put the marker on this page every single day,
+        // which is how a marker stops being read (see DayRoll.burnUnderstated for the same
+        // argument).
+        shortfall: false,
+        basis: recordedSteps == null
+          ? 'the step feed writes yesterday\u2019s total each morning — nothing for today yet'
+          : `steps \u00d7 ${plan.kcalPerStepPerLb} kcal per step per lb of bodyweight, from the ledger`,
+      }
+      : {
+        label: 'Daily movement',
+        detail: movementLevel(plan.movementOutsideExerciseLevel)?.label ?? 'outside deliberate exercise',
+        kcal: recordedIncidental,
+        absence: 'TBD' as const,
+        // Also not a shortfall, for the opposite reason: nothing is waiting to arrive. This chart
+        // has no feed and is not missing one — the figure is the described level, priced.
+        shortfall: false,
+        basis: recordedIncidental == null
+          ? 'no movement level on file yet — skills/intake asks for one'
+          : (plan.movementBasis ?? 'the movement level this chart describes, priced per step-equivalent'),
+      },
   ]
   const recordedKcal = recorded.reduce<number | null>(
     (a, r) => (r.kcal == null ? a : (a ?? 0) + r.kcal), null,
@@ -579,7 +601,7 @@ export default function TodayPage() {
 
             ⚠ **BOTH TOTALS ARE MOVEMENT ONLY, and neither is comparable to the "Burned so far"
             tile at the top of this page.** That tile is the whole decomposed model — resting
-            metabolism, the thermic effect of food and non-step movement as well as these
+            metabolism, the thermic effect of food and background movement as well as these
             segments. Adding a movement total to it would double-count every one of these rows.
             The footnote says so on the page, not just here: `data/METHOD.md` calls mixing the
             two models the trap this chart has already fallen into twice. */}
@@ -677,14 +699,17 @@ export default function TodayPage() {
           </table>
         </div>
         <p className="footnote">
-          <strong>These are movement figures only</strong> — session, daily block and steps. They
-          exclude resting metabolism, the thermic effect of food and non-step movement, so{' '}
+          <strong>These are movement figures only</strong> — session, daily block, and the day&rsquo;s
+          movement outside them. They exclude resting metabolism, the thermic effect of food and
+          background movement, so{' '}
           <strong>neither total is the same quantity as &ldquo;Burned so far&rdquo;</strong> at the
           top of this page, and they must never be added to it: the recorded segments here are
           already inside it. Proposed comes from the block template and the MET table, the same
           forward model Next 7 Days renders. Recorded comes from the ledger — the per-session
           figures that <code>data/energy.csv</code>&rsquo;s <code>session_kcal</code> is summed
-          from, and the step feed, which reports a day&rsquo;s total the following morning. A
+          from, and the day&rsquo;s movement term — a step feed, which reports a day&rsquo;s total the
+          following morning, or the movement level this chart described, which is there from the
+          start of the day because it is an estimate rather than a count. A
           session shows <span className="tbd">not performed yet</span> until a coaching session
           writes its result, so the two tables are expected to disagree for most of the day —{' '}
           <strong>and to converge once it is written</strong>, because the forward model reads a

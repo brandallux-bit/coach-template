@@ -924,8 +924,30 @@ console.log('\n6 · the 1.5 shortcut and the decomposition never share an axis (
   const logic = (p) => stripJsxProp(code(p), 'caption').replace(/<p className="footnote">[\s\S]*?<\/p>/g, '')
 
   const RENDERS_BURN = /burnToDateKcal|deficitToDateKcal|burnSoFarKcal|deficitSoFarKcal|\bburnKcal\b|\bdeficitKcal\b/
+
+  /**
+   * ⚠ **THE SHAPE, NOT THE ONE KEY THAT HAS IT.** This matched the literal `estMaintenanceKcal`,
+   * so the rule held for exactly the name it was written against and for nothing else. The thing
+   * `data/METHOD.md` forbids is mixing a figure of the `RMR × N` form — which already contains all
+   * activity — with the decomposition that itemises it; the key's spelling has nothing to do with
+   * it, and a second maintenance-shaped key would have walked straight past this.
+   *
+   * ⚠ **A DECOMPOSITION TERM IS NOT A MAINTENANCE FIGURE AND MUST NOT BE CAUGHT.** The movement
+   * term is `step-equivalents × kcal-per-step × weight` — a component INSIDE the decomposition,
+   * priced the same way the step term beside it is, and it belongs on the same axis as burn. Both
+   * halves are asserted below, because a guard widened until it catches everything forbids the
+   * thing it was protecting.
+   */
+  const MAINTENANCE_SHAPED = /\b\w*[mM]aintenance\w*Kcal\b|\bmaintenanceKcal\b/
+  yes('...and the guard matches the maintenance shape rather than one key name',
+    MAINTENANCE_SHAPED.test('plan.estMaintenanceKcal')
+    && MAINTENANCE_SHAPED.test('observedMaintenanceKcal')
+    && !MAINTENANCE_SHAPED.test('plan.movementKcal'),
+    'the widened pattern must still catch estMaintenanceKcal, catch a differently-named twin, and '
+    + 'NOT catch a decomposition term — a movement figure priced per step is not an RMR multiple')
+
   const views = walk(['src/app', 'src/components'], /\.tsx?$/)
-  const mixed = views.filter((f) => RENDERS_BURN.test(code(f)) && /estMaintenanceKcal/.test(logic(f)))
+  const mixed = views.filter((f) => RENDERS_BURN.test(code(f)) && MAINTENANCE_SHAPED.test(logic(f)))
   yes('no view computes with RMR × 1.5 beside the decomposed burn model', mixed.length === 0,
     `${mixed.join('\n')}\nestMaintenanceKcal is a PLAN-DESIGN input — it may be compared with the `
     + 'calorie budget, which is the same model (that is what findings.mjs does). It may not be '

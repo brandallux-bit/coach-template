@@ -35,6 +35,7 @@ import { sessionCost, sessionKcal } from './aggregate.mjs'
 import {
   KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, RMR_COEFFICIENTS, TEF_RATE, rmrKcal,
 } from './athlete.mjs'
+import { MOVEMENT_LEVELS } from './movement.mjs'
 
 /**
  * The version stamped on every `energy.csv` row computed by the current model.
@@ -53,15 +54,27 @@ export const METHOD_VERSION = 1
 /**
  * The digest of the model inputs `METHOD_VERSION` was last recorded against.
  *
- * Re-recorded 2026-08-14 (W7) against Mifflin-St Jeor's coefficients, `TEF_RATE`,
- * `NEAT_OTHER_RATE`, `KCAL_PER_STEP_PER_LB`, and the source shape of `rmrKcal`, `sessionKcal` and
- * `sessionCost`. **`METHOD_VERSION` is NOT bumped**: nothing about the model changed, only what the
- * digest covers — the MET tables became chart data and left it. See the note in `modelInputs()`,
- * which is the argument, not a summary of it. Deliberately no figures in this sentence: a prose
- * copy beside the digest would be the second home the digest exists to make unnecessary.
- * `modelInputsJson()` prints the current inputs when the check fires.
+ * Recorded against Mifflin-St Jeor's coefficients, `TEF_RATE`, `NEAT_OTHER_RATE`,
+ * `KCAL_PER_STEP_PER_LB`, the movement level table, and the source shape of `rmrKcal`,
+ * `sessionKcal` and `sessionCost`. Deliberately no figures in this sentence: a prose copy beside
+ * the digest would be the second home the digest exists to make unnecessary. `modelInputsJson()`
+ * prints the current inputs when the check fires.
+ *
+ * Re-recorded when the movement term gained its second filling — a described level for a chart
+ * with no wearable feed. **`METHOD_VERSION` is NOT bumped, and here that is a decision rather than
+ * an oversight.** The model genuinely changed, which on a chart with rows would be exactly what a
+ * version bump is for. This repo has no rows: see the ⚠ on `METHOD_VERSION` above. A fork's first
+ * row is version 1 whatever the model was on the day it forked, so a 2 here would ship every chart
+ * a version whose 1 never existed.
+ *
+ * ⚠ **A CHART ADOPTING THIS CHANGE OWES ITS OWN BUMP.** An existing chart that overlays this code
+ * has every historical row re-costed — with a feed nothing moves, without one every day gains the
+ * movement term. That chart's rows are real, so it bumps its own `METHOD_VERSION`, re-records this
+ * digest and writes the change into `decisions.md`, per the procedure at the top of this file.
+ * `SETUP.md`'s "Pulling template improvements later" says the same thing in the place a maintainer
+ * actually reads.
  */
-export const METHOD_DIGEST = 'a99c95682095bb485f2fdd906282085c3b69e5d0090bfd5a3ed4b41f279bb352'
+export const METHOD_DIGEST = '1f4dba82c0f4c69b760d82b9adb12cc89bfb1ecd22c18b60bb36946386147efb'
 
 /**
  * Every constant that changes what a burn figure means, canonically ordered.
@@ -117,6 +130,12 @@ export function modelInputs() {
     tefRate: TEF_RATE,
     neatOtherRate: NEAT_OTHER_RATE,
     kcalPerStepPerLb: KCAL_PER_STEP_PER_LB,
+    // ⚠ **THE LEVEL TABLE IS MODEL CODE; THE CHART'S CHOSEN LEVEL IS NOT.** Changing a
+    // step-equivalent here revalues the movement term of every day on every chart with no wearable
+    // feed, which is precisely what this digest exists to refuse to let happen quietly. The
+    // athlete's ANSWER — `plan.movementOutsideExerciseLevel` — is chart data and stays out, for the
+    // same reason `SET_REST_SEC` does and with the same cost, stated in the ⚠ above it.
+    movementLevels: MOVEMENT_LEVELS.map((l) => [l.key, l.stepEquivalent]),
     // ⚠ THE FORMULAE THEMSELVES, AS SOURCE — not a description of them.
     //
     // A change to `MET × 3.5 × kg / 200 × minutes`, or to the precedence over it, is invisible to a

@@ -367,6 +367,47 @@ Run these in order, once, when the interview is finished and the values are real
      duration of a session that was performed but not timed, so it is a real input to the burn
      model, and a number the coach chose must not arrive in the record wearing the athlete's name.
 
+   - **The movement pair — `plan.stepFeed` and `plan.movementOutsideExerciseLevel`.** TWO
+     questions, and **ask the second only if the first is no.** Between them they fill the largest
+     discretionary term in the burn model, and until one of them is answered the chart is running
+     on a default.
+
+     **First:** *"Do you wear a watch or a ring all day, and are you willing to set up a phone
+     automation to feed the step count in? It is genuinely fiddly — expect to spend real time on
+     it, and it is completely fine to say no."*
+
+     ⚠ **DECLINING IS THE EXPECTED ANSWER AND MUST NOT BE READ BACK AS A LESSER SETUP.** Do not
+     talk them into it, do not describe the other path as a fallback, and do not say the chart
+     works "better" with a feed. It does not. It works differently, and the difference is one
+     estimated term against one counted one.
+       - **Yes** → write `plan.stepFeed` naming the automation (`"apple-health-shortcut"` for the
+         one this repo ships), point them at `SETUP.md` §4b, and ask for a daily step target if
+         their goals want one. Register any walking type with `energyCountedIn: "steps"` and
+         `met: 0`. **Do not also ask the second question** — the feed counts what it would
+         describe, and the validator rejects both together.
+       - **No** → ask the second question, and delete both `.github/workflows/log-steps.yml` and
+         `.github/workflows/check-steps.yml` (SETUP.md §4a names both; deleting only the writer
+         leaves the checker mailing a failure every morning).
+
+     **Second, only on a no:** *"Roughly how much are you on your feet on an ordinary day —
+     **outside anything you'd call exercise**?"* Read them the four descriptions in
+     `scripts/lib/movement.mjs` and write the key they pick, with an
+     `plan._provenance.movementOutsideExerciseLevel` marker carrying their words, class
+     `athlete-stated`.
+
+     ⚠ **"OUTSIDE ANYTHING YOU'D CALL EXERCISE" IS NOT PHRASING — SAY IT, EVERY TIME.** A walk
+     they chose to go on gets logged as a session and priced as one. If they answer with their
+     whole day's movement, that walk is counted twice, and the error is invisible: every number on
+     every page still looks reasonable. If their answer sounds like it includes their training,
+     ask again with the exercise taken out.
+
+     ⚠ **THE LEVEL IS THEIRS; THE KCAL FIGURE IS NOT, AND IS NOT STORED.** Record the description.
+     The arithmetic over it is `derived` and lives in code, per `data/METHOD.md` rule 5 — a
+     maintenance-shaped figure is not the athlete's just because they supplied its input. If they
+     do not know, or genuinely cannot say, write nothing: the shipped default applies, marked
+     `coach-proposed-unconfirmed` with the date, and it comes back as a finding within the week
+     rather than being quietly filed as theirs.
+
    - **`domains`** — the `goals.md` domain headings, verbatim, keyed by role. Findings are filed
      under these; a chart that omits them gets findings with no domain label, which is honest, and
      no default is applied because a default is another athlete's domain wearing this one's name.

@@ -192,18 +192,72 @@ The coach follows `skills/intake`, across several short sessions rather than one
 measurement, and one that never takes a photo. If the finished chart looks like a copy of
 someone else's with different numbers, the intake was led — say so and re-run Session 1.
 
-## 4. Steps automation — optional
+## 4. Movement — pick one of two configurations
 
-If a domain needs daily steps, `.github/workflows/log-steps.yml` writes `data/steps.csv`
-from an iOS Shortcut off Apple Health. It needs a fine-grained GitHub PAT with
-**Contents: read/write** on this repo only, and a Shortcut that POSTs:
+Everyday movement outside your sessions is one of the largest terms in the burn model,
+and there are two supported ways to fill it. **Neither is the fallback for the other**, and
+the one without a wearable is the one most people should pick. Declare exactly one in
+`athlete/constants.json`, under `plan`.
+
+### (a) No wearable — the common case
+
+```json
+"movementOutsideExerciseLevel": "light"
+```
+
+One of `seated`, `light`, `active`, `on-feet` — the descriptions are in
+`scripts/lib/movement.mjs` and `skills/intake` asks the question in words. It prices as a
+step-equivalent at your bodyweight, so it scales with you and uses no constant the model
+does not already have.
+
+**It covers movement OUTSIDE deliberate exercise, and that clause is load-bearing.** A walk
+you chose to go on is logged as a session and priced as one; a level that also covered it
+would count that walk twice. Answer it about an ordinary day with the exercise taken out.
+
+On this configuration, register a walking session type at a **real MET** — nothing else is
+counting that movement — and set `"loading": false` if it isn't the kind of session that
+tires anyone out. `validate-data.mjs` rejects `energyCountedIn: "steps"` here, because that
+promises the energy is counted in a column nothing will ever write.
+
+**Delete both step workflows:** `.github/workflows/log-steps.yml` (the writer) and
+`.github/workflows/check-steps.yml` (the checker). Deleting only the writer leaves the
+checker running, and it is the one that mails you a failure. Leaving them in place is
+harmless — with no `plan.stepFeed`, `check-steps-gap.mjs` exits cleanly — but a workflow
+nobody needs is one more thing to read past.
+
+### (b) A wearable, feeding steps in
+
+```json
+"stepFeed": "apple-health-shortcut",
+"stepsPerDayTarget": 9000
+```
+
+`.github/workflows/log-steps.yml` then writes `data/steps.csv` from an iOS Shortcut off
+Apple Health. It needs a fine-grained GitHub PAT with **Contents: read/write** on this repo
+only, and a Shortcut that POSTs:
 
 ```
 POST https://api.github.com/repos/<owner>/<repo>/dispatches
 { "event_type": "steps", "client_payload": { "date": "YYYY-MM-DD", "steps": 9432 } }
 ```
 
-If no domain needs steps, delete the workflow. Don't collect a number nobody uses.
+**Be honest with yourself about this before choosing it.** Building the Shortcut is fiddly
+and it has to keep firing every morning for months. Declining is the expected answer.
+
+On this configuration a walking type carries `met: 0` with `energyCountedIn: "steps"` — its
+energy is in the feed already, and pricing it again as a session double-counts it. Do not
+also set `movementOutsideExerciseLevel`: the feed counts what it describes, and the
+validator rejects the pair.
+
+`stepFeed` is a **name**, not a true/false, so a different writer — an Oura or Fitbit job
+you add later — is a new value and not a new branch through the code. Write the name of
+whatever actually writes the file.
+
+### If neither is answered
+
+The chart runs on the shipped default level, marked `coach-proposed-unconfirmed` with the
+date, and the coach raises it as a question within the week. It is not deleted and it is
+not silently filed as yours.
 
 ## 5. Dashboard — optional, and after intake
 
@@ -264,10 +318,19 @@ names each one it finds; this is what to do about the ones shipped so far.
 | If your chart has | Move it to | Why |
 |---|---|---|
 | `program.dailyRehabMin` | `sessionTypes.<type>.standingDurationMin`, and name that type in `program.dailyBlockType` | The block's length is a property of the ACTIVITY, not of the current block, and the ledger and the forward view now read it from one place instead of disagreeing |
+| rows already in `data/steps.csv` | add `plan.stepFeed`, naming whatever writes that file | The movement term is now declared rather than inferred from whether a column happens to be blank. Without it your chart is read as having no feed, and its movement is priced from a described level instead of from the steps you actually recorded |
+| no `data/steps.csv` rows, and no wearable | add `plan.movementOutsideExerciseLevel` (§4a) | Until you do, the chart runs on the shipped default level, marked `coach-proposed-unconfirmed` |
 
-`data/energy.csv` gained a `session_estimated` column at the same time, so `npm run validate` will
-say it is missing one until you run `compute-energy.mjs` as above. That is the whole fix; nothing is
-wrong with your rows.
+`data/energy.csv` gained `session_estimated` and `incidental_kcal` columns, so `npm run validate`
+will say it is missing them until you run `compute-energy.mjs` as above. That is the whole fix;
+nothing is wrong with your rows.
+
+⚠ **On a chart with rows, that re-run is a model change and it owes a `method_version` bump.**
+With a step feed nothing moves — the movement term was already counted and the recomputed figures
+are identical. Without one, every historical day gains a movement term it did not have, which is
+exactly what the version column exists to keep readable. Bump `METHOD_VERSION` in
+`scripts/lib/method-version.mjs`, re-record the digest it prints, and write the change into
+`decisions.md` before you commit the regenerated ledger.
 
 Until you move it, an untimed session of that type is costed from its set count instead of from
 the length you declared, and the daily block drops out of the forward view. Nothing is lost and

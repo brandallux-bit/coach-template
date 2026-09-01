@@ -206,12 +206,16 @@ export const SPEC = {
     // duration rather than a recorded one. It is not `complete`'s job: complete asks whether every
     // input the chart has is present, and a reconstruction is present. This asks whether the figure
     // was measured, which is what `observedDailyBurn`'s mean has to be able to declare.
-    header: ['date', 'rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'session_kcal',
-      'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'complete', 'session_estimated',
-      'method_version'],
+    // `incidental_kcal` — the movement term for a chart with NO wearable feed, priced from the
+    // level the athlete described (scripts/lib/movement.mjs). It and `steps_kcal` are alternative
+    // fillings of ONE slot in the decomposition: exactly one of the two is non-blank on a
+    // well-formed row, and which one is a property of the chart, not of the day.
+    header: ['date', 'rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'incidental_kcal',
+      'session_kcal', 'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'complete',
+      'session_estimated', 'method_version'],
     uniqueDate: true,
-    numeric: ['rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'session_kcal',
-      'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'method_version'],
+    numeric: ['rmr_kcal', 'tef_kcal', 'neat_other_kcal', 'steps_kcal', 'incidental_kcal',
+      'session_kcal', 'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'method_version'],
     enums: { complete: ['y', 'n'], session_estimated: ['y', 'n'] },
     ranges: { rmr_kcal: [0, 6000], tef_kcal: [0, 2000], neat_other_kcal: [0, 2000],
       steps_kcal: [0, 5000], session_kcal: [0, 5000], burn_total_kcal: [0, 12000],

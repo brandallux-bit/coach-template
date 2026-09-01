@@ -174,16 +174,44 @@ const dated = (start, n) => Array.from({ length: n }, (_, i) => {
   return { date: d.toISOString().slice(0, 10) }
 })
 
+/**
+ * ⚠ **EVERY STEPS CASE BELOW RUNS ON A CHART THAT DECLARES `plan.stepFeed`, AND THAT IS THE
+ * DIFFERENCE THIS SECTION NOW TURNS ON.** A stale feed is only stale relative to a claim that it
+ * was arriving. Without the declaration these fixtures would be asserting that a chart with no
+ * wearable should be nagged about an automation it never installed.
+ */
+const feedChart = {
+  ...deficitChart,
+  plan: { ...deficitChart.plan, stepFeed: 'apple-health-shortcut' },
+}
+const feed = (args) => ({ ...args, constants: feedChart })
+
 check('  a steps feed silent for 4 days is reported',
-  { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) },
+  feed({ body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) }),
   'workflow-stale-data-steps-csv')
 check("  yesterday's steps row is silent — that is the contract, not a gap",
-  { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-08', 6) }, null)
+  feed({ body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-08', 6) }), null)
 check('  a targets feed silent for 3 days is reported',
   { body: steadyBody, targets: [target('2026-08-11', FLOOR + 600)], steps: dated('2026-08-08', 6) },
   'workflow-stale-data-targets-csv')
-check('  a feed that has never written anything is NOT reported — it may not be wired up at all',
+
+/**
+ * ⚠ **THE PAIR THE DECLARATION MADE SEPARABLE, AND THE REASON IT WAS WORTH ADDING.**
+ *
+ * These two charts have byte-identical `data/` — an empty `steps.csv` — and the right answer is
+ * opposite in each. Before `plan.stepFeed` existed, nothing anywhere could tell them apart, so the
+ * never-written case was skipped for both: the second chart was spared a nag it did not deserve
+ * and the first was left with a feed that had never once fired and nothing saying so. That is the
+ * worst-timed silence there is, because it falls on day one, when nobody yet knows what a working
+ * day is supposed to look like.
+ */
+check('  a DECLARED feed that has never written a row is reported — it never fired once',
+  feed({ body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: [] }),
+  'workflow-never-data-steps-csv')
+check('  ...while an undeclared one is silent — that chart simply has no wearable',
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: [] }, null)
+check('  ...and an undeclared feed is not called STALE either, whatever the dates say',
+  { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) }, null)
 
 console.log('\ndated follow-ups — the date somebody wrote down IS the registration')
 const doc = (text) => [{ path: 'nutrition/plan.md', text }]
