@@ -2,8 +2,8 @@
 /**
  * **Gate B — run this repo's system layer against a real chart's data, in a throwaway clone.**
  *
- * WHY THIS EXISTS. This repo has no chart, and that makes fourteen of `check-all.mjs`'s eighteen
- * steps skip, `npx tsc` the only thing that ever compiles the TypeScript, and BOTH leak scanners
+ * WHY THIS EXISTS. This repo has no chart, and that makes fourteen of `check-all.mjs`'s steps
+ * skip, `npx tsc` the only thing that ever compiles the TypeScript, and BOTH leak scanners
  * structurally incapable of failing: `check-no-athlete-leak.mjs` and `check-banned-terms.mjs`
  * derive their denylists from `athlete/constants.json`, so with no chart they collect zero terms
  * and exit 0. You could paste one athlete's session types into a shared file here and stay green.
@@ -141,7 +141,19 @@ const REPIN_PATH = 'athlete/leak-acknowledgements.json'
 // pronouns, quoted speech and 2026 dates. It over-reports — that is the correct direction for a
 // screen — and each hit is either de-athleted or explained out loud.
 
-const DEATHLETE_RE = /\*"|\bhe\b|\bhis\b|\bhim\b|2026-0/
+const DEATHLETE_RE = /\*"|\b(he|him|his|she|her|hers)\b|\b20\d\d-\d\d-\d\d\b/i
+
+/**
+ * ⚠ **`they`/`them`/`their` ARE DELIBERATELY ABSENT, AND THAT IS NOT AN OVERSIGHT.** They are this
+ * repo's OWN de-athleted convention — every generic sentence here about an athlete uses them — so
+ * including them would fire the screen on every correctly-written line and the screen would be
+ * turned off within a day. The gendered sets are the signal: a template that has been de-athleted
+ * contains none of them, and any that appears arrived with somebody's chart.
+ *
+ * The date clause was `2026-0` until a review pointed out that it matched nine months of one
+ * particular year — blind to October onward, and blind to every other year, in a file whose whole
+ * subject is not hard-coding one chart's specifics.
+ */
 
 /**
  * Two narrowings, each with a reason, because a screen that cannot be satisfied gets deleted and a
@@ -189,12 +201,12 @@ const deathleteReport = () => {
   say(`── de-athleting count over ${files.length} file(s) changed since ${BASE}: ${hits.length}`)
   for (const h of hits.slice(0, 40)) say(`   ${h.path}: ${h.text}`)
   if (hits.length > 40) say(`   … ${hits.length - 40} more`)
-  if (!hits.length) say('   zero — no added line carries a third-person pronoun, a quote or a 2026 date.')
+  if (!hits.length) say('   zero — no added line carries a gendered pronoun, a quoted line, or a bare date.')
   return { skipped: false, hits }
 }
 
 const deathlete = deathleteReport()
-if (flag('--deathlete-only')) process.exit(deathlete.hits.length ? 1 : 0)
+if (flag('--deathlete-only')) process.exit(deathlete.skipped || deathlete.hits.length ? 1 : 0)
 say()
 
 // -------------------------------------------------------------------------------------------
@@ -209,8 +221,10 @@ const run = (cmd, args, cwd, env = {}) =>
   spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 })
 
 say(`cloning ${CHART} @ ${REF} → ${clone}`)
+// ⚠ A shallow clone carries only the default branch's tip, so `--ref anything-else` cannot resolve
+// in it. Deepen only when a ref was actually asked for; the common case stays shallow and fast.
 const cloneArgs = isUrl
-  ? ['clone', '--quiet', '--depth', '1', CHART, clone]
+  ? ['clone', '--quiet', ...(REF === 'HEAD' ? ['--depth', '1'] : []), CHART, clone]
   : ['clone', '--quiet', '--no-hardlinks', CHART, clone]
 const cloned = run('git', cloneArgs, work)
 if (cloned.status !== 0) die(`clone failed:\n${cloned.stderr}`)
@@ -221,10 +235,25 @@ if (REF !== 'HEAD') {
 const at = run('git', ['log', '-1', '--format=%h %cs %s'], clone).stdout.trim()
 say(`chart under test: ${at}`)
 
-// A clone that is somehow the live chart itself would make every "read-only" claim above false.
+// A clone that is somehow the live chart itself — or inside it — would make every "read-only"
+// claim above false. Containment, not just equality: a TMPDIR under the chart would otherwise pass.
 const realClone = realpathSync(clone)
 const realChart = existsSync(CHART) ? realpathSync(CHART) : null
-if (realChart && realClone === realChart) die('the clone resolved to the chart itself. Refusing to write.')
+if (realChart && (realClone === realChart || realClone.startsWith(`${realChart}/`))) {
+  die('the clone resolved to the chart itself, or inside it. Refusing to write.')
+}
+
+/**
+ * ⚠ **DROP THE REMOTE, so "THE CHART IS NEVER A TARGET" IS STRUCTURAL AND NOT MERELY TRUE TODAY.**
+ *
+ * Nothing this script runs pushes — verified — but `scripts/` is mirrored EXACTLY into this clone,
+ * which puts `chart-commit.mjs`, `git-commit-push.mjs` and `absorb-branches.mjs` in it with a
+ * working remote pointing at the athlete's live repository, and `absorb.mjs` runs
+ * `git push origin --delete <branch>`. One future `check-all` step, or one hand-run command in a
+ * `--keep` clone, would write straight into somebody's chart. Removing the remote costs nothing
+ * here and turns a property that happens to hold into one that cannot fail.
+ */
+run('git', ['remote', 'remove', 'origin'], clone)
 
 if (!existsSync(join(clone, 'athlete', 'constants.json'))) {
   die(`${CHART} has no athlete/constants.json, so it is not a chart — every leak scan would `
@@ -272,6 +301,12 @@ for (const path of SYSTEM_PATHS) {
 
   for (const rel of here) {
     guard(rel)
+    // `git ls-files` lists a file that is tracked but deleted in the worktree. Copying it throws
+    // an ENOENT naming a path that plainly exists in git, which reads as a harness bug.
+    if (!existsSync(join(ROOT, rel))) {
+      die(`${rel} is tracked here but missing from the working tree. Commit the deletion, or `
+        + 'restore the file — the overlay ships the tree, and cannot ship a file that is not in it.')
+    }
     const dst = join(clone, rel)
     mkdirSync(dirname(dst), { recursive: true })
     cpSync(join(ROOT, rel), dst)
@@ -280,6 +315,8 @@ for (const path of SYSTEM_PATHS) {
       guard(comp)
       if (!existsSync(join(ROOT, comp))) continue
       cpSync(join(ROOT, comp), join(clone, comp))
+      // In `copied` too, or it is absent from the reported count and from the leak scan's file set.
+      copied.add(comp)
     }
   }
 
@@ -367,7 +404,10 @@ if (docs.status !== 0) die(`build-docs.mjs failed in the clone:\n${docs.stdout}\
 say('regenerated the chart-derived blocks in data/METHOD.md (build-docs.mjs)')
 
 // A last assertion against the whole class of mistake, read off git rather than off intent.
-const touchedData = run('git', ['status', '--porcelain', '--', 'data', 'athlete', 'logs', 'nutrition', 'program'], clone)
+// Every path `NEVER_WRITE_UNDER` protects, plus `decisions.md`, which `system-paths.mjs` names as
+// the chart and neither list covered. A review found `photos` and `decisions.md` missing here.
+const touchedData = run('git', ['status', '--porcelain', '--',
+  'data', 'athlete', 'logs', 'nutrition', 'program', 'photos', 'decisions.md'], clone)
   .stdout.split('\n').filter(Boolean)
   .filter((l) => ![...WRITE_EXCEPTIONS, REPIN_PATH].some((w) => l.includes(w)))
 if (touchedData.length) die(`the overlay modified chart data, which it must never do:\n${touchedData.join('\n')}`)
@@ -430,12 +470,36 @@ if (suite && suite.status !== 0 && /FAIL\s+energy\.csv/.test(bothStreams(suite))
   } else {
     say()
     say('⚠ ledger drift ALLOWED for this run (--allow-ledger-drift): this repo\'s compute-energy.mjs')
-    say('  produces a different energy.csv than the chart committed. Re-running the suite in bot mode')
-    say('  so the remaining steps are actually exercised rather than hidden behind the first failure.')
+    say('  produces a different energy.csv than the chart committed. Regenerating the ledger and')
+    say('  re-running, so the remaining steps are exercised rather than hidden behind the first.')
+    /**
+     * ⚠ **REGENERATE THE LEDGER EXPLICITLY; DO NOT RE-RUN THE SUITE IN BOT MODE.**
+     *
+     * `--regen-energy` was the obvious move and it is wrong, because that flag does TWO things.
+     * Besides regenerating `energy.csv` it turns `check-targets-gap` from a hard failure into a
+     * silent auto-fill (`check-all.mjs`, the bot-mode note). Its only trace is an indented line the
+     * step-line filter below discards — so a chart under test with a day that has NO CALORIE
+     * TARGET would fail at the energy step first, take this branch, get its gap quietly filled,
+     * and report `0 failed`. That is the 2026-08-15 defect `CLAUDE.md` §0.3 exists for, made
+     * invisible by the flag every run of this port has to pass.
+     *
+     * Regenerating the one derived file and re-running the suite UNCHANGED narrows the allowance to
+     * exactly what the flag's name claims.
+     */
+    const regen = run(process.execPath, ['scripts/compute-energy.mjs'], clone)
+    if (regen.status !== 0) die(`compute-energy.mjs failed in the clone:\n${regen.stderr}`)
+    // The staleness step compares against `git diff -- data/energy.csv`, so a regenerated file that
+    // is merely written is still stale by its definition. Commit it, in the throwaway clone.
+    const add = run('git', ['add', 'data/energy.csv'], clone)
+    const ci = run('git', ['-c', 'user.email=overlay@local', '-c', 'user.name=port-overlay',
+      'commit', '-qm', 'port-overlay: regenerate the ledger under this repo\'s burn model'], clone)
+    if (add.status !== 0 || ci.status !== 0) {
+      die(`could not commit the regenerated ledger:\n${add.stderr}\n${ci.stderr}`)
+    }
     failed = false
     results.pop()
-    suite = stage('node scripts/check-all.mjs --regen-energy', () =>
-      run(process.execPath, ['scripts/check-all.mjs', '--regen-energy'], clone))
+    suite = stage('node scripts/check-all.mjs (ledger regenerated)', () =>
+      run(process.execPath, ['scripts/check-all.mjs'], clone))
   }
 }
 
@@ -456,9 +520,20 @@ if (BUILD) {
 if (suite) {
   const lines = bothStreams(suite).split('\n').filter((l) => /^(ok|skip|FAIL)\s/.test(l))
   const skips = lines.filter((l) => l.startsWith('skip'))
+  // ⚠ **THE DENOMINATOR COMES FROM THE SOURCE, NOT FROM THE OUTPUT.** `check-all` returns without
+  // printing anything further once a step fails, so a suite that died at step 2 prints
+  // "1 ok, 1 failed, of 2 step(s)" — a truncated run rendered as a complete one. Counting the
+  // registrations makes "every step ran" an assertion instead of a reading of its own tail.
+  const registered = (readFileSync(join(clone, 'scripts', 'check-all.mjs'), 'utf8')
+    .match(/^step\(/gm) ?? []).length
   say()
   say(`check-all: ${lines.filter((l) => l.startsWith('ok')).length} ok, ${skips.length} skipped, `
-    + `${lines.filter((l) => l.startsWith('FAIL')).length} failed, of ${lines.length} step(s)`)
+    + `${lines.filter((l) => l.startsWith('FAIL')).length} failed, of ${registered} registered step(s)`)
+  if (registered && lines.length < registered) {
+    failed = true
+    say(`::error::only ${lines.length} of ${registered} steps reported. The suite stopped early; `
+      + 'the steps after it were never run and this gate says nothing about them.')
+  }
   if (skips.length) {
     failed = true
     say('::error::a step SKIPPED on a chart that exists. Gate B proves nothing about a skipped step:')
@@ -476,6 +551,12 @@ say()
 say(`── leak scan — ${denylist.length} term(s) derived from the chart's athlete/, over the `
   + `${copied.size} file(s) this repo shipped`)
 if (!denylist.length) die('the denylist is empty, so this scan cannot fail. That is the vacuous pass.')
+// The same argument one axis over: an empty or truncated `only` set also cannot fail, and unlike a
+// total copy failure (which kills build-docs a hundred lines up) a PARTIAL one is silent.
+if (copied.size < SYSTEM_PATHS.length) {
+  die(`only ${copied.size} file(s) crossed, fewer than the ${SYSTEM_PATHS.length} system paths `
+    + 'themselves. Something did not copy, and a scan over a truncated file set cannot fail.')
+}
 
 const leaks = scanForLeaks(clone, denylist, { only: copied })
 
@@ -493,12 +574,30 @@ const show = (f) => {
   if (f.hits.length > 8) say(`    … ${f.hits.length - 8} more`)
 }
 
-if (!mine.length) {
-  say('  clean — no file this port changed names this athlete in scannable text.')
+/**
+ * ⚠ **`docs/` IS `reported`, NEVER FAILED, AND THE GATE HAS TO HONOUR THAT.**
+ *
+ * `athlete-leak.mjs`'s rule 4: the engineering record describes this chart's defects by design, and
+ * X-11's own statement quotes them. A gate that goes red on the document explaining the gate is a
+ * gate nobody keeps. The first version of this split on "did the port change it" alone and ignored
+ * `f.mode` — which would have turned `docs/INVARIANTS.md` fatal the moment a phase edited it, and
+ * two phases do.
+ */
+const fatal = mine.filter((f) => f.mode === 'enforced')
+const reported = mine.filter((f) => f.mode !== 'enforced')
+
+if (!fatal.length) {
+  say('  clean — no enforced file this port changed names this athlete in scannable text.')
 } else {
-  say(`  LEAK, in ${mine.length} file(s) this port changed:`)
-  mine.forEach(show)
+  say(`  LEAK, in ${fatal.length} enforced file(s) this port changed:`)
+  fatal.forEach(show)
   failed = true
+}
+
+if (reported.length) {
+  say()
+  say(`  ${reported.length} file(s) this port changed under a REPORTED scope — printed, never failed:`)
+  reported.forEach(show)
 }
 
 if (inherited.length) {

@@ -229,6 +229,39 @@ console.log('\nacknowledgements: pinned to the lines they cover, and stale is a 
 }
 
 // =================================================================================================
+console.log('\nan explicit file set is scanned WHOLE, including everything outside SCOPE')
+// =================================================================================================
+//
+// ⚠ **THE `only` OPTION USED TO BE FILTERED THROUGH `SCOPE`, WHICH MADE IT SILENTLY MISS THE
+// CHARTER AND THE METHOD DOCUMENT WHILE REPORTING THEM AS SCANNED.**
+//
+// `SCOPE` names five directories. `port-overlay.mjs` hands in the full set of shared files it
+// copied — 114 of them — and the sixteen outside those five roots were unreachable: `CLAUDE.md`,
+// `data/METHOD.md`, `README.md`, every workflow, every config file. The caller then printed
+// "clean" over all 114. Those are the files a port edits most; `check-banned-terms.mjs` scopes
+// them out too, so they had no automated athlete-leak coverage of any kind in either repo.
+
+inChart({
+  'CLAUDE.md': '# Charter\n\nThe Monday session is Threshold 400s.\n',
+  'docs/NOTES.md': 'Historical: the session was Threshold 400s.\n',
+  'skills/weekly-review/SKILL.md': 'Read Threshold 400s first.\n',
+}, (root) => {
+  const found = scanForLeaks(root, denylistFrom(root), {
+    only: new Set(['CLAUDE.md', 'docs/NOTES.md', 'skills/weekly-review/SKILL.md']),
+  })
+  const paths = found.map((f) => f.path).sort()
+  JSON.stringify(paths) === JSON.stringify(['CLAUDE.md', 'docs/NOTES.md', 'skills/weekly-review/SKILL.md'])
+    ? ok('a root-level shared file is scanned, not skipped for living outside SCOPE')
+    : fail('every path handed in must be scanned', JSON.stringify(paths))
+  found.find((f) => f.path === 'CLAUDE.md')?.mode === 'enforced'
+    ? ok('...and a path outside SCOPE is enforced — it ships to every fork like any other')
+    : fail('an out-of-scope shared file must be enforced', JSON.stringify(found.map((f) => [f.path, f.mode])))
+  found.find((f) => f.path === 'docs/NOTES.md')?.mode === 'reported'
+    ? ok('...while a path inside a reported scope keeps its mode')
+    : fail('SCOPE modes must survive the explicit file set', JSON.stringify(found.map((f) => [f.path, f.mode])))
+})
+
+// =================================================================================================
 console.log('\na one-word label counts only in company, or an ordinary chart is red on day one')
 // =================================================================================================
 //

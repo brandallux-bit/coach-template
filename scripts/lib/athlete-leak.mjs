@@ -433,61 +433,80 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
   }))
   const found = []
 
-  for (const { dir, mode, kind } of SCOPE) {
-    for (const full of walk(join(root, dir))) {
-      const rel = relative(root, full)
-      if (only) { if (!only.has(rel)) continue }
-      else {
-        if (NEVER_SCANNED.some((n) => rel.startsWith(n.path))) continue
-        if (isChartInstance(root, rel)) continue
-      }
-      const raw = readFileSync(full, 'utf8')
-      const isCode = kind === 'code' && /\.(mjs|js|ts|tsx)$/.test(rel)
-      const text = isCode ? stripComments(raw) : raw
-      const hits = []
-      text.split('\n').forEach((line, i) => {
-        const matched = patterns.filter((p) => p.re.test(line))
-          .filter((p) => !isCode || asData(line, p.re))
-        // ⚠ **A REGISTRY KEY COUNTS ONLY IN COMPANY, and this rule is what makes the check
-        // usable.** The keys are the athlete's activity list, but several of them are also
-        // ordinary English — `strength`, `walk`, `rest`, `circuit`. One of them on a line is a
-        // sentence; TWO OR MORE is the enum restated, which is exactly the defect F-15 names:
-        // `['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']` typed into a
-        // schema, a dropdown and a floor set. Matching singles produced 27 hits on lines like
-        // "flag conflicts with the strength agent" — noise that would have got the check muted.
-        // ⚠ **A KNOWN, MEASURED HOLE: a LONE registry key is not reported, in code either.**
-        // `const t = 'peloton'` in shared code passes this check. That was tested, and it is the
-        // deliberate cost of the rule below rather than an oversight.
-        //
-        // The obvious tightening — "in code, `asData` has already filtered, so keep singles" —
-        // was tried and reverted. `asData` is generous by design: its unquoted-key branch matches
-        // `identifier =`, so `const walk = (dir, out = []) => {` (a directory walker, in this very
-        // file) reads as data. Enabling it produced **10 hits in 8 files, all but one noise** —
-        // a `walk` helper, `rehab MET on file`, `walks are counted in steps`. That is the 27-hit
-        // result the rule below already records, reproduced at smaller scale. A check that reports
-        // its own loop variable is a check that gets muted, and a muted check is worth less than
-        // this hole.
-        //
-        // What still catches the real thing: two or more keys on one line — which is what the
-        // enum actually looks like when it is restated into a schema, a dropdown or a floor set
-        // (`['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']`), and that form
-        // IS caught. A single hand-typed key remains findable only by review.
-        const enumHits = matched.filter((p) => p.kind === 'enum-member')
-        const terms = (enumHits.length >= 2 ? matched : matched.filter((p) => p.kind !== 'enum-member'))
-          .map((p) => p.term)
-        if (terms.length) hits.push({ line: i + 1, text: line.trim().slice(0, 160), terms })
+  /**
+   * ⚠ **THE FILE LIST IS BUILT BEFORE THE LOOP, BECAUSE `only` MUST NOT BE FILTERED THROUGH
+   * `SCOPE` — AND WHEN IT WAS, THE SCAN SILENTLY MISSED SIXTEEN FILES WHILE REPORTING THEM.**
+   *
+   * `SCOPE` names five directories. Everything a shared layer contains outside them —
+   * `CLAUDE.md`, `data/METHOD.md`, `README.md`, `.github/workflows/*`, the config files — was
+   * unreachable, so an `only` set of 114 paths was scanned as 98 and the caller printed "clean"
+   * over all 114. Those are precisely the files a port edits most: the charter and the method
+   * document are touched by four separate phases of it. `check-banned-terms.mjs` does not cover
+   * them either, so they had no automated athlete-leak coverage of any kind.
+   *
+   * A path outside `SCOPE` is `enforced`: it is shared, it ships to every fork, and one athlete
+   * in it is a leak by exactly the same argument that makes `scripts/` enforced.
+   */
+  const scopeOf = (rel) => SCOPE.find(({ dir }) => rel === dir || rel.startsWith(`${dir}/`))
+  const targets = only
+    ? [...only]
+      .filter((rel) => EXTENSIONS.some((e) => rel.endsWith(e)) && existsSync(join(root, rel)))
+      .map((rel) => ({ rel, ...(scopeOf(rel) ?? { mode: 'enforced', kind: 'prose' }) }))
+      .sort((a, b) => (a.rel < b.rel ? -1 : 1))
+    : SCOPE.flatMap(({ dir, mode, kind }) => walk(join(root, dir))
+      .map((full) => relative(root, full))
+      .filter((rel) => !NEVER_SCANNED.some((n) => rel.startsWith(n.path)) && !isChartInstance(root, rel))
+      .map((rel) => ({ rel, mode, kind })))
+
+  for (const { rel, mode, kind } of targets) {
+  const full = join(root, rel)
+    const raw = readFileSync(full, 'utf8')
+    const isCode = kind === 'code' && /\.(mjs|js|ts|tsx)$/.test(rel)
+    const text = isCode ? stripComments(raw) : raw
+    const hits = []
+    text.split('\n').forEach((line, i) => {
+      const matched = patterns.filter((p) => p.re.test(line))
+        .filter((p) => !isCode || asData(line, p.re))
+      // ⚠ **A REGISTRY KEY COUNTS ONLY IN COMPANY, and this rule is what makes the check
+      // usable.** The keys are the athlete's activity list, but several of them are also
+      // ordinary English — `strength`, `walk`, `rest`, `circuit`. One of them on a line is a
+      // sentence; TWO OR MORE is the enum restated, which is exactly the defect F-15 names:
+      // `['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']` typed into a
+      // schema, a dropdown and a floor set. Matching singles produced 27 hits on lines like
+      // "flag conflicts with the strength agent" — noise that would have got the check muted.
+      // ⚠ **A KNOWN, MEASURED HOLE: a LONE registry key is not reported, in code either.**
+      // `const t = 'peloton'` in shared code passes this check. That was tested, and it is the
+      // deliberate cost of the rule below rather than an oversight.
+      //
+      // The obvious tightening — "in code, `asData` has already filtered, so keep singles" —
+      // was tried and reverted. `asData` is generous by design: its unquoted-key branch matches
+      // `identifier =`, so `const walk = (dir, out = []) => {` (a directory walker, in this very
+      // file) reads as data. Enabling it produced **10 hits in 8 files, all but one noise** —
+      // a `walk` helper, `rehab MET on file`, `walks are counted in steps`. That is the 27-hit
+      // result the rule below already records, reproduced at smaller scale. A check that reports
+      // its own loop variable is a check that gets muted, and a muted check is worth less than
+      // this hole.
+      //
+      // What still catches the real thing: two or more keys on one line — which is what the
+      // enum actually looks like when it is restated into a schema, a dropdown or a floor set
+      // (`['strength', 'circuit', 'bjj', 'peloton', 'walk', 'rest', 'other']`), and that form
+      // IS caught. A single hand-typed key remains findable only by review.
+      const enumHits = matched.filter((p) => p.kind === 'enum-member')
+      const terms = (enumHits.length >= 2 ? matched : matched.filter((p) => p.kind !== 'enum-member'))
+        .map((p) => p.term)
+      if (terms.length) hits.push({ line: i + 1, text: line.trim().slice(0, 160), terms })
+    })
+    if (hits.length) {
+      found.push({
+        path: rel,
+        mode,
+        hits,
+        digest: createHash('sha256').update(hits.map((h) => `${h.line}:${h.text}`).join('\n'))
+          .digest('hex').slice(0, 16),
       })
-      if (hits.length) {
-        found.push({
-          path: rel,
-          mode,
-          hits,
-          digest: createHash('sha256').update(hits.map((h) => `${h.line}:${h.text}`).join('\n'))
-            .digest('hex').slice(0, 16),
-        })
-      }
     }
   }
+
   return found.sort((a, b) => (a.path < b.path ? -1 : 1))
 }
 
