@@ -1035,7 +1035,16 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
     })
     is('a today already OVER its target contributes what was eaten, never eaten minus the overshoot',
       blown.inKcal, 2600)
-    is('...and it is a record at that point, not an estimate', blown.estimatedIntakeDays, 0)
+    // ⚠ **AND IT IS STILL AN ESTIMATE, WHICH THE FIRST VERSION OF THIS FIXTURE ASSERTED THE
+    // OPPOSITE OF.** Once today is over target the figure is what has been eaten SO FAR — a running
+    // partial — while the OUT side for today is a whole-day mean. Classifying it as a record made
+    // `estimatedIntakeDays` zero, dropped the tile's badge, and printed "a record, not a forecast"
+    // on a day hours from over, three lines above a footnote saying "a projection, not a result".
+    // The floor is right; calling a lower bound a record is not.
+    is('...and it is STILL an estimate — today is never a record, whatever the number says',
+      blown.estimatedIntakeDays, 1)
+    is('...so the badge holds on the day the athlete is most likely to be reading it',
+      blown.actualIntakeDays, 0)
 
     // A day still to come is the plan, and so is a finished day nobody logged — a day with no meal
     // row is not a zero-calorie day (X-1), and it says it is an estimate.
@@ -1119,9 +1128,15 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
     // print the week's budget beside a larger figure already eaten without anything objecting. It
     // now has the same obligation as the OUT side, so this runs once per contract rather than being
     // written twice and drifting.
+    // ⚠ **`lossLb` AND `gapKcal` ARE UNDER BOTH MARKERS, because they are a subtraction of the two
+    // sides.** Keying them to `estimatedBurnDays` alone was right while the IN side was a
+    // restatement of the budget and could not be a forecast; it stopped being right the moment the
+    // IN side started carrying record and plan together. A week whose every day is energy-complete
+    // but one of which nobody logged has `estimatedBurnDays === 0` and `estimatedIntakeDays === 1`,
+    // and would have rendered a projected loss with no badge at all.
     const CONTRACTS = [
       { figures: /\b(outKcal|lossLb|gapKcal)\b/g, marker: 'estimatedBurnDays' },
-      { figures: /\b(inKcal)\b/g, marker: 'estimatedIntakeDays' },
+      { figures: /\b(inKcal|lossLb|gapKcal)\b/g, marker: 'estimatedIntakeDays' },
     ]
     const SURFACES = {
       // /today's weekly card. The daily surface is where the athlete decides what to eat, so this
@@ -1157,9 +1172,13 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
      */
     const isNullGuard = (text, hit) => /^\s*[!=]==?\s*null/.test(text.slice(hit.index + hit[0].length))
 
-    let rendered = 0
     for (const { figures: FIGURES, marker } of CONTRACTS) {
     const MARK = new RegExp(marker)
+    // ⚠ **PER CONTRACT, NOT SHARED.** One counter across both loops meant a contract that matched
+    // NOTHING on any page ran no assertions at all and still passed the vacuity check below, on the
+    // strength of the other contract's hits. Demonstrated: replacing the tile's `inKcal` with a
+    // different field and deleting its badge left this whole suite green.
+    let rendered = 0
     for (const f of pages) {
       const text = code(f)
       const hits = [...text.matchAll(FIGURES)].filter((h) => !isNullGuard(text, h))
@@ -1214,10 +1233,11 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
         }
       }
     }
-    }
-    yes('the projection registry is not vacuous — at least one surface actually renders it',
+    yes(`the ${marker} contract is not vacuous — a surface actually renders a figure it marks`,
       rendered > 0,
-      'if nothing renders these figures the whole check above passes by doing nothing (X-10)')
+      `nothing on any page matches ${FIGURES} , so every assertion above ran zero times and this `
+      + 'check passed by doing nothing (X-10)')
+    }
 
     // The kcal-per-lb constant reaches the page from its one home rather than being retyped.
     // `test-single-home.mjs` scans for the literal; this asserts the wiring that makes that possible.

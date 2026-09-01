@@ -416,11 +416,10 @@ export function observedDailyBurn(energyRows, minDays = MIN_DAYS_FOR_OBSERVED_BU
  * the plan and counts as an estimate, because a day nobody logged is not a zero-calorie day (X-1).
  *
  * **THE DIVISION ALREADY EXISTED AND NOTHING HERE INVENTS A NEW ONE.** `plan.kcalByWeekday` is the
- * split — Mon–Thu 1,700, Fri 1,750, Sat 2,650, Sun 1,750 — and `validate-data.mjs` already asserts
- * it sums to `weeklyKcalBudget`. Wherever a target is what a day contributes, a written
- * `targets.csv` row wins, because a written row is a deliberate override (the big dinner moving off
- * Saturday); a day that has none yet falls back to the same weekday structure the generator would
- * write. Two sources, one division, and `writtenTargetDays` / `structureTargetDays` say which days
+ * split, and `validate-data.mjs` already asserts it sums to `weeklyKcalBudget`. Wherever a target
+ * is what a day contributes, a written `targets.csv` row wins, because a written row is a
+ * deliberate override — a bigger day moved to where the athlete actually wants it that week; a day
+ * that has none yet falls back to the same weekday structure the generator would write. Two sources, one division, and `writtenTargetDays` / `structureTargetDays` say which days
  * came from which.
  *
  * **THE OUT SIDE IS ACTUALS WHERE THEY EXIST AND THE ATHLETE'S OWN AVERAGE WHERE THEY DO NOT.**
@@ -475,7 +474,22 @@ export function weekEnergy({ days = [], observed = null, weekdayBudget = null, k
     // that has one.
     if (d.inProgress) {
       const kcal = target == null ? null : Math.max(logged ?? 0, target)
-      return { kcal, written: written != null, usesTarget: true, recorded: kcal === logged }
+      // ⚠ **TODAY IS NEVER A RECORD, AND `kcal === logged` SAID IT WAS THE MOMENT IT WENT OVER.**
+      //
+      // Once `logged > target` the `Math.max` returns what has been eaten SO FAR — which is a
+      // running partial, not a whole-day figure — while the OUT side for today is the observed
+      // mean, a whole-day figure by construction. So `gapKcal` divided a whole-day burn by a
+      // part-day intake, and reported more loss than the week is heading for.
+      //
+      // The classification made it invisible: `recorded` went true, `estimatedIntakeDays` went to
+      // zero, the tile's badge disappeared and its foot read "a record, not a forecast" on a day
+      // hours from over — while the footnote three lines below still said "A projection, not a
+      // result". Exactly the contract this file states above, inverted, and only on days the
+      // athlete had overeaten.
+      //
+      // The floor is still right: assuming no further eating is the honest lower bound. What is
+      // wrong is calling a lower bound a record. Today is an estimate whatever the number says.
+      return { kcal, written: written != null, usesTarget: true, recorded: false }
     }
     // A FINISHED DAY IS WHAT IT ATE, not what it was told to eat. This is the half that was
     // missing: the out side has always used the ledger for finished days, and the in side used the

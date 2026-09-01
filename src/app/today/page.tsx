@@ -398,8 +398,8 @@ export default function TodayPage() {
                   badge={wk.energy.estimatedIntakeDays > 0 ? 'part estimate' : undefined}
                   foot={
                     wk.energy.estimatedIntakeDays === 0
-                      ? `all ${wk.energy.days} days as logged — a record, not a forecast`
-                      : `${fmt(wk.energy.recordedIntakeKcal)} kcal logged over `
+                      ? `all ${wk.energy.actualIntakeDays} days as logged — a record, not a forecast`
+                      : `${fmt(wk.energy.recordedIntakeKcal ?? 0)} kcal logged over `
                         + `${wk.energy.recordedIntakeDays} day`
                         + `${wk.energy.recordedIntakeDays === 1 ? '' : 's'} · `
                         + `${fmt(wk.energy.plannedIntakeKcal)} still on plan for `
@@ -430,7 +430,8 @@ export default function TodayPage() {
                   label="That produces"
                   value={wk.energy.lossLb == null ? 'TBD' : `~${fmt(wk.energy.lossLb, 1)}`}
                   unit="lb"
-                  badge={wk.energy.estimatedBurnDays > 0 ? 'projection' : undefined}
+                  badge={wk.energy.estimatedBurnDays > 0 || wk.energy.estimatedIntakeDays > 0
+                    ? 'projection' : undefined}
                   foot={
                     wk.energy.gapKcal == null || wk.energy.kcalPerLbFat == null
                       ? 'needs both sides of the week before it can say'
@@ -441,7 +442,7 @@ export default function TodayPage() {
               </div>
               <p className="footnote">
                 {wk.energy.estimatedBurnDays > 0 || wk.energy.estimatedIntakeDays > 0
-                  ? `A projection, not a result. In: ${fmt(wk.energy.recordedIntakeKcal)} kcal is `
+                  ? `A projection, not a result. In: ${fmt(wk.energy.recordedIntakeKcal ?? 0)} kcal is `
                     + `already on the ledger and ${fmt(wk.energy.plannedIntakeKcal)} is what the `
                     + 'plan still has left to eat — going over that moves this figure up, not the '
                     + `budget. Out: ${wk.energy.estimatedBurnDays} of the ${wk.energy.days} days `
