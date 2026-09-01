@@ -265,6 +265,16 @@ export function denylistFrom(root) {
     for (const [day, entry] of Object.entries(c.program?.weeklyTemplate ?? {})) {
       if (!day.startsWith('_')) addPhrase(entry?.session, 'weeklyTemplate session')
     }
+    // ⚠ **THE MENU'S SESSION NAMES ARE THE SAME KIND OF THING AS A TEMPLATE DAY'S, AND WERE NOT
+    // HARVESTED.** A conditioning option is a session this athlete does, named in this athlete's
+    // words, and a shared file restating one is the leak this list exists to catch.
+    //
+    // ⚠ **AND IT CATCHES NOTHING TODAY — DO NOT PRESENT IT AS A FIX.** Verified: adding it changes
+    // no acknowledgement digest, because prose naming these options writes them with markdown
+    // emphasis and short forms that the phrase matcher cannot see through. The manual de-athleting
+    // of the documents is the whole of that fix; this is insurance for the next chart, whose option
+    // names may be plainer.
+    for (const name of c.program?.conditioningMenu ?? []) addPhrase(name, 'conditioningMenu option')
     for (const [key, text] of Object.entries(c.copy ?? {})) {
       // Sentence by sentence: a component quoting half the caption is the same leak.
       if (key.startsWith('_')) continue

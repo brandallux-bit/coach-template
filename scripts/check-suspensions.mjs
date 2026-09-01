@@ -58,6 +58,14 @@ const { suspensions, collisions, staleMarks, mark } = suspensionCollisions({
   prescriptions,
   sessions: [
     ...Object.values(weeklyTemplate).map((e) => e?.session),
+    // ⚠ **THE CONDITIONING MENU IS HELD TO THE SAME RULE AS THE TEMPLATE.** Its options are
+    // sessions a coach may be handed on any non-lifting day, and they are prescribed exactly like
+    // template sessions — but they are not IN the template, so without this line every one of them
+    // sat outside the suspension guard. An option built on a movement the block later took out
+    // would then be proposed, and the only thing standing between the athlete and it would be the
+    // coach remembering. `program.conditioningMenu.options` maps each option to the session name
+    // its prescription rows use; that mapping exists for this.
+    ...(constants.program?.conditioningMenu ?? []),
     ...RESERVED_SESSIONS,
   ],
   today,

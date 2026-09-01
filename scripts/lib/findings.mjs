@@ -40,6 +40,8 @@ import { MIN_DAYS_FOR_OBSERVED_BURN, observedDailyBurn } from './aggregate.mjs'
 import { describeValue, markerFor, unconfirmedValues, UNCONFIRMED_GRACE_DAYS } from './provenance.mjs'
 import { DEFAULT_MOVEMENT_LEVEL, movementLevel } from './movement.mjs'
 import { livePrescriptions } from './suspensions.mjs'
+import { sessionOverlap } from './recent-work.mjs'
+import { weekdayKey } from './weekdays.mjs'
 
 const DAY_MS = 86_400_000
 const iso = (d) => d.toISOString().slice(0, 10)
@@ -460,6 +462,11 @@ export function markerAudit({ goalsText = '', prescriptions = [], templateSessio
 export function buildFindings({
   constants, targets = [], body = [], steps = [], goalsText = '', chartDocs = [],
   prescriptions = [], energy = [], today,
+  // ⚠ **COLLECTED BY `findings-inputs.mjs` AND, UNTIL NOW, DROPPED ON THE FLOOR HERE.** The
+  // collector has gathered all three since it was written; nothing destructured them, so the
+  // repeat check below had no evidence to read and could not have been written. Three parameters
+  // is the whole of what it needed.
+  training = [], sets = [], exerciseLibraryText = '',
 }) {
   const found = []
   const add = (f) => found.push(f)
@@ -482,6 +489,10 @@ export function buildFindings({
   const domainOf = (role) => constants?.domains?.[role] ?? undefined
   const APPEARANCE = domainOf('energyDeficit')
   const HEALTH = domainOf('health')
+  // The domain a training decision serves. A chart may have one and no energy domain at all, or
+  // the reverse; `domainOf` returns undefined for a role this chart has not named, and the caller
+  // falls back to `Chart integrity` rather than filing the finding under somebody else's domain.
+  const TRAINING = domainOf('training')
 
   // Every energy finding is gated on the chart actually running a deficit. A chart whose domains
   // are symptom control and sleep has no calorie target, and telling it one is too low would be a
@@ -1113,6 +1124,93 @@ export function buildFindings({
         // domain labels into shared code (INVARIANTS.md X-11).
         domain: 'Chart integrity',
       })
+    }
+  }
+
+  /**
+   * --- today's proposal repeats what was just done ----------------------------------------------
+   *
+   * THE DEFECT THIS CLOSES. A weekly template is a weekday lookup: it never opens `training.csv`,
+   * so it cannot know what the last few days contained. A chart proposed a circuit sharing five of
+   * its six working movements with a hard session finished the previous afternoon, and nothing
+   * anywhere noticed — no finding looked at training frequency or at movement overlap.
+   *
+   * ⚠ **A BACKSTOP, NOT THE MECHANISM.** `skills/library/session-recommendation` is where the
+   * thinking is supposed to happen; this fires when a session skipped it. A finding that reports a
+   * collision the coach already resolved in conversation is noise the coach may ignore, and that
+   * is the correct direction for the error to run.
+   *
+   * ⚠ **AND IT DECIDES NOTHING.** A repeat can be the right call on a light day, and an athlete
+   * who trains by feel is not doing anything wrong by it. This says what the record shows and
+   * stops — it is one of the cases the preamble means about reporting rather than instructing.
+   */
+  {
+    // `weekdayKey`, not a fifth inline copy of the weekday list — and it anchors at NOON, where a
+    // midnight parse would let later hour arithmetic fall over a DST boundary into the previous
+    // day. A lookup that disagreed with the forward view about which day it is would score today's
+    // proposal against the wrong template. See scripts/lib/weekdays.mjs.
+    const templateFor = (isoDate) => constants?.program?.weeklyTemplate?.[weekdayKey(isoDate)] ?? null
+    // A written row wins over the template — it is what the dashboard renders and what the athlete
+    // reads.
+    const writtenToday = training.filter((t) => t.date === today && t.status === 'planned')
+    const proposed = writtenToday[0]?.session ?? templateFor(today)?.session ?? null
+
+    // ⚠ **ONCE THE DAY IS TRAINED THERE IS NO PROPOSAL LEFT TO CHECK.** Without this the finding
+    // goes on scoring the weekday template against recent work for the rest of the day — reporting
+    // an overlap in a default session hours after the athlete already did something else. A
+    // finding describing a session that is not going to happen is noise, and noise is how the
+    // whole surface stops being read (see this file's preamble).
+    const trainedToday = training.some((t) => t.date === today && t.status === 'completed')
+
+    if (proposed && !trainedToday) {
+      const rows = livePrescriptions({ prescriptions, sessions: [proposed], today })
+      const o = sessionOverlap({
+        plannedRows: rows, training, sets, today, libraryText: exerciseLibraryText,
+      })
+      // Two independent reasons to raise it, because they fail differently: a duplicated session is
+      // a programming problem, and a fourth straight loading day is a recovery problem. Either
+      // alone is worth one line. The threshold on the first is HALF the working items, which sits
+      // well clear of the incidental overlap almost every session has through core and prehab work
+      // — and it needs at least two items, because "1 of 1 repeated" is not a pattern.
+      const duplicated = o.items.length >= 2 && o.repeated.length / o.items.length >= 0.5
+      const stacked = o.consecutiveLoadingDays >= 3
+      if (duplicated || stacked) {
+        const when = [...new Set(o.repeated.map((r) => r.lastDone))].sort().reverse()
+        const newWork = [
+          ...o.fresh.map((f) => f.name),
+          ...o.repeated.filter((r) => r.partial).flatMap((r) => r.stillNew),
+        ]
+        add({
+          id: 'session-repeats-recent-work',
+          severity: 'attention',
+          headline: duplicated
+            ? `Today's proposed session repeats ${o.repeated.length} of its ${o.items.length} `
+              + `working movements from ${when[0]}.`
+            : `Today would be loading day ${o.consecutiveLoadingDays + 1} in a row.`,
+          detail: [
+            `Proposed: ${proposed}.`,
+            o.repeated.length
+              ? `Already performed: ${o.repeated.map((r) => `${r.name} (${r.lastDone})`).join('; ')}.`
+              : '',
+            newWork.length ? `Not done recently: ${newWork.join('; ')}.` : 'Nothing in it is new work.',
+            o.sharedPatterns.length ? `Shared movement patterns: ${o.sharedPatterns.join(', ')}.` : '',
+            `Consecutive loading days behind today: ${o.consecutiveLoadingDays}.`,
+          ].filter(Boolean).join(' '),
+          // ⚠ **BY ROLE, NOT BY PATH.** The ported text named two files by name; a fresh fork has
+          // neither, so the one instruction it gives would have pointed at nothing on the chart
+          // most likely to need it. The skill is named because it ships here; everything else is
+          // described by what it is, and a chart that has it will recognise it.
+          action: 'Run skills/library/session-recommendation before answering: read the last three '
+            + 'days of training.csv and sets.csv, then confirm, adapt or replace the proposal and '
+            + 'SAY WHICH. If this chart keeps a menu of alternatives for a non-lifting day, that is '
+            + 'where the options and the rule for building a custom one live. This decides nothing '
+            + '— a repeat can be the right call on a light day, and an athlete who trains by feel '
+            + 'is not doing anything wrong by it.',
+          source: 'data/training.csv; data/sets.csv; data/prescriptions.csv; '
+            + 'athlete/constants.json program.weeklyTemplate',
+          domain: TRAINING ?? 'Chart integrity',
+        })
+      }
     }
   }
 

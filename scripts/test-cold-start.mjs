@@ -629,6 +629,33 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       strayCounted.out, strayCounted.code, /energyCountedIn is "steps", but this chart declares no/)
 
     /**
+     * ⚠ **A CONDITIONING MENU NAMING A SESSION NOBODY PRESCRIBED.**
+     *
+     * `check-suspensions.mjs` holds every name on the menu to the active block's suspension list —
+     * that is the whole reason the list is machine-readable. A name that matches no prescription
+     * row is silently outside that guard AND outside what
+     * `skills/library/session-recommendation` may choose: nothing errors, an option simply stops
+     * existing while the document still offers it.
+     */
+    const strayMenu = withMap((c) => {
+      c.program = { ...c.program, conditioningMenu: ['Circuit nobody wrote'] }
+    })
+    rejects('a menu option with no prescription rows is REJECTED — it renders nowhere and the '
+      + 'suspension guard cannot see it',
+      strayMenu.out, strayMenu.code, /which no row of data\/prescriptions\.csv/)
+
+    const objectMenu = withMap((c) => {
+      c.program = { ...c.program, conditioningMenu: { C1: 'Circuit' } }
+    })
+    rejects('...and a menu that is not a list of NAMES is REJECTED — the contents live in the '
+      + 'document, not here',
+      objectMenu.out, objectMenu.code, /must be an ARRAY of session names/)
+
+    const emptyMenu = withMap((c) => { c.program = { ...c.program, conditioningMenu: [] } })
+    rejects('...as is an empty one, which reads as a choice and offers none',
+      emptyMenu.out, emptyMenu.code, /A menu with no options/)
+
+    /**
      * ⚠ **STEPS ARRIVING WITH NO DECLARATION — THE ONE SHAPE THAT DOUBLE-COUNTED.**
      *
      * `data/steps.csv` with rows and no `plan.stepFeed` is what an existing chart looks like the

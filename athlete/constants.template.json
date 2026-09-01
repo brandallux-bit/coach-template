@@ -86,10 +86,11 @@
   },
 
   "domains": {
-    "_comment": "The athlete/goals.md domain headings, VERBATIM, keyed by the role the code needs to name one for. This is the machine-readable pointer; goals.md holds the reasoning and the ranking. Without it, findings render with no domain label — which is honest, and is why there is no default: a default would be another chart's domain wearing this one's name. Roles the code asks for: `energyDeficit` (the domain a calorie deficit serves) and `health`. Add a key only when this chart actually has that domain.",
+    "_comment": "The athlete/goals.md domain headings, VERBATIM, keyed by the role the code needs to name one for. This is the machine-readable pointer; goals.md holds the reasoning and the ranking. Without it, findings render with no domain label — which is honest, and is why there is no default: a default would be another chart's domain wearing this one's name. Roles the code asks for: `energyDeficit` (the domain a calorie deficit serves), `health`, and `training` (the domain a session decision serves \u2014 read by the session-repeats-recent-work finding). Add a key only when this chart actually has that domain.",
     "_example": {
       "energyDeficit": "<the goals.md heading, copied exactly>",
-      "health": "<the goals.md heading, copied exactly>"
+      "health": "<the goals.md heading, copied exactly>",
+      "training": "<the goals.md heading, copied exactly>"
     }
   },
 
@@ -120,13 +121,14 @@
   },
 
   "program": {
-    "_comment": "The current block's weekly skeleton, so /today can show the planned session without waiting for a coaching session to hand-write a training.csv row. A real training.csv row ALWAYS wins over this. Rationale, exercise detail and autoregulation live in program/current-block.md; this is only the machine-readable outline, and a chart with no training domain does not need it at all. `weeklyTemplate` is keyed Mon|Tue|Wed|Thu|Fri|Sat|Sun \u2014 capitalised, three letters, same as plan.kcalByWeekday and for the same reason: `planDay()` looks the day up with that key, and a lower-cased map silently resolves to no session at all; `dailyBlockType` names which registry type the `Daily` prescription block is, and is how the forward view prices it \u2014 its minutes and its MET both come from that type's registry entry, so `sessionTypes.<type>.standingDurationMin` is the ONE place the block's length is written and the ledger and the forecast cannot disagree about it. Omit both where the chart prescribes no daily block. `setRestSec` is optional and overrides the shipped 70-second default used to reconstruct the duration of a session that was performed but not timed \u2014 `skills/intake` asks whether 70 is right, and until somebody answers it stays marked coach-proposed. A session type that always runs the same length declares that on the TYPE, as `sessionTypes.<type>.standingDurationMin`, not here: it is a property of the activity rather than of the current block.",
+    "_comment": "The current block's weekly skeleton, so /today can show the planned session without waiting for a coaching session to hand-write a training.csv row. A real training.csv row ALWAYS wins over this. Rationale, exercise detail and autoregulation live in program/current-block.md; this is only the machine-readable outline, and a chart with no training domain does not need it at all. `weeklyTemplate` is keyed Mon|Tue|Wed|Thu|Fri|Sat|Sun \u2014 capitalised, three letters, same as plan.kcalByWeekday and for the same reason: `planDay()` looks the day up with that key, and a lower-cased map silently resolves to no session at all; `dailyBlockType` names which registry type the `Daily` prescription block is, and is how the forward view prices it \u2014 its minutes and its MET both come from that type's registry entry, so `sessionTypes.<type>.standingDurationMin` is the ONE place the block's length is written and the ledger and the forecast cannot disagree about it. Omit both where the chart prescribes no daily block. `setRestSec` is optional and overrides the shipped 70-second default used to reconstruct the duration of a session that was performed but not timed \u2014 `skills/intake` asks whether 70 is right, and until somebody answers it stays marked coach-proposed. A session type that always runs the same length declares that on the TYPE, as `sessionTypes.<type>.standingDurationMin`, not here: it is a property of the activity rather than of the current block. `conditioningMenu` is the list of non-lifting-day options a coach may be handed, as the session NAMES their prescription rows use in data/prescriptions.csv \u2014 names only, because the contents, the selection rules and the custom-build hatch live in the menu document (copy library/optional/program/conditioning-menu.md into program/ and fill it in). scripts/check-suspensions.mjs holds EVERY name here to the active block's suspension list, not just the one today's weekday template happens to name, so an option built on a movement the block has since taken out fails the build instead of being proposed; and skills/library/session-recommendation reads it to know what it may choose from. Omit it entirely on a chart with no menu \u2014 that is a normal chart, not an incomplete one, because building a session from the last three days is a complete answer. A custom session built for one day does NOT go here: it goes in prescriptions.csv under its own name, and earns a place here only if it recurs.",
     "_example": {
       "weeklyTemplate": {
         "Mon": { "session": "<session name>", "focus": "<what it is for>" }
       },
       "dailyBlockType": "<a registry key from sessionTypes, or omit>",
-      "setRestSec": 70
+      "setRestSec": 70,
+      "conditioningMenu": ["<a session name, exactly as data/prescriptions.csv writes it>"]
     }
   },
 

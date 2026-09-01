@@ -292,6 +292,54 @@ try {
   }
 
   /**
+   * ⚠ **`program.conditioningMenu` — A LIST THE CODE READS MUST NAME SESSIONS THAT EXIST.**
+   *
+   * `check-suspensions.mjs` holds every name here to the same suspension check the weekly template
+   * gets, so an option built on a movement the block later took out fails the build instead of
+   * being proposed. That only works if the names are the ones `prescriptions.csv` actually uses: a
+   * typo does not error anywhere by itself, it just quietly removes an option from the guard AND
+   * from what `skills/library/session-recommendation` may choose.
+   *
+   * Names only, and the shape is a flat array for that reason — the contents and the selection
+   * rules live in the menu document, and a second copy of them here would be a second home. The
+   * whole key is optional and omitting it is normal: building a session from the last three days
+   * is a complete answer.
+   */
+  {
+    const menu = constants?.program?.conditioningMenu
+    if (menu !== undefined) {
+      if (!Array.isArray(menu)) {
+        err('athlete/constants.json',
+          `program.conditioningMenu must be an ARRAY of session names, not ${JSON.stringify(menu)}. `
+          + 'Names only: the options\' contents and the rule for building a custom one live in the '
+          + 'menu document, and a second copy of them here is a second home for one thing.')
+      } else if (!menu.length) {
+        err('athlete/constants.json',
+          'program.conditioningMenu is empty. A menu with no options is a key that reads as a '
+          + 'choice and offers none — delete it, or name the options.')
+      } else {
+        // ⚠ **NO "SKIP IF prescriptions.csv IS EMPTY" ESCAPE.** The first version had one, so on
+        // the chart most likely to get this wrong — a new one, writing its menu before its rows —
+        // the rule was inert. A menu entry with no rows is wrong on any chart: the option can be
+        // chosen and not performed. If the rows are not written yet, the menu is not ready yet.
+        const known = new Set(readCsv(join(DATA, 'prescriptions.csv')).map((r) => r.session))
+        for (const name of menu) {
+          if (typeof name !== 'string' || !name.trim()) {
+            err('athlete/constants.json',
+              `program.conditioningMenu holds ${JSON.stringify(name)}, which is not a session name.`)
+          } else if (!known.has(name)) {
+            err('athlete/constants.json',
+              `program.conditioningMenu names "${name}", which no row of data/prescriptions.csv `
+              + 'uses as a session. An option with no prescription rows can be chosen and not '
+              + 'performed \u2014 it renders nowhere, and check-suspensions.mjs cannot hold it to '
+              + 'the block\'s suspension list. Write its rows, or take it off the menu.')
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * ⚠ **`plan.targetRateLbPerWk` IS A RANGE, AND A SCALAR THERE 500s THE DASHBOARD.**
    *
    * `Plan` types it `number[]` and `src/app/today/page.tsx` calls `.filter` on it unguarded, so a

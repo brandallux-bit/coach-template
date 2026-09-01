@@ -31,6 +31,15 @@ An agent that serves no domain is a default in disguise (§1.1). Do not copy the
 library up "just in case" — that reproduces the generic fitness chart this system is
 built to avoid.
 
+## Skills a specialist must run, not reason around
+
+| Skill | Who runs it, and when |
+|---|---|
+| `skills/library/session-recommendation` | **The head coach, before proposing today's session** — and therefore before routing to `strength` about one. Only where this chart has a training domain and the skill has been promoted into `skills/`. It reads the last three days of `data/training.csv` and `data/sets.csv` and returns confirm / adapt / replace. `strength` designs the block; this decides today against the record, and the weekly template cannot: it is a weekday map and nothing in it knows what the athlete did. |
+
+A specialist asked "what should today be" that answers from the template has skipped this. The
+`session-repeats-recent-work` finding is the backstop for that, not the mechanism.
+
 ## Specialization addenda
 
 Files in `athlete/specialization/` that named agents must read before answering. These are

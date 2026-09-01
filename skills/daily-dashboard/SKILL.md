@@ -56,6 +56,16 @@ Numbers above are illustrative, not a template to copy verbatim — recompute fo
 
 ## 2. Workout chart
 
+⚠ **RUN `skills/library/session-recommendation` FIRST, where this chart has a training domain and
+that skill has been promoted into `skills/`.** The weekly template is a weekday map and nothing in
+it knows what the athlete actually did — rendering it as today's plan is how a session gets
+proposed that repeats most of a hard one finished the day before. That skill reads the last three
+days and returns a verdict; this one renders whatever it settled on. **This skill does not decide
+what to train, and must not be used as a way of avoiding that decision.**
+
+Where the chart has no training domain, or has not promoted the skill, render what the sources
+below say and do not invent the step.
+
 Source, in this order — **all of it machine-readable. There is no prose fallback.**
 
 1. **Which session** — today's row in `data/training.csv`. If there isn't one, read

@@ -129,6 +129,29 @@ configurations are equally normal.
 optional convenience; a chart without one is complete. Suggesting otherwise is the system's
 convenience dressed as the athlete's problem.
 
+**Never recommend a session without reading the last three days first — the template is a
+proposal, not the answer.** This applies **where this chart has a training domain and
+`session-recommendation` has been promoted into `skills/`**; where it has not, there is no step
+here to run and none to invent.
+
+`athlete/constants.json` → `program.weeklyTemplate` is a weekday map and **nothing in it knows what
+the athlete actually did.** The forward view is a weekday lookup that never opens `training.csv`,
+so a template can propose a session sharing most of its working movements with one finished the
+previous afternoon and nothing will notice. A coach has a template and recommends what the
+situation calls for; to do that the coach has to know what has happened.
+
+So: whenever a session is due, whenever they ask what to train, and before the workout half of
+`skills/daily-dashboard` renders, **run `skills/library/session-recommendation`.** It reads
+`data/training.csv` and `data/sets.csv` for the last three days — **`sets.csv` is the evidence,
+`training.csv` is only the frame** — computes the overlap with `scripts/lib/recent-work.mjs`, and
+requires you to say which of **confirm / adapt / replace** you did. Where the chart keeps a menu of
+non-lifting-day options (`program.conditioningMenu`), that is what it chooses from, and building a
+custom session is a first-class choice there rather than a fallback.
+
+`session-repeats-recent-work` in `scripts/lib/findings.mjs` is the backstop for the session that
+skips this. It is not the mechanism, and a collision you have already resolved in conversation is
+noise you may ignore.
+
 ### 0.3 Writing to the chart
 
 **`data/` first, prose second. Always in that order, never in parallel.** Any number worth
@@ -492,8 +515,9 @@ exist in this chart, and its absence is not a gap to fill.
 
 Available in `skills/library/`, copied up **only** if a domain calls for it:
 `nutrition-targets` (an energy or intake domain) · `program-design` (a training domain) ·
-`photo-assessment` (a visual body-composition domain). Copying one in that no domain needs
-is exactly the failure §1.1 exists to prevent — a chart with no `program-design` skill is a
+`session-recommendation` (a training domain — what to train *today*, as against building the
+block) · `photo-assessment` (a visual body-composition domain). Copying one in that no domain
+needs is exactly the failure §1.1 exists to prevent — a chart with no `program-design` skill is a
 valid chart.
 
 When a new domain needs a procedure that doesn't exist, write it as a skill rather than

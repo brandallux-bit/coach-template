@@ -224,6 +224,106 @@ check('  ...while an undeclared one is silent — that chart simply has no weara
 check('  ...and an undeclared feed is not called STALE either, whatever the dates say',
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) }, null)
 
+console.log('\ntoday\'s proposal against the last three days — the backstop, not the mechanism')
+/**
+ * The template is a weekday lookup and cannot know what the last few days contained. This is what
+ * notices when a session skipped `skills/library/session-recommendation` — and, just as important,
+ * what it deliberately stays quiet about.
+ */
+{
+  const day = (n) => {
+    const d = new Date('2026-08-14T12:00:00Z')
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  // The fixture's `today` is a Friday. The template proposes a session for it; the day before
+  // held one whose sets cover most of that proposal.
+  const chart = {
+    ...deficitChart,
+    domains: { training: 'Get stronger' },
+    program: { weeklyTemplate: { Fri: { session: 'Circuit', type: 'circuit' } } },
+    sessionTypes: { lift: { met: 5, countsTowardFloor: true, domain: 'Get stronger' } },
+  }
+  const rx = (exercise, order) => ({
+    date: day(-30), session: 'Circuit', order: String(order), exercise, sets: '3', reps: '10',
+  })
+  const prescriptions = [rx('Bench press', 1), rx('Bent-over row', 2), rx('Squat', 3), rx('Plank', 4)]
+  const yesterdaySets = ['Bench press', 'Bent-over row', 'Squat']
+    .map((e, i) => ({ date: day(-1), session: 'Upper', exercise: e, set_index: String(i + 1) }))
+  const trained = [{ date: day(-1), type: 'lift', session: 'Upper', status: 'completed', duration_min: '45' }]
+  const base = { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], prescriptions }
+
+  check('  a proposal repeating most of yesterday is reported',
+    { ...base, constants: chart, training: trained, sets: yesterdaySets },
+    'session-repeats-recent-work')
+
+  /**
+   * ⚠ **SUPPRESSION 1 — THE DAY IS ALREADY TRAINED, SO THERE IS NO PROPOSAL LEFT TO CHECK.**
+   * Without it the finding goes on scoring the weekday template for the rest of the day, reporting
+   * an overlap in a session the athlete has already replaced with something else. A finding about a
+   * session that is not going to happen is noise, and noise is how the surface stops being read.
+   */
+  check('  ...and is silent once today has actually been trained',
+    {
+      ...base,
+      constants: chart,
+      training: [...trained, { date: '2026-08-14', type: 'lift', session: 'Walk', status: 'completed', duration_min: '40' }],
+      sets: yesterdaySets,
+    },
+    null)
+
+  /**
+   * ⚠ **SUPPRESSION 2 — "1 OF 1 REPEATED" IS NOT A PATTERN.** The ratio test alone fires at 100%
+   * on a single-movement proposal, which is every rehab block and every one-item day. Two working
+   * items is the floor for the word "repeats" to mean anything.
+   */
+  check('  ...and a one-item proposal never trips the ratio, however completely it repeats',
+    {
+      ...base,
+      constants: chart,
+      prescriptions: [rx('Bench press', 1)],
+      training: trained,
+      sets: [yesterdaySets[0]],
+    },
+    null)
+
+  check('  a proposal with nothing in common is silent',
+    {
+      ...base,
+      constants: chart,
+      training: trained,
+      sets: [{ date: day(-1), session: 'Upper', exercise: 'Calf raise', set_index: '1' }],
+    },
+    null)
+
+  // ⚠ IT REPORTS AND CANNOT INSTRUCT. A finding that told the coach what to train would be the
+  // substitution of judgement this whole layer exists to prevent — and the athlete's own way of
+  // training is not a defect to correct.
+  const f = buildFindings({
+    today: '2026-08-14', constants: chart, training: trained, sets: yesterdaySets, ...base,
+  }).find((x) => x.id === 'session-repeats-recent-work')
+  if (f && /decides nothing/i.test(f.action) && /confirm, adapt or replace/i.test(f.action)) {
+    console.log('ok    it asks for a verdict and states plainly that it decides nothing')
+  } else {
+    failed++
+    console.error(`FAIL  the repeat finding must not instruct\n      ${f ? f.action : 'no finding'}`)
+  }
+  // ⚠ AND NAMES NO PATH A FRESH FORK LACKS. The ported text cited two chart files by name; a new
+  // chart has neither, so its one instruction pointed at nothing.
+  if (f && !/conditioning-menu\.md|athlete\/constraints\.md/.test(f.action)) {
+    console.log('ok    ...by role, not by a path a fresh fork does not have')
+  } else {
+    failed++
+    console.error(`FAIL  the action must not name chart files a fork lacks\n      ${f?.action}`)
+  }
+  if (f && f.domain === 'Get stronger') {
+    console.log('ok    ...filed under the training domain this chart named, not another chart\'s')
+  } else {
+    failed++
+    console.error(`FAIL  the finding must read its domain from the chart, got ${JSON.stringify(f?.domain)}`)
+  }
+}
+
 console.log('\nthe movement question nobody answered — a default inside every day\'s burn')
 /**
  * ⚠ **THE ONE FINDING THE PROVENANCE LOOP STRUCTURALLY CANNOT PRODUCE.** `unconfirmedValues`
