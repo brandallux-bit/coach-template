@@ -36,7 +36,18 @@ import {
   KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, RMR_COEFFICIENTS, TEF_RATE, rmrKcal,
 } from './athlete.mjs'
 
-/** The version stamped on every `energy.csv` row computed by the current model. */
+/**
+ * The version stamped on every `energy.csv` row computed by the current model.
+ *
+ * ⚠ **ON A TEMPLATE THIS NUMBER MEANS "THE FIRST MODEL A CHART EVER RAN", AND IT MUST STAY 1.**
+ * A version's whole job is to keep OLD rows interpretable when the model moves under them. This
+ * repo has no rows, so bumping it here stamps nothing and costs nothing — it just ships every
+ * future chart a `2` that never had a `1`, with no `decisions.md` entry behind it and nothing for
+ * a coach to compare against. A fork's first row is version 1 and its history starts there.
+ *
+ * A chart bumps it when ITS model changes. The template bumps it only if the model a fresh chart
+ * starts on changes, which is a different and much rarer event.
+ */
 export const METHOD_VERSION = 1
 
 /**
@@ -59,6 +70,22 @@ export const METHOD_DIGEST = 'a99c95682095bb485f2fdd906282085c3b69e5d0090bfd5a3e
  * here. Anything that does not — a target, a trigger, a threshold, the athlete's own weight —
  * deliberately does not: those move constantly and a version that churned on them would be noise,
  * which is half of why the hash proposal was rejected.
+ *
+ * ⚠ **`SET_REST_SEC` IS DELIBERATELY ABSENT, AND WHAT THAT COSTS IS STATED RATHER THAN GLOSSED.**
+ * It changes what a reconstructed duration is, so on the rule above it looks like it belongs. It
+ * cannot be here, for the same reason the MET tables left: a chart may set `program.setRestSec`,
+ * and a chart-configurable value inside a digest that ships as a code literal gives two bad
+ * outcomes and no good one — either the digest is taken over the literal and lies about every
+ * chart that changed it, or it is taken over the chart's value and every fork that changes it goes
+ * red on day one for making a legal edit.
+ *
+ * **What is lost, plainly:** a chart that changes `setRestSec` mid-history revalues every
+ * reconstructed row under an UNCHANGED `method_version`, so two rows stamped `1` may have been
+ * costed with different rest assumptions and nothing in the file says so. That is a real hole. It
+ * is bounded — the figure only reaches rows the resolver had to reconstruct, and every one of
+ * those already declares itself an estimate through `durationLevel` — and the remedy when a chart
+ * does change it is the same as for any model change: record it in `decisions.md` on the day, and
+ * re-run `compute-energy.mjs` so the whole ledger is costed one way.
  */
 export function modelInputs() {
   const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)))

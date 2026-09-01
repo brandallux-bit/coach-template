@@ -13,10 +13,11 @@ import { fileURLToPath } from 'node:url'
 import { readCsv, num, toCsv } from './lib/csv.mjs'
 import {
   KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, TEF_RATE, hasChart, localToday, NO_CHART_MESSAGE,
-  rmrKcal, sessionCostFor,
+  prescribedSessionMin, rmrKcal, sessionCostFor, setRestSec,
 } from './lib/athlete.mjs'
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
 import { METHOD_VERSION } from './lib/method-version.mjs'
+import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -49,6 +50,14 @@ const r0 = (n) => (n == null ? '' : Math.round(n))
 const body = readCsv(join(DATA, 'body.csv'))
 const steps = readCsv(join(DATA, 'steps.csv'))
 const training = readCsv(join(DATA, 'training.csv'))
+const sets = readCsv(join(DATA, 'sets.csv'))
+
+// ⚠ **A SESSION PERFORMED BUT NOT TIMED IS NO LONGER A ZERO.** Built once, over the whole ledger,
+// because it needs every timed session to average from. See scripts/lib/session-duration.mjs for
+// the rungs and the rule they implement.
+const resolveDuration = buildDurationResolver({
+  training, sets, restSec: setRestSec(), prescribedMinFor: prescribedSessionMin,
+})
 const meals = readCsv(join(DATA, 'meals.csv'))
 
 const dates = [...new Set([...body, ...steps, ...training, ...meals].map((r) => r.date))]
@@ -110,13 +119,26 @@ for (const date of dates) {
   // counts as zero so `burn_total_kcal` is a FLOOR rather than a guess (data/METHOD.md). A walk
   // returns null for a different reason — its energy is already in `steps_kcal` — and adds zero
   // for the same arithmetic, which is the double-count trap being avoided rather than a gap.
-  const sessionKcal = daySessions
+  //
+  // ⚠ **AND A SESSION NOBODY CAN COST NO LONGER WRITES A ZERO.** That `?? 0` used to live on the
+  // reduce below, so `session_kcal` held a zero indistinguishable from a rest day's — and the
+  // comment under it claimed "the column-level blanks are what tell you the total is incomplete"
+  // while this column was the one that never went blank. `missingBurnComponents` saw nothing
+  // missing, `burnUnderstated` stayed false, and whole sessions entered `observedDailyBurn` as
+  // full measurements while being floors. Most are now costed by `resolveDuration`; whatever still
+  // cannot be costed leaves the column BLANK, which is what the surrounding machinery has always
+  // been built to read.
+  const costs = daySessions
     .filter(sessionBurns)
-    .reduce((s, t) => s + (sessionCostFor(t, weightLb).kcal ?? 0), 0)
+    .map((t) => sessionCostFor(withResolvedDuration(t, resolveDuration(t)), weightLb))
+  const sessionUnknown = costs.some((c) => c.level === 'unknown')
+  const sessionKcal = sessionUnknown
+    ? null
+    : costs.reduce((s, c) => s + (c.kcal ?? 0), 0)
 
   // Unknown components are treated as zero in the total, which makes burn a FLOOR on days with
   // gaps. The column-level blanks are what tell you the total is incomplete.
-  const burnTotal = rmr + (tef ?? 0) + neatOther + (stepsKcal ?? 0) + sessionKcal
+  const burnTotal = rmr + (tef ?? 0) + neatOther + (stepsKcal ?? 0) + (sessionKcal ?? 0)
 
   out.push({
     date,
@@ -128,7 +150,12 @@ for (const date of dates) {
     burn_total_kcal: r0(burnTotal),
     intake_kcal: r0(intake),
     deficit_kcal: intake == null ? '' : r0(burnTotal - intake),
-    complete: tef != null && stepsKcal != null ? 'y' : 'n',
+    // ⚠ **`sessionUnknown` IS NEW HERE AND IT IS HALF THE FIX.** This flag is what
+    // `observedDailyBurn` gates on, and it used to name only TEF and steps — so a day whose
+    // session cost was unknowable was still flagged complete and still entered the mean that
+    // prices every unfinished day and every rate-of-loss projection. A claim that every input
+    // existed has to look at every input.
+    complete: tef != null && stepsKcal != null && !sessionUnknown ? 'y' : 'n',
     method_version: METHOD_VERSION,
   })
 }

@@ -125,7 +125,9 @@ transcribe it after" — that is the same order failure with a promise attached.
 **2 · Write the weekly skeleton.** `athlete/constants.json` → `program.weeklyTemplate`, one
 entry per athlete-local weekday: `type`, `session`, `focus`, `durationMin`. **`session` must
 match the `session` column of the rows you just wrote**, or the day resolves to nothing.
-Update `program.dailyRehabMin` if the daily block's length changed.
+Update `sessionTypes.<type>.standingDurationMin` if the daily block's length changed — the
+type is named in `program.dailyBlockType`, and that one figure prices the block on both the
+ledger and the forward view.
 
 **3 · Run the checks. A failure here is a hard stop, not a note to fix later.**
 

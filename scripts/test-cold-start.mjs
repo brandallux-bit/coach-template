@@ -207,6 +207,24 @@ const NO_FEED_CHART = {
       },
     },
   },
+  /**
+   * ⚠ **ONE TYPE CARRIES `standingDurationMin`, WHICH IS THE ONLY THING THAT EXERCISES RUNG 4 OF
+   * THE DURATION RESOLVER.** A session type that always runs the same length — a daily mobility
+   * block, a fixed-length class — lets the ledger cost an untimed row at the figure the forward
+   * view already uses, instead of estimating it from set count. The prototype expressed this as
+   * `program.dailyRehabMin` on a hard-coded `rehab` type; generalising it to the registry is what
+   * makes it available to a chart that does something else entirely.
+   */
+  sessionTypes: {
+    ...FRESH_CHART.sessionTypes,
+    mobility: {
+      met: 2.5,
+      countsTowardFloor: false,
+      standingDurationMin: 20,
+      domain: 'Swim faster',
+      note: 'The same short block every morning; it always takes the same time.',
+    },
+  },
   program: {
     weeklyTemplate: {
       Mon: { type: 'swim', session: 'Threshold 400s', focus: 'Aerobic threshold', durationMin: 45 },
@@ -270,15 +288,23 @@ const populateStateC = (repo, dates) => {
 
   const plan = NO_FEED_CHART.program.weeklyTemplate
   const sessions = dates.map((date) => ({ date, ...plan[weekdayOf(date)] }))
-  w('training.csv', sessions.map(({ date, type, session, durationMin }) => ({
-    date,
-    type,
-    session,
-    status: type === 'rest' ? 'rest' : 'completed',
-    rpe: type === 'rest' ? '' : 6,
-    duration_min: durationMin || '',
-    pain_flag: 'n',
-  })))
+  w('training.csv', [
+    ...sessions.map(({ date, type, session, durationMin }) => ({
+      date,
+      type,
+      session,
+      status: type === 'rest' ? 'rest' : 'completed',
+      rpe: type === 'rest' ? '' : 6,
+      duration_min: durationMin || '',
+      pain_flag: 'n',
+    })),
+    // ⚠ **UNTIMED ON PURPOSE, AND WITH NO SETS AND NO HISTORY**, so the only rung that can answer
+    // is `prescribed`. Without it nothing anywhere exercises `standingDurationMin`, and a chart
+    // that relied on it would find out at the first untimed row.
+    ...dates.slice(-3).map((date) => ({
+      date, type: 'mobility', session: 'Morning mobility', status: 'completed', pain_flag: 'n',
+    })),
+  ].sort((a, b) => (a.date < b.date ? -1 : 1)))
 
   // A few real sets on the ergo days, so the set-level machinery has something to read on a chart
   // that is not a lifting chart. Most of this athlete's work is untimed by set, which is the
@@ -540,6 +566,28 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       ? ok('...while a chart that opted out IN WRITING is not asked for a weekday map at all')
       : fail('a chart with no energy domain must not be forced to invent one', optedOut.out.slice(0, 400))
 
+    // The three keys the duration resolver reads. Each is checked because each fails SILENTLY:
+    // a bad standing duration is a wrong burn rather than a missing one, and a `dailyBlockType`
+    // naming an unregistered type drops a session from every day of the forward view with nothing
+    // anywhere saying why.
+    const badDuration = withMap((c) => {
+      c.sessionTypes = { ...c.sessionTypes, swim: { ...c.sessionTypes.swim, standingDurationMin: '45' } }
+    })
+    rejects('a standing duration written as a string is REJECTED — it would price every untimed row',
+      badDuration.out, badDuration.code, /standingDurationMin must be a positive number/)
+
+    const strayBlock = withMap((c) => { c.program = { ...c.program, dailyBlockType: 'pilates' } })
+    rejects('a dailyBlockType naming an unregistered type is REJECTED, not silently dropped',
+      strayBlock.out, strayBlock.code, /not a registered session type/)
+
+    const lengthlessBlock = withMap((c) => { c.program = { ...c.program, dailyBlockType: 'swim' } })
+    rejects('...and one naming a type with no standing duration is REJECTED too',
+      lengthlessBlock.out, lengthlessBlock.code, /declares no standingDurationMin/)
+
+    const badRest = withMap((c) => { c.program = { ...c.program, setRestSec: 'seventy' } })
+    rejects('a non-numeric setRestSec is REJECTED', badRest.out, badRest.code,
+      /setRestSec must be a non-negative number/)
+
     // ⚠ **AND THE GENERATOR IS THE SCRIPT THAT WOULD HAVE FAILED EVERY MORNING INSTEAD** — the
     // whole point of moving the check upstream is that this failure never reaches a user. Asserting
     // its MESSAGE, not merely a non-zero exit: any unrelated breakage in generate-targets.mjs would
@@ -648,6 +696,22 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
     // projection, the budget-vs-goal finding — is inert. That is a defect, not a property.
     const complete = rows.filter((r) => r.complete === 'y').length
     console.log(`       (${complete}/${rows.length} rows complete — a no-feed chart's known state)`)
+
+    /**
+     * ⚠ **THE UNTIMED SESSIONS ARE COSTED, AND FROM THE RUNG THE CHART DECLARED.**
+     *
+     * Three `mobility` rows carry no `duration_min`, no sets, and no timed history to average — so
+     * every rung above `prescribed` returns nothing and every rung below it has nothing to work
+     * with. If `standingDurationMin` were not read, `session_kcal` on those days would be BLANK and
+     * the day would be `complete=n` forever. Asserting the cost rather than the absence is the
+     * point: this is the rung that makes a declared duration one figure instead of two.
+     */
+    const mobilityDays = dates.slice(-3)
+    const mobilityRows = rows.filter((r) => mobilityDays.includes(r.date))
+    mobilityRows.length === 3 && mobilityRows.every((r) => r.session_kcal !== '')
+      ? ok('an untimed session of a type with a standing duration is COSTED, not left blank')
+      : fail('rung 4 of the duration resolver did not fire — standingDurationMin was not read',
+        JSON.stringify(mobilityRows.map((r) => [r.date, r.session_kcal])))
 
     /**
      * ⚠ **THE PRECONDITION FOR THE CRASH THIS STATE WAS BUILT ON, ASSERTED DIRECTLY — because the

@@ -81,13 +81,20 @@
   },
 
   "sessionTypes": {
-    "_comment": "WHAT THIS ATHLETE DOES, and what each activity costs, counts for, and serves. The list is the athlete's, not the system's: scripts/lib/schema.mjs derives training.csv's `type` enum from these keys, scripts/lib/athlete.mjs derives the MET table and the sessions-floor set, and the dashboard's /log form offers exactly these. AN ACTIVITY THAT IS NOT REGISTERED CAN ONLY BE LOGGED AS `other`, WHICH COUNTS TOWARD NOTHING — so an athlete who runs, and whose chart never registered running, trains six days a week and is invisible to the adherence count (audit F-15). `rest` and `other` are supplied by scripts/lib/athlete.mjs to every chart; do not register them, the validator rejects it. Required per entry: met (0-25), countsTowardFloor (true|false), domain (the goals.md heading it serves). Optional: note, metByIntensity ({light,moderate,hard} — used when a session logs its own minute split, so a long easy session is not priced at its hardest tier), energyCountedIn (name another column whose data already includes this activity's energy — then met MUST be 0, or it is counted twice), loading (true|false — DID THIS TIRE YOU OUT. A third question, not a restatement of the other two: countsTowardFloor asks whether it earns credit against the sessions/week floor, met asks whether it burns calories, and real registries come apart on all three. A rehab block can load genuinely while deliberately earning no floor credit; a walk priced at a real MET — which is correct on a chart with NO step feed, where nothing else counts that movement — may still be a rest day. Omit it and it defaults to `met > 0 and no energyCountedIn`, which is right for most entries; set it only where that default is wrong. It feeds the consecutive-loading-days count that tells a coach how hard the last few days have been).",
+    "_comment": "WHAT THIS ATHLETE DOES, and what each activity costs, counts for, and serves. The list is the athlete's, not the system's: scripts/lib/schema.mjs derives training.csv's `type` enum from these keys, scripts/lib/athlete.mjs derives the MET table and the sessions-floor set, and the dashboard's /log form offers exactly these. AN ACTIVITY THAT IS NOT REGISTERED CAN ONLY BE LOGGED AS `other`, WHICH COUNTS TOWARD NOTHING — so an athlete who runs, and whose chart never registered running, trains six days a week and is invisible to the adherence count (audit F-15). `rest` and `other` are supplied by scripts/lib/athlete.mjs to every chart; do not register them, the validator rejects it. Required per entry: met (0-25), countsTowardFloor (true|false), domain (the goals.md heading it serves). Optional: note, metByIntensity ({light,moderate,hard} — used when a session logs its own minute split, so a long easy session is not priced at its hardest tier), energyCountedIn (name another column whose data already includes this activity's energy — then met MUST be 0, or it is counted twice), loading (true|false — DID THIS TIRE YOU OUT. A third question, not a restatement of the other two: countsTowardFloor asks whether it earns credit against the sessions/week floor, met asks whether it burns calories, and real registries come apart on all three. A rehab block can load genuinely while deliberately earning no floor credit; a walk priced at a real MET — which is correct on a chart with NO step feed, where nothing else counts that movement — may still be a rest day. Omit it and it defaults to `met > 0 and no energyCountedIn`, which is right for most entries; set it only where that default is wrong. It feeds the consecutive-loading-days count that tells a coach how hard the last few days have been), standingDurationMin (minutes \u2014 ONLY for a type that always runs the same length, such as a short daily block or a fixed-length class. It lets the ledger cost a session that was performed but not timed at the figure the forward view already uses, instead of estimating it from set count. Omit it for anything whose length actually varies, which is most activities: a wrong standing duration is worse than a reconstructed one, because it does not declare itself an estimate).",
     "_example": {
       "<the athlete's word for it>": {
         "met": 0,
         "countsTowardFloor": true,
         "domain": "<the goals.md heading this serves>",
         "note": "<what it is, in one line>"
+      },
+      "<a short block that always runs the same length>": {
+        "met": 2.5,
+        "countsTowardFloor": false,
+        "standingDurationMin": 20,
+        "domain": "<the goals.md heading this serves>",
+        "note": "The third entry exists to show what `standingDurationMin` is for. Because this always takes the same time, a row logged without a duration can be costed at the declared figure rather than estimated \u2014 and the ledger and the forward view then agree about it."
       },
       "<a walk, on a chart with no step feed>": {
         "met": 3.5,
@@ -100,12 +107,13 @@
   },
 
   "program": {
-    "_comment": "The current block's weekly skeleton, so /today can show the planned session without waiting for a coaching session to hand-write a training.csv row. A real training.csv row ALWAYS wins over this. Rationale, exercise detail and autoregulation live in program/current-block.md; this is only the machine-readable outline, and a chart with no training domain does not need it at all. `weeklyTemplate` is keyed Mon|Tue|Wed|Thu|Fri|Sat|Sun \u2014 capitalised, three letters, same as plan.kcalByWeekday and for the same reason: `planDay()` looks the day up with that key, and a lower-cased map silently resolves to no session at all; `dailyRehabMin` is optional and only where a rehab block is running.",
+    "_comment": "The current block's weekly skeleton, so /today can show the planned session without waiting for a coaching session to hand-write a training.csv row. A real training.csv row ALWAYS wins over this. Rationale, exercise detail and autoregulation live in program/current-block.md; this is only the machine-readable outline, and a chart with no training domain does not need it at all. `weeklyTemplate` is keyed Mon|Tue|Wed|Thu|Fri|Sat|Sun \u2014 capitalised, three letters, same as plan.kcalByWeekday and for the same reason: `planDay()` looks the day up with that key, and a lower-cased map silently resolves to no session at all; `dailyBlockType` names which registry type the `Daily` prescription block is, and is how the forward view prices it \u2014 its minutes and its MET both come from that type's registry entry, so `sessionTypes.<type>.standingDurationMin` is the ONE place the block's length is written and the ledger and the forecast cannot disagree about it. Omit both where the chart prescribes no daily block. `setRestSec` is optional and overrides the shipped 70-second default used to reconstruct the duration of a session that was performed but not timed \u2014 `skills/intake` asks whether 70 is right, and until somebody answers it stays marked coach-proposed. A session type that always runs the same length declares that on the TYPE, as `sessionTypes.<type>.standingDurationMin`, not here: it is a property of the activity rather than of the current block.",
     "_example": {
       "weeklyTemplate": {
         "Mon": { "session": "<session name>", "focus": "<what it is for>" }
       },
-      "dailyRehabMin": 0
+      "dailyBlockType": "<a registry key from sessionTypes, or omit>",
+      "setRestSec": 70
     }
   },
 

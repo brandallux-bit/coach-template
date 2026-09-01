@@ -142,6 +142,14 @@ the design.
 > `plan._dailyKcalTargetPolicy_note`. And every `sessionTypes` entry carries `loading` — see
 > `skills/intake/SKILL.md`, which says how to default it and which single entry to check by hand.
 > `validate-data.mjs` reports both.
+>
+> **Three optional keys the burn model reads, all safe to leave out.** `program.setRestSec`
+> overrides the 70-second default used to reconstruct the duration of a session that was performed
+> but not timed — intake asks, and an unanswered chart keeps 70 marked as the coach's proposal
+> rather than the athlete's. `sessionTypes.<type>.standingDurationMin` declares the length of an
+> activity that always runs the same time, so such a session can be costed rather than estimated.
+> `program.dailyBlockType` names which of those types the `Daily` prescription block is, so the
+> forward view prices it from the same figure the ledger uses.
 
 ## 3. Run intake
 
@@ -229,3 +237,34 @@ or written after the fork, so upstream never touches them. Conflicts should be r
 confined to system files you've deliberately customised.
 
 Run `npm run validate` after any merge.
+
+### After a merge, regenerate what is derived
+
+Two files in `data/` are computed rather than written, and a template update can change the code
+that computes them. Neither regenerates itself, and both fail the build when stale — with a message
+about the file rather than about the merge, which is the confusing half.
+
+```bash
+node scripts/compute-energy.mjs     # data/energy.csv — the burn ledger
+node scripts/build-docs.mjs         # the generated blocks in data/METHOD.md, incl. this chart's MET table
+git add data/energy.csv data/METHOD.md
+```
+
+`compute-energy` recosts the whole ledger, so a change to the burn model reaches every historical
+row at once. **That is the intended behaviour and it is worth understanding before you look at the
+diff:** rows do not carry their old figures forward. If the model changed, record what changed and
+why in `decisions.md` on the day you merge, because `method_version` alone will not tell a future
+session which assumption a given row was costed under.
+
+### Constants a merge may ask you to move
+
+A template update can rename or relocate a key in `athlete/constants.json`. `npm run validate`
+names each one it finds; this is what to do about the ones shipped so far.
+
+| If your chart has | Move it to | Why |
+|---|---|---|
+| `program.dailyRehabMin` | `sessionTypes.<type>.standingDurationMin`, and name that type in `program.dailyBlockType` | The block's length is a property of the ACTIVITY, not of the current block, and the ledger and the forward view now read it from one place instead of disagreeing |
+
+Until you move it, an untimed session of that type is costed from its set count instead of from
+the length you declared, and the daily block drops out of the forward view. Nothing is lost and
+nothing is wrong — but two numbers you expected to match will not.

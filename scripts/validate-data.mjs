@@ -12,6 +12,7 @@ import { readCsv, num } from './lib/csv.mjs'
 import { DATE_RE, SPEC } from './lib/schema.mjs'
 import { WEEKDAYS, checkWeekdayKeys } from './lib/weekdays.mjs'
 import { noDailyTargetReason } from './lib/targets.mjs'
+import { sessionTypeEnum } from './lib/athlete.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -229,6 +230,16 @@ try {
           `sessionTypes.${type}.met must be 0: the entry says its energy is already counted in `
           + `${def.energyCountedIn}, and counting it again as a session counts it twice`)
       }
+      // `standingDurationMin` prices an untimed session on BOTH the ledger and the forward view,
+      // so a string or a nonsense figure there is a wrong burn on every such row rather than a
+      // missing one — which is the direction that does not announce itself.
+      if (def?.standingDurationMin !== undefined
+        && (typeof def.standingDurationMin !== 'number' || !(def.standingDurationMin > 0))) {
+        err('athlete/constants.json',
+          `sessionTypes.${type}.standingDurationMin must be a positive number of minutes, not `
+          + `${JSON.stringify(def.standingDurationMin)} — omit it entirely for a type whose length `
+          + 'actually varies, which is most of them')
+      }
       // A key nothing validates is a key a typo can disable silently: `loading: "false"` is a
       // truthy string, and the resolver's `=== true` test would then read it as false while
       // `!== undefined` stopped the default from covering for it.
@@ -253,6 +264,34 @@ try {
     for (const [i, t] of readCsv(join(DATA, 'training.csv')).entries()) {
       if (t.type && !legal.has(t.type)) {
         err('training.csv', `row ${i + 2}: type "${t.type}" is not in constants.json sessionTypes`)
+      }
+    }
+  }
+
+  // `program.setRestSec` and `program.dailyBlockType`, the two keys the duration resolver reads.
+  {
+    const prog = constants?.program ?? {}
+    if (prog.setRestSec !== undefined && (typeof prog.setRestSec !== 'number' || prog.setRestSec < 0)) {
+      err('athlete/constants.json',
+        `program.setRestSec must be a non-negative number of seconds, not `
+        + `${JSON.stringify(prog.setRestSec)} — omit it to take the shipped default`)
+    }
+    // ⚠ A `dailyBlockType` naming a type that is not registered prices the daily block at NOTHING
+    // and says nothing about why: `addDailyBlock` returns early, the forward view silently loses
+    // a session every day, and no check anywhere would mention it.
+    if (prog.dailyBlockType !== undefined) {
+      // `sessionTypeEnum()` is the one home for "every legal type", universals included.
+      const legal = new Set(sessionTypeEnum())
+      if (!legal.has(prog.dailyBlockType)) {
+        err('athlete/constants.json',
+          `program.dailyBlockType is "${prog.dailyBlockType}", which is not a registered session `
+          + `type (${[...legal].join(', ')}). The forward view prices the daily block from that `
+          + 'type\'s registry entry, so an unregistered name silently drops it from every day.')
+      } else if (constants?.sessionTypes?.[prog.dailyBlockType]?.standingDurationMin == null) {
+        err('athlete/constants.json',
+          `program.dailyBlockType is "${prog.dailyBlockType}" but that type declares no `
+          + 'standingDurationMin, so the block has no length and the forward view drops it. Give '
+          + 'the type a standing duration, or remove dailyBlockType.')
       }
     }
   }

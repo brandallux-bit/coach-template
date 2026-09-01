@@ -355,6 +355,15 @@ Run these in order, once, when the interview is finished and the values are real
      It feeds the consecutive-loading-days count that tells a coach how hard the last few days
      have been, which is the input `skills/library/session-recommendation` reads before proposing
      anything.
+   - **`program.setRestSec`** — ONE question, and only where the chart has a training domain:
+     *"Roughly how long do you rest between working sets?"* The system ships **70 seconds** and it
+     works without an answer, so this is a confirmation rather than a requirement. Write what they
+     say, marked `athlete-stated`. If they do not know or do not care — a common and reasonable
+     answer — write nothing, and the shipped default applies with its own provenance already
+     recorded as `coach-proposed-unconfirmed`. **Never file the 70 as theirs.** It reconstructs the
+     duration of a session that was performed but not timed, so it is a real input to the burn
+     model, and a number the coach chose must not arrive in the record wearing the athlete's name.
+
    - **`domains`** — the `goals.md` domain headings, verbatim, keyed by role. Findings are filed
      under these; a chart that omits them gets findings with no domain label, which is honest, and
      no default is applied because a default is another athlete's domain wearing this one's name.

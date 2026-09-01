@@ -203,8 +203,11 @@ const FIXTURE = {
     baselineWeightLb: 155,
     stepsPerDayTarget: 8000,
     kcalPerStepPerLb: 0.00025,
-    dailyRehabMin: 12,
-    metByType: { run: 9.8, swim: 7.0, gym: 5.0, stroll: 0, rehab: 3.0, rest: 0, other: 4.0 },
+    dailyBlockType: 'mobility',
+    metByType: { run: 9.8, swim: 7.0, gym: 5.0, stroll: 0, mobility: 3.0, rest: 0, other: 4.0 },
+    // The duration comes from the registry, the same place the LEDGER reads it — see
+    // `addDailyBlock` in src/lib/forecast.ts for why that is one key rather than two.
+    sessionTypeDetail: { mobility: { standingDurationMin: 12 } },
     metByIntensity: { run: { light: 6.0, moderate: 9.8, hard: 11.5 } },
     countsTowardFloor: ['run', 'swim', 'gym'],
     weeklyTemplate: {
@@ -324,8 +327,10 @@ const planDayIn = (b, date) => {
     return met > 0 && s.min ? sessionKcal(met, s.min, lb) : 0
   }
   const sess = sessions.reduce((a, s) => a + cost(s), 0)
-  const rehab = effectiveRx(DAILY, date).length && plan.dailyRehabMin
-    ? sessionKcal(plan.metByType.rehab, plan.dailyRehabMin, lb) : 0
+  const blockType = plan.dailyBlockType
+  const blockMin = blockType ? plan.sessionTypeDetail?.[blockType]?.standingDurationMin : null
+  const rehab = effectiveRx(DAILY, date).length && blockMin
+    ? sessionKcal(plan.metByType[blockType], blockMin, lb) : 0
   const steps = plan.stepsPerDayTarget * plan.kcalPerStepPerLb * lb
   const primary = sessions[0] ?? null
   return {
@@ -392,7 +397,7 @@ const planDay = (date) => planDayIn(FIXTURE, date)
   eq('a daily block with a live prescription and a duration is costed on all 7 days',
     week.filter((d) => d.rehab > 0).length, 7)
 
-  const noMinutes = { ...FIXTURE, plan: { ...plan, dailyRehabMin: null } }
+  const noMinutes = { ...FIXTURE, plan: { ...plan, sessionTypeDetail: { mobility: {} } } }
   const withoutMinutes = Array.from({ length: 7 }, (_, i) =>
     planDayIn(noMinutes, addDays(FIX_TODAY, i)))
   eq('...and on none of them once the chart drops the duration',

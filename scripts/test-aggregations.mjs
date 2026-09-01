@@ -45,6 +45,7 @@ import {
   balancedDays, dayFraction, dayFractionDomain, meanOfAccumulating, meanOfPointReadings,
   meanOrNull, missingBurnComponents, n, observedDailyBurn, partialBurnFrom, pctOfTarget,
   plannedTotal, sessionKcal, sumOrNull, weekBalance, weekEnergy, weekIntake, weeklyBudget,
+  costDependsOnDuration, impliedSetWorkSec, minutesFromSets,
 } from './lib/aggregate.mjs'
 import { fillableGaps, targetGaps } from './lib/targets.mjs'
 import { readCsv } from './lib/csv.mjs'
@@ -52,6 +53,7 @@ import { SPEC } from './lib/schema.mjs'
 import { sessionTypeEnum } from './lib/athlete.mjs'
 import { coverIntensitySplit, validateRow, REMAINDER_NOTE } from './lib/rowwrite.mjs'
 import { buildFindings } from './lib/findings.mjs'
+import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const src = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -1281,6 +1283,137 @@ console.log('\n12 · a day may never lack a calorie target')
     /generate-targets\.mjs --fill-gaps/.test(src('.github/workflows/daily-rollover.yml')),
     'writing today alone leaves a dropped cron slot empty forever, and the gap check is a hard '
     + 'error — one skipped day would then wedge every bot')
+}
+
+// =================================================================================================
+console.log('\n13 · a session performed but not timed')
+// ⚠ **THE ZERO THAT LOOKED MEASURED.** `compute-energy.mjs` did `sessionCostFor(t).kcal ?? 0`, so
+// an uncostable session wrote a `session_kcal` of 0 — indistinguishable from a rest day's, and
+// therefore invisible to `missingBurnComponents`, to `burnUnderstated`, and to `complete`. Whole
+// strength sessions entered `observedDailyBurn` as measurements while actually being floors, and
+// that mean prices every unfinished day and every rate-of-loss projection on the chart.
+//
+// The rule the resolver implements: cost an untimed session at what THAT session usually takes —
+// the mean of the last three timed ones, else the next three where the history does not exist yet,
+// else the standing duration the chart declares for its type — and only estimate it from set count
+// when there is nothing left to average.
+// =================================================================================================
+
+{
+  const REST = 60   // ⚠ NOT the real 70. A fixture using the true constant could not tell a
+                    // function that reads the parameter from one that hardcoded it.
+  const row = (date, over) => ({
+    date, type: 'lifting', session: 'Block One', status: 'completed', duration_min: '', ...over,
+  })
+  const timed = (date, min, session = 'Block One') => row(date, { session, duration_min: String(min) })
+
+  // Six timed "Block One" sessions either side of a gap, so both comparable branches can be exercised
+  // on one fixture: the gap at 01-20 has three before it and three after it.
+  const training = [
+    timed('2026-01-05', 40), timed('2026-01-10', 50), timed('2026-01-15', 60),
+    row('2026-01-20'),
+    timed('2026-01-25', 30), timed('2026-01-30', 30), timed('2026-02-04', 30),
+  ]
+  const resolve = buildDurationResolver({ training, sets: [], restSec: REST })
+
+  is('a timed row is left alone', resolve(timed('2026-01-10', 50)).level, 'recorded')
+  {
+    const r = resolve(row('2026-01-20'))
+    is('a gap with three timed sessions before it takes the LAST three', r.level, 'comps-prior')
+    is('...and their mean, not the whole history', r.minutes, 50)   // (40+50+60)/3
+    yes('...naming the dates it averaged, so nothing prints a bare estimate',
+      /2026-01-05 40m/.test(r.basis) && /2026-01-15 60m/.test(r.basis), r.basis)
+  }
+  {
+    // The backfill clause: a gap early enough that the history does not exist yet.
+    const early = buildDurationResolver({
+      training: [row('2026-01-01'), timed('2026-01-25', 30), timed('2026-01-30', 30), timed('2026-02-04', 30)],
+      sets: [], restSec: REST,
+    })
+    const r = early(row('2026-01-01'))
+    is('with fewer than three before it, the NEXT three fill the gap', r.level, 'comps-next')
+    is('...and their mean', r.minutes, 30)
+  }
+  {
+    // ⚠ THE SESSION STEM, NOT THE WRITTEN NAME. "Block One — hinge and pull" and "Block One
+    // (knee-free)" are one session under two descriptions; treating them as two would have left
+    // a real gap with one comparable instead of two.
+    const mixed = buildDurationResolver({
+      training: [
+        timed('2026-01-05', 40, 'Block One — hinge and pull'),
+        timed('2026-01-10', 50, 'Block One (variation)'),
+        timed('2026-01-15', 60, 'Block One'),
+        row('2026-01-20', { session: 'Block One (variation)' }),
+      ],
+      sets: [], restSec: REST,
+    })
+    is('durations are grouped by the session STEM, across three spellings of one session',
+      mixed(row('2026-01-20', { session: 'Block One (variation)' })).minutes, 50)
+  }
+  {
+    // Rung 5. A session with no comparables at all falls to its set count.
+    const sets = Array.from({ length: 10 }, (_, i) => ({ date: '2026-03-01', session: 'One-off', set_index: String(i) }))
+    const oneOff = buildDurationResolver({
+      training: [timed('2026-01-05', 40), row('2026-03-01', { session: 'One-off' })],
+      sets: [
+        ...sets,
+        // A timed session that also logged sets, so `impliedSetWorkSec` has something to fit.
+        ...Array.from({ length: 10 }, (_, i) => ({ date: '2026-01-05', session: 'Block One', set_index: String(i) })),
+      ],
+      restSec: REST,
+    })
+    const r = oneOff(row('2026-03-01', { session: 'One-off' }))
+    is('a session with no comparable history is estimated from its sets', r.level, 'from-sets')
+    // The one timed session that logged sets did 10 of them in 40 min, so work = (2400 − 9×60)/10
+    // = 186 s/set. The one-off has
+    // the same 10 sets, so it lands on the same 40 minutes — which is the point: the fit is the
+    // athlete's own, not a coach-supplied "about 90 seconds a set".
+    is('...at the work-per-set this chart\'s own timed sessions imply', r.minutes, 40)
+    yes('...saying so, and saying how wide the spread it was fitted over is',
+      /median of 1 timed sessions/.test(r.basis), r.basis)
+  }
+  {
+    // Rung 4, and rung 6.
+    const withRx = buildDurationResolver({
+      training: [row('2026-01-20', { type: 'mobility', session: 'Daily block' })],
+      sets: [], restSec: REST, prescribedMinFor: (r) => (r.type === 'mobility' ? 13.5 : null),
+    })
+    is('a session type the chart declares a standing duration for uses it',
+      withRx(row('2026-01-20', { type: 'mobility', session: 'Daily block' })).level, 'prescribed')
+    const bare = buildDurationResolver({ training: [row('2026-01-20')], sets: [], restSec: REST })
+    const r = bare(row('2026-01-20'))
+    is('with no comps, no prescription and no sets, the duration stays UNKNOWN', r.minutes, null)
+    is('...and says so rather than returning a plausible number', r.level, 'unknown')
+  }
+  {
+    // ⚠ NEVER TOUCH A ROW WHOSE COST DOES NOT COME FROM A DURATION — and the predicate deciding
+    // that is `sessionCost`'s own, not a copy (test-single-home.mjs failed the first version here).
+    yes('a plain row depends on its duration', costDependsOnDuration(row('2026-01-20')))
+    yes('...a row with a device reading does not',
+      !costDependsOnDuration(row('2026-01-20', { kcal_override: '500' })))
+    yes('...nor does one with an intensity split',
+      !costDependsOnDuration(row('2026-01-20', { hard_min: '20' })))
+    is('so an overridden row is never given a reconstructed duration',
+      resolve(row('2026-01-20', { kcal_override: '500' })).minutes, null)
+    const untouched = row('2026-01-20', { kcal_override: '500' })
+    is('...and the row handed to sessionCost is the original object',
+      withResolvedDuration(untouched, resolve(untouched)), untouched)
+  }
+  {
+    is('the formula puts rest BETWEEN sets, so one set costs its work alone',
+      minutesFromSets(1, 120, REST), 2)
+    is('...and three sets carry two rests', minutesFromSets(3, 120, REST), (3 * 120 + 2 * 60) / 60)
+    is('an unknown set count is null, never zero minutes', minutesFromSets(null, 120, REST), null)
+    const fit = impliedSetWorkSec([
+      { minutes: 40, sets: 10 }, { minutes: 60, sets: 10 }, { minutes: 20, sets: 10 },
+    ], REST)
+    // (2400−540)/10 = 186, (3600−540)/10 = 306, (1200−540)/10 = 66. Median 186, mean 186 too —
+    // so the assertion below is on the ODD-length median path; the even path is checked next.
+    is('work-per-set is the MEDIAN of the timed sessions', fit.workSec, 186)
+    is('...and it reports how wide the spread it fitted over is', Math.round(fit.spreadSec), 240)
+    is('a chart with no timed session that logged sets cannot fit one',
+      impliedSetWorkSec([], REST), null)
+  }
 }
 
 console.log(failed ? `\naggregations: ${failed} FAILED.` : '\naggregations: all checks passed.')

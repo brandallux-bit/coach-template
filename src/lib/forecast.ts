@@ -410,17 +410,29 @@ function addSessionItem(
   })
 }
 
+/**
+ * The `Daily` prescription block, priced from the registry rather than from a key of its own.
+ *
+ * ⚠ **BOTH FIGURES COME FROM `sessionTypes`, AND THAT IS THE POINT.** This read
+ * `plan.dailyRehabMin` for the minutes and `plan.metByType.rehab` for the MET — one athlete's
+ * activity named in shared TypeScript, and a second home for a duration the LEDGER already reads
+ * out of `sessionTypes.<type>.standingDurationMin`. Two homes for one figure is exactly the
+ * forecast-versus-ledger disagreement the duration resolver's rung 4 exists to end. A chart says
+ * which type its daily block is, once, and both sides price it the same way.
+ */
 function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
-  if (!dailyRx.length || !plan.dailyRehabMin) return
-  const met = plan.metByType?.rehab ?? null
+  const type = plan.dailyBlockType ?? null
+  const minutes = type ? plan.sessionTypeDetail?.[type]?.standingDurationMin ?? null : null
+  if (!dailyRx.length || !type || !minutes) return
+  const met = plan.metByType?.[type] ?? null
   items.push({
     label: 'Daily block',
-    detail: `${plan.dailyRehabMin} min · ${dailyRx.length} items`,
-    kcal: met ? sessionKcal(met, plan.dailyRehabMin, weightLb) : null,
+    detail: `${minutes} min · ${dailyRx.length} items`,
+    kcal: met ? sessionKcal(met, minutes, weightLb) : null,
     kcalAbsence: met ? undefined : ABSENT_UNKNOWN,
     basis: met
-      ? `MET ${met} × ${plan.dailyRehabMin} min — the softest MET on file, ±20%`
-      : 'no rehab MET on file',
+      ? `MET ${met} × ${minutes} min — the standing duration this chart declares for "${type}"`
+      : `no MET on file for "${type}"`,
   })
 }
 

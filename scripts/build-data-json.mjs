@@ -17,8 +17,9 @@ import { missingPlanFields } from './lib/schema.mjs'
 import { latestOnOrBefore, sessionBurns } from './lib/aggregate.mjs'
 import { ageOn, constants, hasChart, rmrFloorKcal, sessionCostFor, stripNotes, metTable,
   KCAL_PER_STEP_PER_LB, KCAL_PER_LB_FAT, metByIntensityTable, localToday, sessionTypeEnum,
-  sessionTypes, countsTowardFloorSet,
+  prescribedSessionMin, sessionTypes, setRestSec, countsTowardFloorSet,
 } from './lib/athlete.mjs'
+import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
@@ -48,13 +49,42 @@ const weightAsOf = (date) => num(latestOnOrBefore(weighIns, date)?.weight_lb)
  * as a claim that a real column exists. Its predecessor `est_kcal_burned` made exactly that false
  * claim and both surfaces reading it rendered a dash forever (audit F-41).
  */
-const training = readCsv(join(DATA, 'training.csv')).map((row) => {
+const trainingRows = readCsv(join(DATA, 'training.csv'))
+
+// ⚠ **THE SAME RESOLVER THE LEDGER USES, FOR THE SAME REASON `sessionCostFor` IS SHARED.** A
+// reconstructed duration that this file worked out differently from `compute-energy.mjs` would
+// put the Today tab's Movement table back into disagreement with `energy.csv` — F-02's exact
+// shape, one input further upstream.
+const resolveDuration = buildDurationResolver({
+  training: trainingRows,
+  sets: readCsv(join(DATA, 'sets.csv')),
+  restSec: setRestSec(),
+  prescribedMinFor: prescribedSessionMin,
+})
+
+const training = trainingRows.map((row) => {
+  const duration = resolveDuration(row)
   const cost = sessionBurns(row)
-    ? sessionCostFor(row, weightAsOf(row.date))
+    ? sessionCostFor(withResolvedDuration(row, duration), weightAsOf(row.date))
     : { kcal: null, level: 'not-performed', explain: `status is "${row.status || 'unwritten'}" — planned and skipped sessions burn nothing` }
   return {
     ...row,
     estKcalBurned: cost.kcal == null ? '' : String(Math.round(cost.kcal)),
+    /**
+     * Which rung of `session-duration.mjs` supplied the minutes behind `estKcalBurned`, and its
+     * sentence — **blank unless a reconstructed duration is actually load-bearing for this row.**
+     *
+     * The guard is not cosmetic. A walk's cost is `counted-elsewhere` and a rest day's is
+     * `not-performed`; neither ever reads a duration, and neither did before this. Publishing
+     * `durationLevel: "unknown"` on those rows would put a reconstruction failure on a session
+     * that never needed one, and a surface reading it would mark a correct figure as an estimate.
+     * `flat` is the only cost level that multiplies by `duration_min`, so it is the only one where
+     * this field says anything. Whether a cost is absent, and why, is `kcalLevel`'s job below.
+     */
+    durationLevel: cost.level === 'flat' && duration.level !== 'recorded' ? duration.level : '',
+    durationMinUsed: cost.level === 'flat' && duration.level !== 'recorded'
+      ? String(duration.minutes) : '',
+    durationBasis: cost.level === 'flat' && duration.level !== 'recorded' ? duration.basis : '',
     // WHY the figure is what it is — or why there isn't one. A surface must never render a bare
     // estimate, and the three reasons a cost is absent are not interchangeable: a walk is
     // `counted-elsewhere` (the day's total is complete without it), a blank duration is `unknown`
@@ -109,7 +139,20 @@ const plan = {
   // scripts/test-single-home.mjs scans every file in src/ and scripts/ for the literal.
   kcalPerLbFat: KCAL_PER_LB_FAT,
   latestWeightLb,
-  dailyRehabMin: c.program?.dailyRehabMin ?? null,
+  /**
+   * Which registry type the `Daily` prescription block IS, so the forward view can price it from
+   * the same registry the ledger costs it from.
+   *
+   * ⚠ **ONE KEY, REPLACING TWO HOMES FOR ONE FIGURE.** This shipped as `plan.dailyRehabMin` — one
+   * athlete's activity in the key name, read beside a hardcoded `metByType.rehab` in shared
+   * TypeScript (X-11), and a SECOND declaration of a duration that
+   * `sessionTypes.<type>.standingDurationMin` already holds for the ledger. Two homes for "how
+   * long is the daily block" is the disagreement rung 4 of the duration resolver exists to end,
+   * reintroduced one layer up. Naming the TYPE instead means the duration and the MET both come
+   * from the registry, and a chart whose daily block is mobility, breathing or physiotherapy is
+   * served by the same code as one whose block is rehabilitation.
+   */
+  dailyBlockType: c.program?.dailyBlockType ?? null,
   // --- The session-type registry, resolved (W7, audit F-15/F-70) --------------------------------
   // The dashboard cannot import `athlete.mjs` (it reads the filesystem), so the resolved answers
   // come through the bundle the same way `metByType` already does. `sessionTypeList` is what the
@@ -119,6 +162,16 @@ const plan = {
   countsTowardFloor: [...countsTowardFloorSet()],
   sessionTypeDomains: Object.fromEntries(
     Object.entries(sessionTypes()).map(([type, t]) => [type, t.domain ?? null]),
+  ),
+  /**
+   * Per-type registry detail the views need beyond the MET. Today that is the standing duration —
+   * the figure a chart declares for an activity that always runs the same length, which the LEDGER
+   * already reads through `prescribedSessionMin`. Publishing it is what lets the forward view
+   * price the daily block from the same one home instead of from a key of its own.
+   */
+  sessionTypeDetail: Object.fromEntries(
+    Object.entries(sessionTypes())
+      .map(([type, t]) => [type, { standingDurationMin: num(t.standingDurationMin) ?? null }]),
   ),
   // Chart-specific sentences the pages render. `stripNotes` has already removed the `_`-prefixed
   // sourcing keys, so only the copy itself reaches the bundle.

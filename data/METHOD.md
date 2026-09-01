@@ -667,6 +667,27 @@ athlete does.
 precedence: **`kcal_override`** (a device reading — a bike, a watch, a rower — or a logged
 recalibration) beats **the intensity split** beats **the flat MET over `duration_min`**.
 
+> ⚠ **A SESSION PERFORMED BUT NOT TIMED IS RECONSTRUCTED, NOT COUNTED AS ZERO.** The flat-MET rung
+> needs `duration_min`, and where it was blank the ledger added `?? 0` — writing a **zero that looks
+> measured** into a column whose blanks are the only thing telling every downstream check that a
+> total is incomplete. `missingBurnComponents` saw nothing missing, `burnUnderstated` stayed false,
+> `complete` never looked at sessions at all, and whole sessions entered `observedDailyBurn` as full
+> measurements while actually being floors. The mean they drag down prices every unfinished day and
+> every rate-of-loss projection on the chart, and it drags it in the flattering direction.
+>
+> `scripts/lib/session-duration.mjs` now resolves the duration, in this order: the mean of the
+> **last three timed sessions sharing this session's stem**, else the **next three** after it where
+> the history does not exist yet, else the **standing duration this chart declares for that session
+> type** (`sessionTypes.<type>.standingDurationMin` — for an activity that always runs the same
+> length), else **`sets × work + (sets − 1) × 70 s rest`** — where the rest figure is
+> `program.setRestSec` where a chart sets one, and work per set is the median implied by the
+> sessions that chart *has* timed, never a figure a coach typed. Whatever still cannot be costed
+> leaves `session_kcal` **blank** and the day `complete=n`, which is what the rest of this file has
+> always promised the column would do.
+>
+> Every reconstructed row says which rung answered it, so no surface renders a reconstruction as a
+> measurement.
+
 > **The precedence has one home: `sessionCost()` in `scripts/lib/aggregate.mjs`.** Both
 > `compute-energy.mjs` (the ledger) and `build-data-json.mjs` (the per-session figure Today and
 > History render) call it. Until 2026-08-14 the precedence existed only in the ledger and the

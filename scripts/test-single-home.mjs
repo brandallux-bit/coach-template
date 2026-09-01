@@ -49,7 +49,7 @@ import { fileURLToPath } from 'node:url'
 
 import { parseCsv, parseLine, readCsv } from './lib/csv.mjs'
 import { sessionCost } from './lib/aggregate.mjs'
-import { localToday, metTable } from './lib/athlete.mjs'
+import { SET_REST_SEC, localToday, metTable } from './lib/athlete.mjs'
 import { RESERVED_SESSIONS } from './lib/sessions.mjs'
 import { livePrescriptions, names } from './lib/suspensions.mjs'
 import { METHOD_DIGEST, METHOD_VERSION, modelDigest, modelInputsJson } from './lib/method-version.mjs'
@@ -177,6 +177,13 @@ const DEFINITIONS = [
       'scripts/lib/schema.mjs': 'declares the columns; makes no decision about which wins',
       'scripts/lib/rowwrite.mjs': 'validates both columns on the write path; computes neither',
       'scripts/validate-data.mjs': 'the CI backstop for the same validation',
+      // Added with `costDependsOnDuration`. The duration-resolver fixtures hand a row with an
+      // override and a row with an intensity split to that predicate and assert it answers "no
+      // duration needed" for both — which VERIFIES the one home rather than competing with it.
+      // This entry covers assertions ABOUT the precedence; a file that started DECIDING it would
+      // still be wrong, and what makes this safe is that the deciding lives one import away and
+      // every other check in this suite runs against that import.
+      'scripts/test-aggregations.mjs': 'asserts the predicate that reads both columns; decides nothing',
     },
     why: 'audit F-02: the precedence in one file and its third level alone in another is how the '
       + 'ledger said 774 and the dashboard said 1,328 for the same session',
@@ -361,7 +368,12 @@ const constants = JSON.parse(src('athlete/constants.json'))
  * the evidence rather than fixing a drift.
  */
 const PROSE_FILES = [
-  'CLAUDE.md', 'README.md',
+  // ⚠ **`data/METHOD.md` IS HERE BECAUSE IT IS THE DOCUMENT MOST LIKELY TO RESTATE A CONSTANT.**
+  // It describes the burn model in prose, so every figure the model uses has a natural home in a
+  // sentence here — and until this list included it, a FIGURES row pointed at a number stated only
+  // in METHOD.md ran over nothing at all and reported itself green. A rule that scans no file
+  // containing the thing it checks is worse than no rule, because it is believed.
+  'CLAUDE.md', 'README.md', 'data/METHOD.md',
   ...walk(['athlete', 'nutrition', 'program', 'skills', '.claude'], /\.md$/),
   ...walk(['docs/modules', 'docs/build-prd'], /\.md$/),
   ...readdirSync(join(ROOT, 'logs')).filter((f) => /^TEMPLATE-.*\.md$/.test(f)).map((f) => `logs/${f}`),
@@ -388,6 +400,23 @@ const statements = (text) => text.split(/\n\s*\n|\n(?=\s*(?:[-*|#]|>\s*(?:[-*|#]
 const HISTORICAL = '(historical — not the live threshold)'
 
 const FIGURES = [
+  {
+    name: 'program.setRestSec',
+    /**
+     * ⚠ **THE CONSTANT, NOT THE CONSTANTS KEY — and reading only the key makes this row INERT on
+     * exactly the charts it protects.** `test-single-home` skips a FIGURES row whose `value` is
+     * null, and `program.setRestSec` is optional: a chart that keeps the shipped default has no
+     * such key, so `constants.program?.setRestSec` alone is null and the check silently stops
+     * running on every default chart. `?? SET_REST_SEC` is what makes it fire there.
+     */
+    value: constants.program?.setRestSec ?? SET_REST_SEC,
+    context: /rest between sets|rest\b/i,
+    subject: /\bsets?\b/i,
+    figure: /(\d{2,3})\s*s(?:ec(?:onds?)?)?\s+rest/gi,
+    why: 'data/METHOD.md states the duration-reconstruction rule in prose and had the rest figure '
+      + 'written into that sentence as a literal, which is a second home for a value the constants '
+      + 'own — and one a chart may legitimately change',
+  },
   {
     name: 'plan.adherenceRoutingPct',
     value: constants.plan.adherenceRoutingPct,
@@ -623,25 +652,62 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
   const bundle = JSON.parse(src('src/generated/data.json'))
   const energy = Object.fromEntries(readCsv(join(ROOT, 'data', 'energy.csv')).map((r) => [r.date, r]))
 
+  // ⚠ **`Number('')` IS `0`, SO THE OLD ARITHMETIC TURNED "NO FIGURE COULD BE COMPUTED" INTO A
+  // MEASURED ZERO** — inside the suite whose §1 rule is X-1, that empty means not measured. The
+  // two states are not interchangeable here: a day whose ledger is BLANK (some session was
+  // uncostable) and whose dashboard carries a costed session is a real disagreement, and the old
+  // arithmetic reported it as `ledger 0, dashboard N` only by accident, while `blank vs blank` and
+  // `measured 0 vs blank` both passed as agreement. It never showed up because no day on the chart
+  // it was written against happened to mix a costed and an uncostable session. That is luck, not
+  // coverage, and luck is what the duration resolver changes.
+  //
+  // `kcalLevel === 'unknown'` is the dashboard's own word for the condition `compute-energy` calls
+  // `sessionUnknown`, so the two sides are compared on the STATE as well as on the number.
   const perDate = {}
   for (const t of bundle.training) {
     if (t.status !== 'completed') continue
-    perDate[t.date] = (perDate[t.date] ?? 0) + (t.estKcalBurned === '' ? 0 : Number(t.estKcalBurned))
+    const cur = perDate[t.date] ?? { kcal: 0, unknown: false }
+    // A walk is `counted-elsewhere` and legitimately blank — its energy is already in steps_kcal.
+    // Only `unknown` means nobody could cost it, which is the state the ledger blanks the day for.
+    if (t.kcalLevel === 'unknown') cur.unknown = true
+    else cur.kcal += t.estKcalBurned === '' ? 0 : Number(t.estKcalBurned)
+    perDate[t.date] = cur
   }
 
   const off = []
+  /** Dates this check cannot compare numerically — see the note on the `continue` below. */
+  const uncosted = []
   for (const [date, row] of Object.entries(energy)) {
-    const ledger = Number(row.session_kcal)
-    const dash = perDate[date] ?? 0
+    const ledgerBlank = String(row.session_kcal ?? '').trim() === ''
+    const dash = perDate[date] ?? { kcal: 0, unknown: false }
+    if (ledgerBlank !== dash.unknown) {
+      off.push(`${date}: ledger ${ledgerBlank ? 'blank (uncostable)' : `${row.session_kcal}`}, `
+        + `dashboard ${dash.unknown ? 'has an uncostable session' : `${dash.kcal}`} — one side `
+        + 'recorded a gap and the other did not')
+      continue
+    }
+    // ⚠ **A MIXED DAY LEAVES NUMERIC COVERAGE, AND THE COUNT IS REPORTED RATHER THAN SWALLOWED.**
+    // Once one session on a date is uncostable the ledger blanks the WHOLE day, so there is no
+    // ledger number left to compare the day's costed sessions against — this check cannot cover
+    // it, and pretending otherwise would mean comparing against a zero, which is the exact
+    // coercion this block was rewritten to remove. What must not happen is the coverage shrinking
+    // silently: the duration resolver makes uncostable days rarer but never zero, and a suite that
+    // quietly stops checking days is how F-02 got back in. The tally is printed on every run.
+    if (ledgerBlank) { uncosted.push(date); continue }
     // 1 kcal per session, for the rounding each side does independently.
-    if (Math.abs(ledger - dash) > 2) off.push(`${date}: ledger ${ledger}, dashboard ${dash}`)
+    if (Math.abs(Number(row.session_kcal) - dash.kcal) > 2) {
+      off.push(`${date}: ledger ${row.session_kcal}, dashboard ${dash.kcal}`)
+    }
   }
 
-  yes(`every day's per-session figures sum to energy.csv's session_kcal (${Object.keys(energy).length} days)`,
+  const covered = Object.keys(energy).length - uncosted.length
+  yes(`every day's per-session figures sum to energy.csv's session_kcal `
+    + `(${covered} of ${Object.keys(energy).length} days compared`
+    + `${uncosted.length ? `; ${uncosted.length} uncostable: ${uncosted.join(', ')}` : ''})`,
     off.length === 0,
     `${off.join('\n')}\nThe ledger and the dashboard are computing session burn differently again. `
-    + 'On 2026-08-10 that gap was +554 kcal and on 08-12 +401, both flattering, both on the number '
-    + 'the athlete eats against (audit F-02).')
+    + 'When this last happened the gaps were +554 and +401 kcal on two days, both flattering, both '
+    + 'on the number the athlete eats against (audit F-02).')
 
   // And the figure is rendered, not merely computed. X-15: a number no page shows has failed the
   // same way as a number never written — which is what W4 left this column as.

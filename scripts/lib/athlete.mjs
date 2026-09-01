@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { kgFromLb, sessionCost } from './aggregate.mjs'
+import { kgFromLb, n, sessionCost } from './aggregate.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -311,6 +311,26 @@ export const metFor = (type) => metTable()[type] ?? UNIVERSAL_SESSION_TYPES.othe
 export const KCAL_PER_STEP_PER_LB = 0.00025
 
 /**
+ * Rest between working sets, in seconds, for reconstructing the duration of a session that was
+ * performed but not timed. See `scripts/lib/session-duration.mjs` for where it is used.
+ *
+ * ⚠ **70 IS A DEFAULT THE COACH PROPOSED, NOT A FIGURE ANY ATHLETE GAVE**, and `skills/intake`
+ * asks whether to change it. Until somebody answers, a chart's provenance for it reads
+ * `coach-proposed-unconfirmed` — visible and waiting, rather than silently filed as the athlete's.
+ * A chart that answers writes `program.setRestSec`, and that wins.
+ *
+ * It sits here, beside the rest of the burn model, rather than in `session-duration.mjs`, for the
+ * reason every other constant in this file does: one home, and a change to it is a change to the
+ * model. The work-per-set half of the same estimate is deliberately NOT a constant —
+ * `impliedSetWorkSec` derives it from the sessions the athlete has actually timed, so it tracks
+ * them instead of being a second coach-supplied number filed as theirs.
+ */
+export const SET_REST_SEC = 70
+
+/** The rest figure in force on this chart: its own, or the shipped default. One home, one answer. */
+export const setRestSec = () => (hasChart ? n(constants.program?.setRestSec) ?? SET_REST_SEC : SET_REST_SEC)
+
+/**
  * The conventional energy density of a pound of body fat, for converting between a calorie
  * deficit and a rate of weight loss.
  *
@@ -363,6 +383,30 @@ export const chartMetOf = (type, tier) => (tier ? metForIntensity(type, tier) : 
  * by 554 kcal on 2026-08-10 for exactly as long as they did not. See `sessionCost`.
  */
 export const sessionCostFor = (row, weightLb) => sessionCost(row, weightLb, chartMetOf)
+
+/**
+ * The duration this chart already declares for a session type, when the row itself carries none.
+ *
+ * Rung 4 of `scripts/lib/session-duration.mjs`, kept here because it is the only rung that reads a
+ * chart figure and that module deliberately owns no athlete numbers.
+ *
+ * ⚠ **IT ASKS THE REGISTRY, NOT A HARD-CODED TYPE NAME.** The prototype read
+ * `row.type === 'rehab' ? program.dailyRehabMin : null` — one athlete's activity, named in shared
+ * code, which is X-11 exactly. Any chart may instead declare
+ * `sessionTypes.<type>.standingDurationMin` for an activity that always runs the same length: a
+ * daily mobility block, a fixed-length class, a commute ride. Reading it on the LEDGER side as well
+ * as the forward view is not a new estimate — it is the same one home finally read by both, so the
+ * forecast and the ledger stop disagreeing about a session that runs every day.
+ *
+ * ⚠ **THROUGH `sessionTypes()`, NEVER THROUGH THE `constants` PROXY.** That proxy throws on any
+ * field access when there is no chart, and both callers of this import it at module scope — which
+ * is what took `npm run build` down on a fresh fork before. `sessionTypes()` guards once, returns
+ * the two universal types on a chart-less repo, and cannot throw.
+ *
+ * Null for a type with no standing duration, which falls through to the set-count rung. That is
+ * correct: most session types genuinely do not have one.
+ */
+export const prescribedSessionMin = (row) => n(sessionTypes()[row?.type]?.standingDurationMin)
 
 /** Strips the `_comment` / `_note` documentation keys before the values reach the app. */
 export function stripNotes(obj) {

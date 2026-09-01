@@ -291,6 +291,59 @@ export function weekIntake(days, budget) {
 }
 
 /**
+ * ⚠ **HOW LONG A SESSION TAKES, FROM ITS SET COUNT.** The last rung of the duration resolver, for
+ * a session performed but not timed and with no comparable history to average: estimate it from the
+ * number of sets, the time a set takes, and the rest between sets.
+ *
+ *     minutes = (sets × workSec + (sets − 1) × restSec) ÷ 60
+ *
+ * `restSec` sits between sets, so there are `sets − 1` of them — the last set is not followed by a
+ * rest that belongs to this session. One set therefore costs its work and nothing else.
+ */
+export function minutesFromSets(setCount, workSec, restSec) {
+  const sets = n(setCount)
+  const work = n(workSec)
+  const rest = n(restSec)
+  if (sets == null || work == null || rest == null || sets < 1) return null
+  return (sets * work + (sets - 1) * rest) / 60
+}
+
+/**
+ * The work-seconds per set implied by the sessions this athlete HAS timed, given the rest constant.
+ *
+ * ⚠ **DERIVED FROM THE LEDGER, NOT A NUMBER ANYBODY TYPED.** Same stance as `observedDailyBurn`:
+ * the alternative is a literal "about 90 seconds a set" that would be one more coach-invented
+ * figure filed as the athlete's (INVARIANTS.md X-12). Every timed session inverts the formula
+ * above — `(minutes × 60 − (sets − 1) × restSec) ÷ sets` — and the MEDIAN of those is returned,
+ * because on real ledgers a dense circuit and a heavy strength session sit a factor of three apart
+ * in seconds per set, and a mean would let either end drag the answer.
+ *
+ * ⚠ **AND IT IS A WEAK ESTIMATOR — `n` AND `spreadSec` ARE RETURNED SO A SURFACE MUST SAY SO.**
+ * Measured on one real chart's timed strength sessions, the regression of duration on set count
+ * has an R² of 0.108: set count barely predicts duration, because a set of shallow bodyweight work
+ * and a set of heavy cleans are one row each. This is the LAST rung of `resolveSessionMinutes` for exactly that
+ * reason — a session with three comparable past durations should never reach it.
+ */
+export function impliedSetWorkSec(samples = [], restSec = 0) {
+  const rest = n(restSec) ?? 0
+  const implied = (samples ?? [])
+    .map((sm) => ({ min: n(sm?.minutes), sets: n(sm?.sets) }))
+    .filter((sm) => sm.min != null && sm.sets != null && sm.sets > 0)
+    .map((sm) => (sm.min * 60 - (sm.sets - 1) * rest) / sm.sets)
+    .filter((v) => v > 0)
+    .sort((a, b) => a - b)
+  if (!implied.length) return null
+  const mid = Math.floor(implied.length / 2)
+  return {
+    workSec: implied.length % 2 ? implied[mid] : (implied[mid - 1] + implied[mid]) / 2,
+    n: implied.length,
+    minSec: implied[0],
+    maxSec: implied[implied.length - 1],
+    spreadSec: implied[implied.length - 1] - implied[0],
+  }
+}
+
+/**
  * How many COMPLETE days a chart needs before its own burn figures beat the plan's estimate.
  *
  * Seven, because the thing being averaged is a weekly structure, not a population: this chart's
@@ -503,6 +556,24 @@ export function allOnOrBefore(rows, date) {
  * Order is fixed so `explain` reads the same way every time.
  */
 export const INTENSITY_TIERS = ['light', 'moderate', 'hard']
+
+/**
+ * Whether this row's cost will come from the flat-MET rung — i.e. whether `duration_min` matters.
+ *
+ * ⚠ **IT LIVES HERE BECAUSE THE PRECEDENCE LIVES HERE.** `scripts/lib/session-duration.mjs` has to
+ * know whether reconstructing a duration would change anything, and the first version of it
+ * answered that by testing `kcal_override` and the tier columns itself. That is the top two rungs
+ * of `sessionCost`'s precedence written out a second time, and `scripts/test-single-home.mjs`
+ * failed it on the first run — correctly, and for exactly the reason it exists: F-02 is what
+ * happens when one file holds the precedence and another holds a piece of it.
+ *
+ * Deliberately says nothing about MET or duration. A walk's MET of 0 and a missing duration are
+ * both decided inside `sessionCost` below; this answers only "does the third rung apply", which is
+ * the question a duration resolver is asking.
+ */
+export const costDependsOnDuration = (row) =>
+  n(row?.kcal_override) == null
+  && !INTENSITY_TIERS.some((t) => n(row?.[`${t}_min`]) != null)
 
 /**
  * ⚠ **THE ONE HOME FOR "WHAT DID THIS SESSION COST".** Not the formula — that is `sessionKcal`

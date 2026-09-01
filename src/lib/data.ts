@@ -80,8 +80,14 @@ export type Plan = {
   kcalPerLbFat?: number
   /** Most recent weight on file, for projecting a session that has not happened. */
   latestWeightLb?: number
-  /** Minutes/day for the daily supplementary block, if the chart prescribes one. */
-  dailyRehabMin?: number | null
+  /**
+   * Which registry type the `Daily` prescription block is, if the chart prescribes one. Its
+   * duration and its MET both come from `sessionTypeDetail` / `metByType` — see
+   * `athlete/constants.json` `program.dailyBlockType`.
+   */
+  dailyBlockType?: string | null
+  /** Per-type registry detail the views need beyond the MET: standing durations, for one. */
+  sessionTypeDetail?: Record<string, { standingDurationMin?: number | null }> | null
   // --- The session-type registry, resolved (see athlete/constants.json `sessionTypes`) ----------
   /** Every legal `training.csv` type on this chart, in registry order. Drives the /log dropdown. */
   sessionTypeList?: string[]
