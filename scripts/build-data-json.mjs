@@ -18,7 +18,7 @@ import { latestOnOrBefore, observedDailySteps, sessionBurns } from './lib/aggreg
 import { ageOn, constants, hasChart, rmrFloorKcal, sessionCostFor, stripNotes, metTable,
   KCAL_PER_STEP_PER_LB, KCAL_PER_LB_FAT, metByIntensityTable, localToday, sessionTypeEnum,
   prescribedSessionMin, sessionTypes, setRestSec, countsTowardFloorSet,
-  movementKcalFor, movementBasisFor,
+  movementKcalFor, movementBasisFor, movementLevelKey, movementLevelDeclared,
 } from './lib/athlete.mjs'
 import { buildDurationResolver, withResolvedDuration } from './lib/session-duration.mjs'
 
@@ -171,6 +171,17 @@ const plan = {
    */
   movementKcal: hasChart ? movementKcalFor(latestWeightLb) : null,
   movementBasis: hasChart ? movementBasisFor(latestWeightLb) : null,
+  /**
+   * The level actually IN FORCE, and whether anybody chose it.
+   *
+   * ⚠ **THE EFFECTIVE KEY, NOT THE RAW CONSTANT.** Pages used to read
+   * `plan.movementOutsideExerciseLevel` directly and fall back to a generic phrase when it was
+   * absent — so on a chart running the default, one cell said "outside deliberate exercise" while
+   * the cell beside it named a level and attributed it to the athlete. One key, resolved once,
+   * read by both.
+   */
+  movementLevel: hasChart ? movementLevelKey() : null,
+  movementLevelDeclared: hasChart ? movementLevelDeclared() : false,
   // The 3,500 kcal/lb modelling constant, re-exported for the same reason as the MET table above:
   // the weekly card converts a projected calorie gap into pounds, and a `3500` typed into a page
   // would be a second home for a constant whose docstring says it must not have one (X-8).

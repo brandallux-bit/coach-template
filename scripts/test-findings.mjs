@@ -28,12 +28,21 @@ console.log(modeBanner('findings'))
  */
 const FLOOR = rmrFloorKcal(180, '2026-08-13')
 
+// ⚠ **BOTH FIXTURES ANSWER THE MOVEMENT QUESTION, because a chart that has not is never silent.**
+// `movement-level-unanswered` fires on any chart with no feed and no level — which is every chart
+// this file used to build — so without this line every "is silent" case below would be asserting
+// the absence of a finding that is correctly present. The unanswered case has its own fixtures,
+// under "the movement question nobody answered", where it is the thing being tested.
+const answered = { movementOutsideExerciseLevel: 'light' }
 const deficitChart = {
   baseline: { date: '2026-08-05', weightLb: 181 },
-  plan: { targetRateLbPerWk: [1.1, 1.25], maxRatePctBwPerWk: 1.0, proteinFloorG: 150 },
+  plan: { targetRateLbPerWk: [1.1, 1.25], maxRatePctBwPerWk: 1.0, proteinFloorG: 150, ...answered },
 }
 /** A chart with no energy-deficit domain — symptom control, sleep, whatever the athlete asked for. */
-const noDeficitChart = { baseline: { date: '2026-08-05', weightLb: 181 }, plan: { proteinFloorG: 150 } }
+const noDeficitChart = {
+  baseline: { date: '2026-08-05', weightLb: 181 },
+  plan: { proteinFloorG: 150, ...answered },
+}
 
 const weights = (start, list) => list.map((lb, i) => {
   const d = new Date(`${start}T12:00:00Z`)
@@ -182,7 +191,9 @@ const dated = (start, n) => Array.from({ length: n }, (_, i) => {
  */
 const feedChart = {
   ...deficitChart,
-  plan: { ...deficitChart.plan, stepFeed: 'apple-health-shortcut' },
+  // The level comes OUT: a chart with a feed that also carries a described level is the shape
+  // `validate-data.mjs` rejects, and a findings fixture in an illegal shape proves nothing.
+  plan: { ...deficitChart.plan, movementOutsideExerciseLevel: undefined, stepFeed: 'apple-health-shortcut' },
 }
 const feed = (args) => ({ ...args, constants: feedChart })
 
@@ -212,6 +223,45 @@ check('  ...while an undeclared one is silent — that chart simply has no weara
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: [] }, null)
 check('  ...and an undeclared feed is not called STALE either, whatever the dates say',
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) }, null)
+
+console.log('\nthe movement question nobody answered — a default inside every day\'s burn')
+/**
+ * ⚠ **THE ONE FINDING THE PROVENANCE LOOP STRUCTURALLY CANNOT PRODUCE.** `unconfirmedValues`
+ * iterates the keys a chart HAS; an unanswered question writes no key, so it has no marker and no
+ * finding — while the shipped default goes into the movement term of every single day. Four other
+ * coach-proposed values in this file fire correctly through that loop, which is exactly why this
+ * one going silent was invisible: the machinery looked like it was working.
+ */
+{
+  const noLevel = { baseline: { date: '2026-08-05', weightLb: 181 }, plan: { proteinFloorG: 150 } }
+  const rows = { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)] }
+  check('  a chart with no feed and no level is asked for one',
+    { ...rows, constants: noLevel }, 'movement-level-unanswered')
+  check('  ...and a chart that answered is not asked again',
+    { ...rows, constants: { ...noLevel, plan: { ...noLevel.plan, ...answered } } }, null)
+  // A declared feed WITH rows arriving: `check(..., null)` would be wrong here for a reason worth
+  // stating — a declared feed with an empty steps.csv correctly fires `workflow-never-…`, so the
+  // rows are what isolate the movement question from the feed-health one.
+  const feedRows = { ...rows, steps: dated('2026-08-08', 6) }
+  check('  ...nor is a chart whose feed counts that movement already',
+    { ...feedRows, constants: { ...noLevel, plan: { ...noLevel.plan, stepFeed: 'apple-health-shortcut' } } },
+    null)
+
+  // ⚠ **IT MUST NOT INSTRUCT, AND IT MUST CARRY THE CLAUSE THE WHOLE TERM RESTS ON.** A finding
+  // that told the coach to write a level would be the substitution of judgement this layer exists
+  // to prevent — and one that asked the question without "outside deliberate exercise" invites the
+  // answer that counts a logged walk twice.
+  const f = buildFindings({ today: '2026-08-14', constants: noLevel, ...rows })
+    .find((x) => x.id === 'movement-level-unanswered')
+  if (f && /TAKEN OUT|outside deliberate exercise/i.test(f.action)
+    && /do not write the default under their name/i.test(f.action)) {
+    console.log('ok    it asks about a day with exercise taken out, and refuses to close itself')
+  } else {
+    failed++
+    console.error('FAIL  the movement finding must carry the double-count clause and must not '
+      + `write the default under the athlete's name\n      ${f ? f.action : 'no finding'}`)
+  }
+}
 
 console.log('\ndated follow-ups — the date somebody wrote down IS the registration')
 const doc = (text) => [{ path: 'nutrition/plan.md', text }]
@@ -315,7 +365,7 @@ const budgetChart = (budget, rates = [0.5, 1.0]) => ({
   baseline: { date: '2026-08-05', weightLb: 181 },
   plan: {
     targetRateLbPerWk: rates, maxRatePctBwPerWk: 1.0, proteinFloorG: 150,
-    estMaintenanceKcal: 2450, weeklyKcalBudget: budget,
+    estMaintenanceKcal: 2450, weeklyKcalBudget: budget, ...answered,
     _provenance: { targetRateLbPerWk: { class: 'athlete-stated', quote: '1 lb per week is my goal. More is great.' } },
   },
 })

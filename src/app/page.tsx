@@ -7,6 +7,7 @@ import {
   series, today, trend,
 } from '@/lib/data'
 import { viewFindings } from '@/lib/findings'
+import { hasStepFeed } from '@/lib/movement'
 import { allWeeks, missingBurnLabels } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,7 @@ export const dynamic = 'force-dynamic'
 
 export default function GoalsPage() {
   const now = today()
+  const hasFeed = hasStepFeed(plan.stepFeed)
   const weightPoints = series(body, 'weight_lb')
   const waistPoints = series(body, 'waist_in')
   const weeks = allWeeks(now)
@@ -314,7 +316,8 @@ export default function GoalsPage() {
                     weeks" with nothing marking it (audit F-63). It is the denominator Intake,
                     Burn and Deficit are all summed over. */}
                 <tr>
-                  <th className="text">Week of</th><th>Days</th><th>Avg weight</th><th>Waist</th><th>Avg steps</th>
+                  {/* See the same gate on Today and History: no feed, no step column. */}
+                  <th className="text">Week of</th><th>Days</th><th>Avg weight</th><th>Waist</th>{hasFeed ? <th>Avg steps</th> : null}
                   <th>Sessions</th><th>Intake</th><th>Burn</th><th>Deficit</th>
                 </tr>
               </thead>
@@ -325,7 +328,7 @@ export default function GoalsPage() {
                     <td>{w.balanceDays} / {w.days.length}</td>
                     <td>{fmt(w.avgWeightLb, 1)}</td>
                     <td>{fmt(w.lastWaistIn, 2)}</td>
-                    <td>{fmt(w.avgSteps)}</td>
+                    {hasFeed ? <td>{fmt(w.avgSteps)}</td> : null}
                     <td>{w.sessions}{plan.sessionsPerWeekFloor ? ` / ${plan.sessionsPerWeekFloor}` : ''}</td>
                     <td>{fmt(w.intakeKcal)}</td>
                     <td>{fmt(w.burnKcal)}{w.partialDays > 0 ? <span className="tbd">~</span> : null}</td>

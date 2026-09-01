@@ -551,9 +551,9 @@ domain, because a metric no domain needs is a chore the coach invented (CLAUDE.m
 - `complete`: `y` when every burn component **this chart has** is present on the row; `n` when one
   is blank and was therefore counted as zero. **A row with `complete=n` has a `burn_total_kcal`
   that is a FLOOR, not an estimate**, and every deficit downstream of it is understated by the same
-  amount. Movement outside sessions is the largest term this can happen to after resting
-  metabolism, so a run of `complete=n` days is enough to turn a real weekly deficit into an
-  apparent surplus and invite a cut that is not needed.
+  amount. How much depends on which component and on the athlete — but a run of `complete=n` days
+  is enough to turn a real weekly deficit into an apparent surplus and invite a cut that is not
+  needed, and it is the movement term this most often happens to.
 
   > ⚠ **"THIS CHART HAS" IS THE LOAD-BEARING PHRASE, AND IT USED TO SAY "EVERY COMPONENT".**
   > `steps_kcal` and `incidental_kcal` are two ways to fill ONE slot — see the movement section

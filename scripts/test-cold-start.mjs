@@ -186,7 +186,9 @@ const NO_FEED_CHART = {
   ...FRESH_CHART,
   plan: {
     ...FRESH_CHART.plan,
-    targetRateLbPerWk: 0.75,
+    // [acceptable, goal]. A scalar here is a legal-looking edit that throws on /today, which is
+    // why the validator now rejects it — this fixture was in that shape and nothing noticed.
+    targetRateLbPerWk: [0.5, 0.75],
     maxRatePctBwPerWk: 1.0,
     sessionsPerWeekFloor: 3,
     sessionsPerWeekTarget: 5,
@@ -626,6 +628,42 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       + 'movement is counted NOWHERE',
       strayCounted.out, strayCounted.code, /energyCountedIn is "steps", but this chart declares no/)
 
+    /**
+     * ⚠ **STEPS ARRIVING WITH NO DECLARATION — THE ONE SHAPE THAT DOUBLE-COUNTED.**
+     *
+     * `data/steps.csv` with rows and no `plan.stepFeed` is what an existing chart looks like the
+     * moment it merges this change and skips the migration, and what a chart switching away from a
+     * feed looks like for its whole recorded history (the rows stay; `data/METHOD.md` forbids
+     * deleting them). The ledger no longer writes both terms — `compute-energy.mjs` guards on the
+     * ROW — but the chart is still wrong in a way it cannot see: every page reads it as having no
+     * feed, and the gap check stops watching an automation that is still running.
+     */
+    writeFileSync(join(repo, 'data', 'steps.csv'), 'date,steps\n2026-08-14,9000\n')
+    const undeclaredFeed = withMap(() => {})
+    rejects('steps arriving with no plan.stepFeed is REJECTED — the rows contradict the declaration',
+      undeclaredFeed.out, undeclaredFeed.code, /holds 1 row\(s\) but plan\.stepFeed is not set/)
+    writeFileSync(join(repo, 'data', 'steps.csv'), 'date,steps\n')
+
+    // A range, not a figure. A scalar here throws on /today and reads as "no rate on file"
+    // everywhere else — three failures from one plausible edit, and nothing validated the key at
+    // all until an adversarial review found this suite's own fixture in that shape.
+    const scalarRate = withMap((c) => { c.plan = { ...c.plan, targetRateLbPerWk: 0.75 } })
+    rejects('a scalar targetRateLbPerWk is REJECTED — Plan types it as a range and /today throws',
+      scalarRate.out, scalarRate.code, /must be an array of one or two numbers/)
+
+    // ⚠ **AND THE SAME PROMISE MISSPELLED IS THE SAME HARM, SILENTLY.** The rule above matches the
+    // literal `steps`; anything else slipped past it, still forced `met: 0` through the
+    // double-count rule, and left the session costing nothing on a chart with nothing else
+    // counting it. One typo, and the exact defect the rule is named after.
+    const misspeltCounted = withMap((c) => {
+      c.sessionTypes = {
+        ...c.sessionTypes,
+        stroll: { met: 0, energyCountedIn: 'step count', countsTowardFloor: false, loading: false, domain: 'Swim faster', note: 'Counted in steps.' },
+      }
+    })
+    rejects('...and so is one that misspells the column it names — the rule matches a literal',
+      misspeltCounted.out, misspeltCounted.code, /names no column this system writes/)
+
     const unknownLevel = withMap((c) => { c.plan = { ...c.plan, movementOutsideExerciseLevel: 'quite active' } })
     rejects('a movement level that is not one of the described ones is REJECTED, naming them',
       unknownLevel.out, unknownLevel.code, /movementOutsideExerciseLevel is "quite active", which is not one of/)
@@ -809,8 +847,8 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
      *
      * `steps_kcal` blank is honest and was never the problem. The problem was that nothing else
      * filled the slot, so a day with no wearable had NO movement term at all: burn understated by
-     * the largest single component after resting metabolism, systematically, on every day forever.
-     * `incidental_kcal` is that slot's other filling, priced from the level this chart described.
+     * however much that person moves, systematically, on every day forever. `incidental_kcal` is
+     * that slot's other filling, priced from the level this chart described.
      *
      * A blank here would mean the described level was not read, which is indistinguishable in the
      * ledger from the old behaviour — so it is asserted directly, on every row, rather than

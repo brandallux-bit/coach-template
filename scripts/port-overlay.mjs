@@ -202,13 +202,29 @@ const DATE_RE = /\b20\d\d-\d\d-\d\d\b/
  * inside JSON strings — every `_comment` and every `_note` — so treating it as code meant a dated
  * incident or a quote in the very file a new user reads first went unseen.
  */
-const isProse = (path, text) => !/\.(mjs|js|ts|tsx)$/.test(path) || /^\s*(\/\/|\*|\/\*|#)/.test(text)
+// `{/*` is in the list because a JSX comment is a comment: without it, a dated incident inside
+// `{/* … */}` was caught by neither branch — not prose, and excluded from rendered copy below.
+const isProse = (path, text) => !/\.(mjs|js|ts|tsx)$/.test(path) || /^\s*(\/\/|\*|\/\*|\{\/\*|#)/.test(text)
+
+/**
+ * ⚠ **A `.tsx` LINE THAT IS NOT A COMMENT IS PAGE COPY, AND A DATE IN PAGE COPY IS THE WORST PLACE
+ * FOR ONE.** The date rule was prose-only, and a `.tsx` string literal counts as code — so
+ * *"A measured maintenance figure replaces it at the 2026-08-27 recalibration"*, sitting inside a
+ * chart caption, passed both halves of this screen and would have rendered one chart's calendar to
+ * every fork. A comment is at least only read by a maintainer; this is on the page.
+ *
+ * Cheap because it is nearly always empty: every date literal in this repo's `.tsx` files today is
+ * in a comment, and comments are already covered by the prose branch. What it costs is that a page
+ * legitimately printing a date must build it from data rather than typing it, which is the rule
+ * anyway.
+ */
+const isRenderedCopy = (path, text) => /\.tsx$/.test(path) && !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(text)
 
 const deathleteHit = (path, text) => {
   const prose = isProse(path, text)
   return PRONOUN_RE.test(text)
     || (prose ? QUOTE_PROSE_RE : QUOTE_CODE_RE).test(text)
-    || (prose && DATE_RE.test(text))
+    || ((prose || isRenderedCopy(path, text)) && DATE_RE.test(text))
 }
 
 /**

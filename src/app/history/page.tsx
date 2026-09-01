@@ -5,6 +5,7 @@ import {
   today, weekdayOf, type Row,
 } from '@/lib/data'
 import { allWeeks, missingBurnLabels, rollDay, type DayRoll } from '@/lib/rollup'
+import { hasStepFeed } from '@/lib/movement'
 
 const DAILY_WINDOW = 14
 
@@ -49,6 +50,7 @@ export const dynamic = 'force-dynamic'
 export default function HistoryPage() {
   const now = today()
   const weeks = allWeeks(now)
+  const hasFeed = hasStepFeed(plan.stepFeed)
 
   const label = (w: (typeof weeks)[number], i: number) =>
     i === weeks.length - 1 ? `${w.label}*` : w.label
@@ -142,7 +144,7 @@ export default function HistoryPage() {
 
       <Card
         title="Calories out — estimated"
-        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + background movement + the day&rsquo;s movement outside sessions (a step feed where this chart has one, the described level where it does not) + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{plan.estMaintenanceKcal.toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a gap of ~2,600 kcal/week that exists whatever you do. A measured maintenance figure replaces it at the 2026-08-27 recalibration.</>}
+        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + background movement + the day&rsquo;s movement outside sessions (a step feed where this chart has one, the described level where it does not) + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{plan.estMaintenanceKcal.toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a structural weekly gap that exists whatever you do. A maintenance figure measured from this chart&rsquo;s own ledger is what replaces it; until one exists, this series has no honest plan line.</>}
       >
         <Legend items={[{ label: 'Estimated burn', color: 'var(--series-1)' }]} />
         {weeks.length ? (
@@ -215,7 +217,10 @@ export default function HistoryPage() {
                     Deficit are ALL summed over, which is the whole point of audit F-51. It used to
                     read `burnDays`, a fifth day set that agreed with none of them — the row said
                     "4/4 days logged" beside 9,741 − 4,160 = 3,007. */}
-                <th className="text">Week of</th><th>Days counted</th><th>Avg weight</th><th>Waist</th><th>Avg steps</th>
+                {/* Same gate as Today's Steps tile: a column of TBD on every week a chart with no
+                    wearable will ever have is not a gap being reported, it is a column that does
+                    not apply. `hasFeed` is the one predicate (src/lib/movement.ts). */}
+                <th className="text">Week of</th><th>Days counted</th><th>Avg weight</th><th>Waist</th>{hasFeed ? <th>Avg steps</th> : null}
                 <th>Sessions</th><th>Eaten</th><th>Plan</th><th>Burn (est.)</th><th>Deficit</th>
                 {/* Alcohol has its OWN day count, shown with it, because a blank cell means "not
                     recorded" — a 600 kcal week over two logged days is a mostly-unlogged week,
@@ -237,7 +242,7 @@ export default function HistoryPage() {
                   </td>
                   <td>{fmt(w.avgWeightLb, 1)}</td>
                   <td>{fmt(w.lastWaistIn, 2)}</td>
-                  <td>{fmt(w.avgSteps)}</td>
+                  {hasFeed ? <td>{fmt(w.avgSteps)}</td> : null}
                   <td>{w.sessions}</td>
                   <td>{fmt(w.intakeKcal)}</td>
                   <td>{fmt(w.targetKcal)}</td>

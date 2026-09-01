@@ -2,7 +2,10 @@
 /**
  * Generates data/energy.csv from the measured files. Never edit energy.csv by hand.
  *
- *   burn_total = rmr + tef + neat_other + steps_kcal + session_kcal
+ *   burn_total = rmr + tef + neat_other + <movement> + session_kcal
+ *
+ *   <movement> = steps_kcal       on a chart with a declared step feed
+ *              = incidental_kcal  on a chart without one — priced from the level it described
  *
  * The model, its constants and the double-count trap are documented in data/METHOD.md.
  * Bump METHOD_VERSION when a constant changes so historical rows stay interpretable.
@@ -111,11 +114,23 @@ for (const date of dates) {
 
   // ⚠ **THE OTHER WAY TO FILL THE MOVEMENT SLOT, AND THE ONE MOST CHARTS WILL USE.** A chart with
   // no wearable feed has no `steps_kcal` — not a zero, and not a gap either: it is an input that
-  // chart does not have. `movementKcalFor` prices the level the athlete described instead, and
-  // returns null on a chart that DOES have a feed, so the two can never both be counted. See
+  // chart does not have. `movementKcalFor` prices the level the athlete described instead. See
   // scripts/lib/movement.mjs for the level table and the "outside deliberate exercise" clause the
   // whole thing rests on.
-  const incidentalKcal = movementKcalFor(weightLb)
+  //
+  // ⚠ **`stepsKcal != null` IS THE GUARD, NOT THE DECLARATION, AND THAT IS THE WHOLE INVARIANT.**
+  // "Exactly one of the pair is non-blank" has to be true of the ROW, because that is what
+  // `missingBurnComponents` reads and what `complete` is derived from. Resting it on
+  // `plan.stepFeed` alone left a real chart shape where BOTH were written and both added: steps
+  // arriving into `data/steps.csv` while the declaration is absent — which is what an existing
+  // chart looks like the moment it merges this change without doing the migration, and what a
+  // chart switching AWAY from a feed looks like for the whole of its recorded history, since
+  // `data/METHOD.md` forbids deleting those rows by hand. On a 150 lb athlete walking 9,000 steps
+  // that is a day's burn reported 13% high and a day's deficit reported 66% high, on every row,
+  // with `complete=y` and nothing anywhere going red. `validate-data.mjs` now errors on that
+  // undeclared-but-arriving state so the chart is told to fix its declaration — and this line is
+  // why a chart in it is never also silently wrong.
+  const incidentalKcal = stepsKcal != null ? null : movementKcalFor(weightLb)
 
   // Only completed sessions burn anything, and what one cost is `sessionCostFor` — the three-level
   // precedence (kcal_override -> per-tier MET over the intensity split -> flat MET over duration),

@@ -10,10 +10,12 @@
  * budget-versus-goal finding all had nothing to read. The template shipped a system whose entire
  * quantitative half was inert for the majority of the people it ships to.
  *
- * ⚠ **AND DROPPING THE TERM IS NOT THE FIX.** On a chart with a real feed the step term runs at
- * roughly a sixth of daily burn. Omitting it does not make the model neutral — it understates burn
- * by that sixth, every day, and every rate projection and safety-ceiling check reads off the
- * understated figure. A missing term is not a conservative term.
+ * ⚠ **AND DROPPING THE TERM IS NOT THE FIX.** Omitting it does not make the model neutral: it
+ * understates burn by however much the athlete moves, every day, and every rate projection and
+ * safety-ceiling check reads off the understated figure. A missing term is not a conservative
+ * term. **No figure is quoted here on purpose** — how large this is depends on the person, and a
+ * magnitude taken from one chart and stated here would be exactly the thing this file removed from
+ * the stale-feed finding's text. Any chart's own answer is on its own ledger.
  *
  * WHAT THIS IS INSTEAD. The athlete says, in ordinary words, how much they are on their feet on a
  * normal day, and that answer maps to a **step-equivalent** which is then priced with the model's
@@ -49,11 +51,13 @@
  *
  * ⚠ **THE BANDS ARE PUBLISHED; READING THEM AS "OUTSIDE EXERCISE" IS THE COACH'S.** Tudor-Locke &
  * Bassett's step index (2004) bands a **total** day — under 5,000 sedentary, 5,000–7,499 low
- * active, 7,500–9,999 somewhat active, 10,000+ active. The figures below sit at or under those
- * boundaries on purpose: this term covers only the movement nothing else in the model counts, and
- * a chart that logs deliberate walks as sessions has already priced the rest. Anyone treating these
- * as the index's own numbers is reading them wrong, and the `basis` string every surface renders
- * says which half is whose.
+ * active, 7,500–9,999 somewhat active, 10,000+ active. The figures below are the index's own
+ * boundary values, except the lowest, which is deliberately well under its band: a `seated` day
+ * outside exercise is not a 4,999-step day. Anyone treating the rest as shaded down for the
+ * "outside exercise" reading is reading them wrong — they are not, and saying they were would be
+ * a precision nobody has. What IS true is that a chart logging deliberate walks as sessions has
+ * already priced those separately, so the level is not asked about them. The `basis` string every
+ * surface renders says which half of this is whose.
  *
  * Four levels rather than a slider, because the answer is a description and not a measurement, and
  * a slider invites a precision nobody has. `label` is the question's answer in ordinary terms — it
@@ -79,7 +83,7 @@ export const MOVEMENT_LEVELS = [
   },
   {
     key: 'on-feet',
-    stepEquivalent: 10500,
+    stepEquivalent: 10000,
     label: 'On your feet almost all day — the work itself keeps you moving.',
   },
 ]
@@ -117,11 +121,24 @@ export function movementKcal(levelKey, weightLb, kcalPerStepPerLb) {
   return level.stepEquivalent * kcalPerStepPerLb * weightLb
 }
 
-/** What the figure was built from, for the surfaces that must never print a bare total. */
-export function movementBasis(levelKey, weightLb, kcalPerStepPerLb) {
+/**
+ * What the figure was built from, for the surfaces that must never print a bare total.
+ *
+ * ⚠ **`declared` DECIDES WHOSE ANSWER THIS IS, AND THE STRING MUST NOT GET IT WRONG.** This read
+ * "the movement outside deliberate exercise this chart describes as …" unconditionally — so on a
+ * chart that had described nothing, the page rendered the coach's default attributed, in words, to
+ * the athlete. That is the failure `scripts/lib/provenance.mjs` was written to end, reproduced by
+ * code that cites it. A defaulted figure says so, on the page, every time it is rendered.
+ */
+export function movementBasis(levelKey, weightLb, kcalPerStepPerLb, { declared = true } = {}) {
   const level = movementLevel(levelKey)
   if (!level) return 'no movement level on file'
-  return `${level.stepEquivalent.toLocaleString()} step-equivalents × ${kcalPerStepPerLb} × `
-    + `${weightLb} lb — the movement outside deliberate exercise this chart describes as `
-    + `"${level.label}". An estimate from a description, not a count.`
+  const sum = `${level.stepEquivalent.toLocaleString()} step-equivalents × ${kcalPerStepPerLb} × `
+    + `${weightLb} lb`
+  return declared
+    ? `${sum} — the movement outside deliberate exercise this chart describes as "${level.label}" `
+      + 'An estimate from a description, not a count.'
+    : `${sum} — nobody has answered how much this athlete moves outside deliberate exercise, so `
+      + `this is the shipped default ("${level.label}"). The coach proposed it; the athlete has `
+      + 'not seen it. An estimate from a guess, and it is meant to be replaced.'
 }

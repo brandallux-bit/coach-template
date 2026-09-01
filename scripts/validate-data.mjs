@@ -9,10 +9,10 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readCsv, num } from './lib/csv.mjs'
-import { DATE_RE, SPEC } from './lib/schema.mjs'
+import { DATE_RE, ENERGY_COUNTED_IN, SPEC } from './lib/schema.mjs'
 import { WEEKDAYS, checkWeekdayKeys } from './lib/weekdays.mjs'
 import { noDailyTargetReason } from './lib/targets.mjs'
-import { sessionTypeEnum } from './lib/athlete.mjs'
+import { hasStepFeed, sessionTypeEnum, stepFeed } from './lib/athlete.mjs'
 import { MOVEMENT_LEVEL_KEYS } from './lib/movement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -237,6 +237,17 @@ try {
       // which only worked for a chart that happened to call it "walk". A type that declares its
       // energy is already counted in another column must cost 0 as a session, whatever it is
       // called — counting it in both places counts it twice.
+      // A value nothing recognises silently disables every rule keyed off this field — see
+      // ENERGY_COUNTED_IN in scripts/lib/schema.mjs for what that costs.
+      const countedIn = String(def?.energyCountedIn ?? '').trim()
+      if (countedIn && !ENERGY_COUNTED_IN.includes(countedIn)) {
+        err('athlete/constants.json',
+          `sessionTypes.${type}.energyCountedIn is ${JSON.stringify(def.energyCountedIn)}, which `
+          + `names no column this system writes. It must be one of: ${ENERGY_COUNTED_IN.join(', ')}. `
+          + 'It says "another column already holds this activity\'s energy, so do not price it as '
+          + 'a session" — a name nothing recognises makes that promise to nobody, and the activity '
+          + 'is then counted nowhere at all.')
+      }
       if (def?.energyCountedIn && def?.met !== 0) {
         err('athlete/constants.json',
           `sessionTypes.${type}.met must be 0: the entry says its energy is already counted in `
@@ -281,6 +292,33 @@ try {
   }
 
   /**
+   * ⚠ **`plan.targetRateLbPerWk` IS A RANGE, AND A SCALAR THERE 500s THE DASHBOARD.**
+   *
+   * `Plan` types it `number[]` and `src/app/today/page.tsx` calls `.filter` on it unguarded, so a
+   * chart that wrote `0.75` instead of `[0.5, 0.75]` renders `TypeError: … .filter is not a
+   * function` — a blank page, not a wrong number. Nothing validated the key at all; `findings.mjs`
+   * guards with `Array.isArray` and therefore reads a scalar as "no rate on file", so the chart
+   * ALSO went quiet about the rate rather than complaining. Two silent failures and one loud one,
+   * from one plausible edit.
+   *
+   * Found by an adversarial review of the movement work: `scripts/test-cold-start.mjs`'s own
+   * "majority configuration" fixture was in exactly this shape, so the whole cold-start suite was
+   * green on a chart no page could render.
+   */
+  {
+    const rate = constants?.plan?.targetRateLbPerWk
+    const ok = Array.isArray(rate) && rate.length >= 1 && rate.length <= 2
+      && rate.every((v) => typeof v === 'number' && Number.isFinite(v))
+    if (rate !== undefined && !ok) {
+      err('athlete/constants.json',
+        `plan.targetRateLbPerWk must be an array of one or two numbers — [acceptable, goal] — not `
+        + `${JSON.stringify(rate)}. It is a RANGE because a single figure turns "on pace" into a `
+        + 'pass/fail against a number nobody promised. A scalar here throws on /today and reads as '
+        + '"no rate on file" everywhere else.')
+    }
+  }
+
+  /**
    * ⚠ **THE MOVEMENT DECLARATION — WHICH OF THE TWO CONFIGURATIONS THIS CHART IS IN.**
    *
    * `plan.stepFeed` names the automation that writes `data/steps.csv`, or is absent. `plan.
@@ -290,7 +328,8 @@ try {
    */
   {
     const plan = constants?.plan ?? {}
-    const feed = String(plan.stepFeed ?? '').trim()
+    // One home for "does this chart have a feed" — see hasStepFeed in scripts/lib/athlete.mjs.
+    const feed = hasStepFeed()
 
     if (plan.stepFeed !== undefined && typeof plan.stepFeed !== 'string') {
       err('athlete/constants.json',
@@ -317,9 +356,42 @@ try {
     // thing that outlives the file.
     if (feed && plan.movementOutsideExerciseLevel !== undefined) {
       err('athlete/constants.json',
-        `plan.movementOutsideExerciseLevel is set AND plan.stepFeed names "${feed}". The feed `
-        + 'counts that movement already, so the level is ignored — delete one. Keep the feed if it '
+        `plan.movementOutsideExerciseLevel is set AND plan.stepFeed names "${stepFeed()}". The `
+        + 'feed counts that movement already, so the level is ignored — delete one. Keep the feed if it '
         + 'is really arriving; delete the feed and keep the level if it is not.')
+    }
+
+    /**
+     * ⚠ **STEPS ARRIVING WITH NO DECLARATION IS THE ONE STATE THAT DOUBLE-COUNTS, and it is the
+     * state an existing chart lands in by merging this change and skipping the migration.**
+     *
+     * `compute-energy.mjs` will not write both terms on one row whatever this file says — the
+     * invariant is guaranteed there, per the ⚠ on `incidentalKcal`. But a chart in this state is
+     * still wrong in a way it cannot see: its declaration says "no feed", so `/today` renders the
+     * described-level row while the ledger holds the counted one, `check-steps-gap.mjs` stops
+     * watching a feed that is still writing, and the stale-feed finding goes quiet. The rows are
+     * the evidence and they contradict the declaration; only the chart's owner can say which is
+     * right, so this is an error rather than a silent normalisation.
+     *
+     * A chart genuinely switching away from a feed keeps its rows — `data/METHOD.md` forbids
+     * hand-editing that file — so the answer there is to leave `plan.stepFeed` declared. The
+     * history stays interpretable and new days simply stop arriving, which the stale-feed finding
+     * will say out loud.
+     */
+    if (!feed) {
+      const stepsPath = join(DATA, 'steps.csv')
+      const stepRows = existsSync(stepsPath)
+        ? readCsv(stepsPath).filter((r) => String(r?.steps ?? '').trim() !== '').length
+        : 0
+      if (stepRows > 0) {
+        err('athlete/constants.json',
+          `data/steps.csv holds ${stepRows} row(s) but plan.stepFeed is not set. Something IS `
+          + 'writing that file, so this chart has a feed and has not said so: the ledger counts '
+          + 'those steps while every surface reads the chart as having no feed, and the daily gap '
+          + 'check stops watching an automation that is still running. Name the writer in '
+          + 'plan.stepFeed (SETUP.md \u00a74b) \u2014 including on a chart that has SINCE stopped '
+          + 'using one, because the historical rows stay and data/METHOD.md forbids deleting them.')
+      }
     }
 
     // ⚠ **`energyCountedIn: "steps"` ON A CHART WITH NO STEP FEED IS MOVEMENT COUNTED NOWHERE.**
@@ -330,7 +402,7 @@ try {
     // it copies a registry from a chart that DOES have a feed.
     if (!feed) {
       for (const [type, def] of Object.entries(constants?.sessionTypes ?? {})) {
-        if (String(def?.energyCountedIn ?? '').trim() === 'steps') {
+        if (ENERGY_COUNTED_IN.includes(String(def?.energyCountedIn ?? '').trim())) {
           err('athlete/constants.json',
             `sessionTypes.${type}.energyCountedIn is "steps", but this chart declares no `
             + 'plan.stepFeed — so data/steps.csv is empty and that energy is counted NOWHERE. '

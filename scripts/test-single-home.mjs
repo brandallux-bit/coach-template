@@ -938,7 +938,7 @@ console.log('\n6 · the 1.5 shortcut and the decomposition never share an axis (
    * halves are asserted below, because a guard widened until it catches everything forbids the
    * thing it was protecting.
    */
-  const MAINTENANCE_SHAPED = /\b\w*[mM]aintenance\w*Kcal\b|\bmaintenanceKcal\b/
+  const MAINTENANCE_SHAPED = /\b\w*[mM]aintenance\w*Kcal\b/
   yes('...and the guard matches the maintenance shape rather than one key name',
     MAINTENANCE_SHAPED.test('plan.estMaintenanceKcal')
     && MAINTENANCE_SHAPED.test('observedMaintenanceKcal')

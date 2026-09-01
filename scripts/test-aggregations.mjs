@@ -1646,8 +1646,20 @@ console.log('\nthe movement term — two configurations, and neither is the fall
    * suite's own header says its logic is mirrored and must be hand-updated. So these read the
    * SOURCE. They are shape assertions, not behaviour: what they can catch is the mirror silently
    * going out of date, which is the failure mode a mirrored suite actually has.
+   *
+   * ⚠ **AND THEY HAVE TO READ THE MIRROR TOO, WHICH IS THE HALF THAT WAS MISSING.** The first
+   * version of this block read only the source and the bundle, so it claimed to guard the mirror
+   * while never opening it — and the mirror was, at that moment, stale: still pricing the forward
+   * day at `stepsPerDayTarget`, and producing `NaN` on every chart with no feed. A guard that
+   * names a file it does not read is worse than no guard, because it stops anyone writing one.
    */
   const forecast = code('src/lib/forecast.ts')
+  const mirror = code('scripts/test-views.mjs')
+  yes('the test-views mirror carries BOTH movement branches, not the retired target-only one',
+    /observedSteps/.test(mirror) && /movementKcal/.test(mirror) && /stepFeed/.test(mirror),
+    'scripts/test-views.mjs mirrors addMovement by hand. Missing a branch there does not fail '
+    + 'anything on its own — it silently reports a different forward figure than the code '
+    + 'produces, which is how it sat two behaviours out of date')
   yes('the forward step row reads the observed mean',
     /plan\.observedSteps/.test(forecast),
     'pricing the forward row at stepsPerDayTarget states the plan as a prediction, on the one burn '

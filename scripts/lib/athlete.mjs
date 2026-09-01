@@ -359,6 +359,19 @@ export const movementLevelKey = () => (
 )
 
 /**
+ * Whether the level in force is the ATHLETE'S or the shipped default.
+ *
+ * ⚠ **THE DEFAULT IS NOT A SILENT ANSWER.** It goes into every day's burn, so every surface that
+ * renders it has to be able to say it is a proposal — and the findings layer has to be able to ask
+ * for the real one. `movementLevelKey` above deliberately cannot express this: it returns a key
+ * either way, which is what makes the chart WORK without an answer. This is what stops that from
+ * also making the answer invisible.
+ */
+export const movementLevelDeclared = () => (
+  hasChart && String(constants.plan?.movementOutsideExerciseLevel ?? '').trim() !== ''
+)
+
+/**
  * This chart's incidental-movement term in kcal/day, or `null` where a feed already counts it.
  *
  * ⚠ **THE TWO CONFIGURATIONS ARE MUTUALLY EXCLUSIVE AND THIS IS THE ONE PLACE THAT SAYS SO.**
@@ -375,7 +388,8 @@ export const movementKcalFor = (weightLb) => (
 export const movementBasisFor = (weightLb) => (
   hasStepFeed()
     ? `counted in the step feed (${stepFeed()}) rather than estimated`
-    : movementBasis(movementLevelKey(), weightLb, KCAL_PER_STEP_PER_LB)
+    : movementBasis(movementLevelKey(), weightLb, KCAL_PER_STEP_PER_LB,
+      { declared: movementLevelDeclared() })
 )
 
 /** The rest figure in force on this chart: its own, or the shipped default. One home, one answer. */

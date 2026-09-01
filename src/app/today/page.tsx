@@ -10,7 +10,7 @@ import { viewFindings } from '@/lib/findings'
 import {
   DAILY, SUPPLEMENTS, effectiveRx, orderedSessions, planDay, primarySession, rxFor, setsForSession,
 } from '@/lib/forecast'
-import { movementLevel } from '@/lib/movement'
+import { hasStepFeed, movementLevel } from '@/lib/movement'
 import { partialBurn, rollDay, rollWeek } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
@@ -136,7 +136,7 @@ export default function TodayPage() {
   // as a permanent gap on the configuration most charts are in. One row, whichever way it is
   // filled; see BURN_COMPONENTS in scripts/lib/aggregate.mjs.
   const recordedIncidental = n(todayEnergy?.incidental_kcal)
-  const hasFeed = (plan.stepFeed ?? '').trim() !== ''
+  const hasFeed = hasStepFeed(plan.stepFeed)
   const recorded = [
     ...sessions.map((sn) => ({
       label: sn.session || sn.type,
@@ -165,7 +165,7 @@ export default function TodayPage() {
       }
       : {
         label: 'Daily movement',
-        detail: movementLevel(plan.movementOutsideExerciseLevel)?.label ?? 'outside deliberate exercise',
+        detail: movementLevel(plan.movementLevel)?.label ?? 'outside deliberate exercise',
         kcal: recordedIncidental,
         absence: 'TBD' as const,
         // Also not a shortfall, for the opposite reason: nothing is waiting to arrive. This chart
@@ -211,16 +211,27 @@ export default function TodayPage() {
               ? 'nothing logged yet — this is burn, not a deficit'
               : 'burn so far minus intake so far'
           } />
-        <Tile label="Steps" value={fmt(d.steps)} unit=""
-          foot={
-            d.steps == null
-              ? 'automation has not reported yet'
-              : stepGoal == null
-                ? 'recorded — no domain sets a target'
-                : d.steps >= stepGoal
-                  ? `target ${stepGoal.toLocaleString()} — hit`
-                  : `${(stepGoal - d.steps).toLocaleString()} to the ${stepGoal.toLocaleString()} target`
-          } />
+        {/* ⚠ **ONLY A CHART WITH A FEED HAS A STEP COUNT TO BE WAITING FOR.** Ungated, this tile
+            read "Steps · TBD · automation has not reported yet" on the most-visited page of every
+            chart with no wearable, every day, forever — for an automation that chart never
+            installed and is never going to. It is the same harm the movement label in
+            BURN_COMPONENTS was widened to end, left standing three lines below the row that fixed
+            it. A chart without a feed has a movement figure, not a step count, and it is in the
+            recorded-segments table below rather than duplicated here as a tile: this tile exists
+            to say how a COUNT is tracking against a target, and an estimate from a description has
+            no target and nothing to track. */}
+        {hasFeed ? (
+          <Tile label="Steps" value={fmt(d.steps)} unit=""
+            foot={
+              d.steps == null
+                ? 'automation has not reported yet'
+                : stepGoal == null
+                  ? 'recorded — no domain sets a target'
+                  : d.steps >= stepGoal
+                    ? `target ${stepGoal.toLocaleString()} — hit`
+                    : `${(stepGoal - d.steps).toLocaleString()} to the ${stepGoal.toLocaleString()} target`
+            } />
+        ) : null}
       </div>
 
       {/* "Today's Meals", not "Meals" — his words: the card below it is the weekly one, so the

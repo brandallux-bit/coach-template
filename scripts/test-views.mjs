@@ -201,7 +201,14 @@ const FIXTURE = {
   plan: {
     latestWeightLb: 150,
     baselineWeightLb: 155,
+    // ⚠ **THE FIXTURE IS A WEARABLE CHART AND NOW SAYS SO.** It carried a step target and no
+    // declaration, which is the shape `validate-data.mjs` rejects and the one that used to
+    // double-count. `observedSteps` sits below the target on purpose: a chart whose athlete walks
+    // less than they aim to is the case where pricing the forward row at the target is wrong, and
+    // a fixture where the two agree could not tell the two branches apart.
+    stepFeed: 'apple-health-shortcut',
     stepsPerDayTarget: 8000,
+    observedSteps: { meanSteps: 6000, days: 20, from: '2026-07-20', to: '2026-08-08' },
     kcalPerStepPerLb: 0.00025,
     dailyBlockType: 'mobility',
     metByType: { run: 9.8, swim: 7.0, gym: 5.0, stroll: 0, mobility: 3.0, rest: 0, other: 4.0 },
@@ -331,7 +338,25 @@ const planDayIn = (b, date) => {
   const blockMin = blockType ? plan.sessionTypeDetail?.[blockType]?.standingDurationMin : null
   const dailyBlock = effectiveRx(DAILY, date).length && blockMin
     ? sessionKcal(plan.metByType[blockType], blockMin, lb) : 0
-  const steps = plan.stepsPerDayTarget * plan.kcalPerStepPerLb * lb
+  /**
+   * ⚠ **THE MOVEMENT TERM, MIRRORING `addMovement` IN src/lib/forecast.ts — BOTH BRANCHES.**
+   *
+   * This read `plan.stepsPerDayTarget * plan.kcalPerStepPerLb * lb`, which mirrored a function
+   * that no longer exists. Two ways that lied, and this suite stayed green through both: on a
+   * chart WITH a feed it priced the forward day at the TARGET while the code priced it at the
+   * observed mean (on a chart walking well under target that is the movement term reported more
+   * than twice its real value); and on a chart WITHOUT one `stepsPerDayTarget` is absent, so every
+   * projected total came out `NaN` — on the configuration this whole term exists for.
+   *
+   * ⚠ **A MIRROR IS ONLY WORTH WHAT ITS DRIFT GUARD IS WORTH.** Nothing here RUNS the TypeScript,
+   * so this file cannot notice by itself that it has gone stale — that is what the shape
+   * assertions in `scripts/test-aggregations.mjs` are for, and they now read THIS file as well as
+   * the source, which is the half that was missing. Anyone editing `addMovement` edits this too.
+   */
+  const perStep = plan.kcalPerStepPerLb ?? null
+  const steps = (plan.stepFeed ?? '').trim()
+    ? ((plan.observedSteps?.meanSteps ?? plan.stepsPerDayTarget ?? 0) * (perStep ?? 0) * lb)
+    : (plan.movementKcal ?? 0)
   const primary = sessions[0] ?? null
   return {
     sessions,
@@ -402,6 +427,40 @@ const planDay = (date) => planDayIn(FIXTURE, date)
     planDayIn(noMinutes, addDays(FIX_TODAY, i)))
   eq('...and on none of them once the chart drops the duration',
     withoutMinutes.filter((d) => d.dailyBlock > 0).length, 0)
+
+  /**
+   * ⚠ **THE MOVEMENT TERM, ON BOTH CONFIGURATIONS, because a mirror with one branch is a mirror
+   * of half the code.** The fixture is a wearable chart; this is the other one.
+   */
+  {
+    const feedDay = planDay(FIX_TODAY)
+    eq('a wearable chart prices the forward day at what the athlete WALKS, not at the target',
+      Math.round(feedDay.steps), Math.round(6000 * 0.00025 * 150))
+    eq('...which on this fixture is strictly below the target figure it used to use',
+      feedDay.steps < 8000 * 0.00025 * 150, true)
+
+    // The majority configuration. `stepsPerDayTarget` is ABSENT here, not zero — which is what
+    // turned every projected total into NaN while this suite reported them as numbers.
+    const noFeed = {
+      ...FIXTURE,
+      plan: {
+        ...plan,
+        stepFeed: undefined,
+        stepsPerDayTarget: undefined,
+        observedSteps: null,
+        movementKcal: 187.5,
+        movementLevel: 'light',
+        movementLevelDeclared: true,
+      },
+    }
+    const noFeedWeek = Array.from({ length: 7 }, (_, i) => planDayIn(noFeed, addDays(FIX_TODAY, i)))
+    eq('a chart with no wearable still has a movement term on every forward day',
+      noFeedWeek.filter((d) => d.steps > 0).length, 7)
+    eq('...and no projected total is NaN — the state this suite reported as a number for a week',
+      noFeedWeek.every((d) => Number.isFinite(d.total)), true)
+    eq('...and it is the described level, not a step target it does not have',
+      Math.round(noFeedWeek[0].steps), 188)
+  }
 
   const noBlock = { ...FIXTURE, prescriptions: prescriptions.filter((p) => p.session !== DAILY) }
   const withoutBlock = Array.from({ length: 7 }, (_, i) =>

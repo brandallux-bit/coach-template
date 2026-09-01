@@ -14,7 +14,7 @@ export type MovementLevel = { key: string; stepEquivalent: number; label: string
 
 export const MOVEMENT_LEVELS: MovementLevel[] = mv.MOVEMENT_LEVELS
 export const DEFAULT_MOVEMENT_LEVEL: string = mv.DEFAULT_MOVEMENT_LEVEL
-export const movementLevel: (key: string | undefined) => MovementLevel | null = mv.movementLevel
+export const movementLevel: (key: string | null | undefined) => MovementLevel | null = mv.movementLevel
 
 /** The level's kcal/day at a bodyweight. Null when the level or either input is absent. */
 export const movementKcal: (
@@ -22,5 +22,9 @@ export const movementKcal: (
 ) => number | null = mv.movementKcal
 
 export const movementBasis: (
-  levelKey: string | undefined, weightLb: number | null, kcalPerStepPerLb: number | null,
+  levelKey: string | null | undefined, weightLb: number | null, kcalPerStepPerLb: number | null,
+  opts?: { declared?: boolean },
 ) => string = mv.movementBasis
+
+/** Whether this chart's movement is COUNTED by an automation rather than described. One home. */
+export const hasStepFeed = (stepFeed: string | undefined): boolean => (stepFeed ?? '').trim() !== ''

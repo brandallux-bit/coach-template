@@ -38,6 +38,7 @@
 import { KCAL_PER_LB_FAT, rmrFloorKcal } from './athlete.mjs'
 import { MIN_DAYS_FOR_OBSERVED_BURN, observedDailyBurn } from './aggregate.mjs'
 import { describeValue, markerFor, unconfirmedValues, UNCONFIRMED_GRACE_DAYS } from './provenance.mjs'
+import { DEFAULT_MOVEMENT_LEVEL, movementLevel } from './movement.mjs'
 import { livePrescriptions } from './suspensions.mjs'
 
 const DAY_MS = 86_400_000
@@ -1110,6 +1111,59 @@ export function buildFindings({
         // Not a goals.md domain, and deliberately so: this finding is a question ABOUT the goals,
         // not a recommendation serving one. Naming a domain here would also hardcode one athlete's
         // domain labels into shared code (INVARIANTS.md X-11).
+        domain: 'Chart integrity',
+      })
+    }
+  }
+
+  /**
+   * --- a question NOBODY ANSWERED, which is the one shape the loop above structurally cannot see.
+   *
+   * ⚠ **`unconfirmedValues` ITERATES THE KEYS THAT EXIST.** An unanswered question writes no key,
+   * so it has no `_provenance` marker, so it produces no finding — and a value that reaches the
+   * burn model by DEFAULT is exactly the case where nobody is going to notice on their own.
+   * `plan.movementOutsideExerciseLevel` is that case and it is not a small one: on a chart with no
+   * wearable it prices the movement term of every single day, and the shipped level is the coach's
+   * guess about a person the coach has not asked.
+   *
+   * `skills/intake` says to write NOTHING when the athlete cannot answer, and that instruction is
+   * right — writing the default under their name is the substitution of judgement this whole layer
+   * exists to prevent. This is the other half of that: nothing is written, and the question comes
+   * back until somebody answers it.
+   *
+   * ⚠ **NO GRACE PERIOD, unlike the loop above, and the difference is real.** That one waits a
+   * week because a number the coach proposed this morning belongs in the conversation rather than
+   * in a list. Nothing was proposed here. The chart has been running on a stand-in since its first
+   * day, and there is no moment at which it becomes less true.
+   *
+   * Reports and does nothing else, per the same rule as every finding: only the athlete can close
+   * it, so it can never be a validator error.
+   */
+  {
+    const plan = constants?.plan ?? {}
+    const declared = String(plan.movementOutsideExerciseLevel ?? '').trim()
+    if (!String(plan.stepFeed ?? '').trim() && !declared) {
+      const level = movementLevel(DEFAULT_MOVEMENT_LEVEL)
+      add({
+        id: 'movement-level-unanswered',
+        severity: 'attention',
+        headline: 'Nobody has said how much this athlete moves outside deliberate exercise, so '
+          + `every day's burn is running on the shipped default (${DEFAULT_MOVEMENT_LEVEL}).`,
+        detail: 'This chart has no step feed, so the movement term in the burn model comes from a '
+          + `described level — and none is on file. The default stands in: "${level?.label ?? ''}" `
+          + 'It is the coach\'s guess about somebody the coach has not asked, and it is inside '
+          + 'every burn figure, every deficit, and the rate of loss read off them.',
+        action: 'Ask once, and ask about an ordinary day with deliberate exercise TAKEN OUT — a '
+          + 'walk they chose to go on is logged as a session and priced as one, so an answer that '
+          + 'includes it counts that walk twice. Write their choice to '
+          + 'plan.movementOutsideExerciseLevel with their words as its provenance. If they truly '
+          + 'cannot say, leave it: the default keeps working and this keeps asking. Do not write '
+          + 'the default under their name to close this.',
+        source: 'athlete/constants.json plan.movementOutsideExerciseLevel; '
+          + 'scripts/lib/movement.mjs; data/METHOD.md "Provenance"',
+        // Same reasoning as the unconfirmed-values finding above: a question about the chart, not
+        // a recommendation serving a goals.md domain, and naming one would hardcode another
+        // athlete's labels into shared code (INVARIANTS.md X-11).
         domain: 'Chart integrity',
       })
     }

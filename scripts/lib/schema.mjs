@@ -36,6 +36,21 @@
 // its `constants` export only touches the filesystem when a field is actually read.
 import { sessionTypeEnum } from './athlete.mjs'
 
+/**
+ * The values `sessionTypes.<type>.energyCountedIn` may take — i.e. the columns whose data already
+ * contains a session type's energy, so pricing it again as a session would count it twice.
+ *
+ * ⚠ **A CLOSED SET, BECAUSE THE RULES KEYED OFF IT MATCH A LITERAL.** `validate-data.mjs` rejects
+ * `energyCountedIn: "steps"` on a chart with no step feed — that promises the energy to a column
+ * nothing will ever write, so the activity is counted nowhere. Written `"step count"`, or
+ * `"Steps"`, or anything else, the rule does not fire, `met` is still forced to 0 by the
+ * double-count rule, and the session costs nothing on a chart that has nothing else counting it.
+ * One typo, and the exact harm the rule is named after, silently.
+ *
+ * It has one member today. That is the point: a value nothing reads is not a value.
+ */
+export const ENERGY_COUNTED_IN = ['steps']
+
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /**
@@ -218,7 +233,10 @@ export const SPEC = {
       'session_kcal', 'burn_total_kcal', 'intake_kcal', 'deficit_kcal', 'method_version'],
     enums: { complete: ['y', 'n'], session_estimated: ['y', 'n'] },
     ranges: { rmr_kcal: [0, 6000], tef_kcal: [0, 2000], neat_other_kcal: [0, 2000],
-      steps_kcal: [0, 5000], session_kcal: [0, 5000], burn_total_kcal: [0, 12000],
+      steps_kcal: [0, 5000],
+      // Its twin in the same slot, same units. Left unbounded, a corrupted figure passed
+      // validation while every other kcal column in this row was checked.
+      incidental_kcal: [0, 5000], session_kcal: [0, 5000], burn_total_kcal: [0, 12000],
       intake_kcal: [0, 15000], deficit_kcal: [-10000, 10000], method_version: [1, 999] },
     required: ['method_version'],
   },

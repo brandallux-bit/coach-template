@@ -375,9 +375,16 @@ export function impliedSetWorkSec(samples = [], restSec = 0) {
  * ⚠ **IT EXISTS BECAUSE THE FORWARD VIEW WAS PRICING STEPS AT THE TARGET.** The movement term on
  * every future day was `stepsPerDayTarget × kcalPerStepPerLb × weight` — the plan, restated as a
  * prediction — while `steps.csv` held weeks of what the athlete actually walks. A target is a
- * decision; a trailing mean is evidence, and on the one burn component that is measured every
+ * decision; a mean of the record is evidence, and on the one burn component that is measured every
  * single day, the forward view has no business preferring the decision. The target stays as the
  * reference line beside it.
+ *
+ * ⚠ **EVERY ROW ON FILE, NOT A WINDOW.** The caller passes the whole column, so this is the
+ * all-time mean and not a trailing one — the same choice `observedDailyBurn` makes, for the same
+ * reason: a chart's own history is the best evidence it has, and windowing it would be a second,
+ * unexamined opinion about how much of that history still describes the athlete. It also means the
+ * figure moves slowly, which for a forward projection is the right direction to be wrong in.
+ * `from` and `to` are returned so a surface can say what it covered.
  *
  * `minSteps` is the implausibility threshold PASSED IN by the caller, not restated here: a day the
  * feed truncated to a handful of steps is a broken reading, and averaging it in drags the forward

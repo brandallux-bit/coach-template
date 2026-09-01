@@ -67,6 +67,10 @@ export type Plan = {
   movementKcal?: number | null
   /** The derivation behind `movementKcal`, so no surface ever prints it as a bare total. */
   movementBasis?: string | null
+  /** The level IN FORCE — the athlete's if they gave one, otherwise the shipped default. */
+  movementLevel?: string | null
+  /** False when `movementLevel` is the shipped default and nobody has answered. Say so on screen. */
+  movementLevelDeclared?: boolean
   /**
    * What the athlete's step feed has actually recorded — the trailing mean, not the target.
    * Null on a chart with no feed. See `observedDailySteps` in `scripts/lib/aggregate.mjs`.

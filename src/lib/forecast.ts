@@ -1,7 +1,7 @@
 import {
   COUNTS_TOWARD_FLOOR, addDays, allOf, n, plan, prescriptions, training, weekdayKey, type Row,
 } from './data'
-import { movementBasis, movementLevel } from './movement'
+import { hasStepFeed, movementBasis, movementLevel } from './movement'
 import {
   ABSENT_COUNTED_ELSEWHERE, ABSENT_UNKNOWN, plannedTotal, sessionCost, sessionKcal as kcalFor,
   type IntensityTier, type KcalAbsence,
@@ -470,7 +470,7 @@ function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
  */
 function addMovement(items: PlannedItem[], weightLb: number) {
   const perStep = plan.kcalPerStepPerLb ?? null
-  const feed = (plan.stepFeed ?? '').trim()
+  const feed = hasStepFeed(plan.stepFeed)
 
   if (feed) {
     const target = plan.stepsPerDayTarget ?? null
@@ -499,10 +499,11 @@ function addMovement(items: PlannedItem[], weightLb: number) {
   if (kcal == null) return
   items.push({
     label: 'Daily movement',
-    detail: movementLevel(plan.movementOutsideExerciseLevel)?.label ?? 'outside deliberate exercise',
+    detail: movementLevel(plan.movementLevel)?.label ?? 'outside deliberate exercise',
     kcal,
     basis: plan.movementBasis
-      ?? movementBasis(plan.movementOutsideExerciseLevel, weightLb, perStep),
+      ?? movementBasis(plan.movementLevel, weightLb, perStep,
+        { declared: plan.movementLevelDeclared ?? false }),
   })
 }
 

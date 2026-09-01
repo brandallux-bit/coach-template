@@ -35,7 +35,7 @@ import { sessionCost, sessionKcal } from './aggregate.mjs'
 import {
   KCAL_PER_STEP_PER_LB, NEAT_OTHER_RATE, RMR_COEFFICIENTS, TEF_RATE, rmrKcal,
 } from './athlete.mjs'
-import { MOVEMENT_LEVELS } from './movement.mjs'
+import { DEFAULT_MOVEMENT_LEVEL, MOVEMENT_LEVELS } from './movement.mjs'
 
 /**
  * The version stamped on every `energy.csv` row computed by the current model.
@@ -74,7 +74,7 @@ export const METHOD_VERSION = 1
  * `SETUP.md`'s "Pulling template improvements later" says the same thing in the place a maintainer
  * actually reads.
  */
-export const METHOD_DIGEST = '1f4dba82c0f4c69b760d82b9adb12cc89bfb1ecd22c18b60bb36946386147efb'
+export const METHOD_DIGEST = '7196724821867b9c376e485bd2fbd399c04eacb4b95dadc27dfe8b81796ba3c3'
 
 /**
  * Every constant that changes what a burn figure means, canonically ordered.
@@ -135,7 +135,22 @@ export function modelInputs() {
     // feed, which is precisely what this digest exists to refuse to let happen quietly. The
     // athlete's ANSWER — `plan.movementOutsideExerciseLevel` — is chart data and stays out, for the
     // same reason `SET_REST_SEC` does and with the same cost, stated in the ⚠ above it.
-    movementLevels: MOVEMENT_LEVELS.map((l) => [l.key, l.stepEquivalent]),
+    //
+    // ⚠ **THE LABELS ARE IN, AND THIS IS THE ONE PLACE THIS FILE COVERS PROSE ON PURPOSE.** The
+    // rule two lines down is that re-wording a docstring must not churn the digest, and a label
+    // looks like wording. It is not: it is the QUESTION, and the athlete's stored answer is only a
+    // key. Re-word `light` from "up and down through the day" into something describing a much
+    // more active one and every chart that answered `light` months ago now means something else,
+    // with its ledger unchanged and nothing anywhere saying so. That is precisely a model change
+    // wearing a copy-edit's clothes. The cost is real and accepted: fixing a typo in a label
+    // re-records the digest.
+    //
+    // ⚠ **AND THE DEFAULT IS IN, because on a chart that answered nothing it IS the level.** Left
+    // out, changing `light` to `on-feet` doubled the movement term of every day of every chart
+    // that has not answered — with the digest still matching, `method_version` still 1, and the
+    // build green. Verified: that is exactly what it did.
+    movementLevels: MOVEMENT_LEVELS.map((l) => [l.key, l.stepEquivalent, l.label]),
+    defaultMovementLevel: DEFAULT_MOVEMENT_LEVEL,
     // ⚠ THE FORMULAE THEMSELVES, AS SOURCE — not a description of them.
     //
     // A change to `MET × 3.5 × kg / 200 × minutes`, or to the precedence over it, is invisible to a

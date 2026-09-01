@@ -210,6 +210,21 @@ One of `seated`, `light`, `active`, `on-feet` — the descriptions are in
 step-equivalent at your bodyweight, so it scales with you and uses no constant the model
 does not already have.
 
+⚠ **It needs a `_provenance` entry, like every value under `plan`.** `npm run check` fails
+without one — on `test-provenance`, not on `validate-data`, which is why it is easy to miss:
+
+```json
+"_provenance": {
+  "movementOutsideExerciseLevel": {
+    "class": "athlete-stated",
+    "asOf": "<the day they said it, YYYY-MM-DD>",
+    "quote": "<their words about an ordinary day, not about exercise>",
+    "source": "intake session 2",
+    "note": "Their own description. The kcal figure derived from it is the coach's arithmetic."
+  }
+}
+```
+
 **It covers movement OUTSIDE deliberate exercise, and that clause is load-bearing.** A walk
 you chose to go on is logged as a session and priced as one; a level that also covered it
 would count that walk twice. Answer it about an ordinary day with the exercise taken out.
@@ -241,6 +256,9 @@ POST https://api.github.com/repos/<owner>/<repo>/dispatches
 { "event_type": "steps", "client_payload": { "date": "YYYY-MM-DD", "steps": 9432 } }
 ```
 
+**Both keys need `_provenance` entries under `plan`**, same as §4a — `stepFeed` and
+`stepsPerDayTarget`. `npm run check` fails on `test-provenance` without them.
+
 **Be honest with yourself about this before choosing it.** Building the Shortcut is fiddly
 and it has to keep firing every morning for months. Declining is the expected answer.
 
@@ -255,9 +273,11 @@ whatever actually writes the file.
 
 ### If neither is answered
 
-The chart runs on the shipped default level, marked `coach-proposed-unconfirmed` with the
-date, and the coach raises it as a question within the week. It is not deleted and it is
-not silently filed as yours.
+The chart runs on the shipped default level and **nothing is written into your constants
+file** — writing the coach's guess under your name is exactly what this system refuses to
+do. Instead `build-findings` raises `movement-level-unanswered` on every run until somebody
+answers, and every surface that renders the figure says out loud that it is a default nobody
+has confirmed. The chart works; it just keeps asking.
 
 ## 5. Dashboard — optional, and after intake
 
@@ -318,8 +338,8 @@ names each one it finds; this is what to do about the ones shipped so far.
 | If your chart has | Move it to | Why |
 |---|---|---|
 | `program.dailyRehabMin` | `sessionTypes.<type>.standingDurationMin`, and name that type in `program.dailyBlockType` | The block's length is a property of the ACTIVITY, not of the current block, and the ledger and the forward view now read it from one place instead of disagreeing |
-| rows already in `data/steps.csv` | add `plan.stepFeed`, naming whatever writes that file | The movement term is now declared rather than inferred from whether a column happens to be blank. Without it your chart is read as having no feed, and its movement is priced from a described level instead of from the steps you actually recorded |
-| no `data/steps.csv` rows, and no wearable | add `plan.movementOutsideExerciseLevel` (§4a) | Until you do, the chart runs on the shipped default level, marked `coach-proposed-unconfirmed` |
+| rows already in `data/steps.csv` | add `plan.stepFeed`, naming whatever writes that file, **with a `_provenance` entry** | `npm run validate` **errors** until you do, and it should: your chart has a feed and has not said so, so every page reads it as a no-feed chart while the ledger counts the steps, and the daily gap check stops watching an automation that is still running. Add it even if you have SINCE stopped using a feed — the historical rows stay, and `data/METHOD.md` forbids deleting them |
+| no `data/steps.csv` rows, and no wearable | add `plan.movementOutsideExerciseLevel` (§4a), **with a `_provenance` entry** | Until you do the chart runs on the shipped default. It keeps working, and the coach raises `movement-level-unanswered` on every check until somebody answers |
 
 `data/energy.csv` gained `session_estimated` and `incidental_kcal` columns, so `npm run validate`
 will say it is missing them until you run `compute-energy.mjs` as above. That is the whole fix;
