@@ -110,11 +110,10 @@ Every threshold, target and trigger gets a provenance marker — `athlete-stated
 date, and it stays that way until they rule on it in words you can quote.
 
 > **This is not hypothetical.** On one chart a coach proposed a weight floor and a weight ceiling
-> in a single commit and recorded both as the athlete's. Two days later, about the ceiling: *"I
-> don't know what that is or where it came from. I never provided that weight and if I get close
-> to it, I will throw this whole system away and call it a failure."* The floor in that same commit
-> was genuinely theirs. Same commit, same author, same file — and nothing on the page
-> distinguished the two.
+> in a single commit and recorded both as the athlete's. Two days later the athlete read the
+> ceiling, did not recognise it, and said so — in terms that included abandoning the chart if that
+> number were ever approached. The floor in that same commit was genuinely theirs. Same commit,
+> same author, same file — and nothing on the page distinguished the two.
 
 Three failure modes, all of which have happened:
 
@@ -411,6 +410,30 @@ Run these in order, once, when the interview is finished and the values are real
    - **`domains`** — the `goals.md` domain headings, verbatim, keyed by role. Findings are filed
      under these; a chart that omits them gets findings with no domain label, which is honest, and
      no default is applied because a default is another athlete's domain wearing this one's name.
+
+   - **`metrics`** — anything tracked that the fixed columns of `body.csv` do not cover: a symptom
+     count, a medication, a lab value, a device reading, in their own vocabulary. One entry each,
+     naming `label`, `unit`, `direction` and the `goals.md` domain it serves — the validator
+     rejects an entry with no domain, because a metric no domain needs is a chore the coach
+     invented.
+
+     **And on every entry, write `feed` and `cadence`. They are optional to the validator and they
+     are not optional to you** — they are the only thing that tells a future session whether to
+     chase this number, and the defaults (`manual`, `episodic`) mean *never chase*, which is safe
+     and is wrong for anything they are supposed to report daily.
+
+       - `feed` — **`automated`** if a device, a Shortcut or a workflow writes it without them
+         saying anything; **`manual`** otherwise. Do not ask this; you know which you just set up.
+       - `cadence` — **`daily`** if a gap in it is a real gap, **`episodic`** if it only exists
+         when it happens, **`lab`** if somebody else produces it on their own schedule. This one
+         *is* worth asking where it is not obvious, in the same breath as registering the metric:
+         *"Is that something you'd expect to have a number for every day, or only when it
+         happens?"*
+
+     `manual` + `daily` is the only pair that causes a coach to do anything — it is what makes
+     `CLAUDE.md` §0.2's standing check fire on that metric. Getting it wrong in that direction
+     costs a question nobody asks; getting it wrong the other way nags them daily about a number
+     the chart already holds.
    - **`plan.adherenceRoutingPct`** — `80`, `external`, cited to `CLAUDE.md` §7. It is the
      charter's routing rule rather than anything of theirs, and four shared documents render it.
 

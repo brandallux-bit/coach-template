@@ -237,7 +237,22 @@ const deathleteHit = (path, text) => {
  * where to look.
  */
 
-const DEATHLETE_EXEMPT_FILE = 'scripts/port-overlay.mjs'
+/**
+ * ⚠ **THIS FILE IS NOT SUBJECT TO ITS OWN SCREENS — BOTH OF THEM.** It is the same rule
+ * `banned-terms.mjs` states and `test-athlete-leak.mjs` asserts: the file that declares a pattern
+ * cannot be a violation of it, or the pattern can never be written down.
+ *
+ * It applies to the vocabulary screen below as well as to the de-athleting count, because that
+ * screen's own comments have to name the kinds of word it argues about — `walk`, `strength`,
+ * `rehab`, `circuit` — to explain why a lone one of them is not a finding.
+ *
+ * ⚠ **AND THE EXEMPTION IS DELIBERATELY NOT LOAD-BEARING.** Nothing above names a brand, a place,
+ * a sport or a person, and nothing here may start to: the prose describes the CLASS of term and
+ * leaves the instance to the run. So if this exemption were deleted tomorrow, the only hits it is
+ * currently hiding are four ordinary English words in a sentence about ordinary English words.
+ */
+const SELF_EXEMPT_FILE = 'scripts/port-overlay.mjs'
+const DEATHLETE_EXEMPT_FILE = SELF_EXEMPT_FILE
 
 const gitHere = (args) => {
   const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
@@ -831,22 +846,62 @@ for (const f of changedHere) {
 // the same way — the false positive that function's own comment records already fixing once.
 const vocabRe = termMatchers(denylist)
 const vocabHits = []
+/**
+ * ⚠ **A LONE WORD IS QUIETER, NEVER DISCARDED — AND SAYING "NONE" OVER A DISCARD IS THE WORSE
+ * BUG OF THE TWO.**
+ *
+ * The rule below is the enum-member rule from `athlete-leak.mjs`: a single registry key on a line
+ * *usually* means nothing, because `walk`, `strength`, `rehab` and `circuit` are ordinary English
+ * and a screen that fires on them gets muted within a day. So one lone word does not reach the
+ * report and two together do.
+ *
+ * But a review found a BRAND NAME — an equipment maker on the source chart's must-not-cross list —
+ * matched on an added line, suppressed by that rule, and the run printed `0 / none`. The heuristic
+ * cannot tell a proper noun from a common one, and the previous version threw the hit away rather
+ * than ranking it, so the screen reported a stronger result than it had computed. A screen that
+ * overstates itself is worse than a noisy one: the noisy one gets read.
+ *
+ * So the lone-word hits are collected, deduplicated BY TERM rather than by line — a term is what a
+ * human judges, and one example line is enough to judge it — and printed under the main report as
+ * a second, quieter list. The count above stays the count of lines that need a decision; nothing
+ * below it is claimed to be clean.
+ */
+const suppressed = new Map()
 for (const { path, text } of addedLines) {
+  if (path === SELF_EXEMPT_FILE) continue
   const hits = vocabRe.filter((v) => v.re.test(text))
   const phrases = hits.filter((v) => v.kind === 'phrase')
   const words = hits.filter((v) => v.kind !== 'phrase')
   const terms = [...phrases, ...(words.length >= 2 ? words : [])].map((v) => v.term)
   if (terms.length) vocabHits.push({ path, terms, text: text.trim().slice(0, 140) })
+  else if (words.length === 1) {
+    const t = words[0].term
+    const seen = suppressed.get(t) ?? { n: 0, path, text: text.trim().slice(0, 110) }
+    seen.n += 1
+    suppressed.set(t, seen)
+  }
 }
 say()
 say(`── the chart's own vocabulary in this port's added lines, COMMENTS INCLUDED: ${vocabHits.length}`)
 if (!vocabHits.length) {
-  say('   none — no line this port wrote uses a word derived from this chart.')
+  say('   none — no added line carries a phrase from this chart, or two of its words together.')
 } else {
   for (const h of vocabHits.slice(0, 30)) say(`   ${h.path} [${h.terms.join(', ')}] ${h.text}`)
   if (vocabHits.length > 30) say(`   … ${vocabHits.length - 30} more`)
   say('   ⚠ Judge each: a registry key that is also ordinary English is usually fine in a sentence,')
   say('     a session name or an activity is not. This is a SCREEN — it reports, you decide.')
+}
+if (suppressed.size) {
+  const total = [...suppressed.values()].reduce((a, b) => a + b.n, 0)
+  say()
+  say(`   …and ${suppressed.size} term(s) matched ALONE on ${total} line(s) — below the "counts only`)
+  say('   in company" bar, so not counted above. Listed because that bar cannot tell a brand or a')
+  say('   place from an ordinary word, and a discard the run does not print is a discard nobody')
+  say('   judges. One example line each:')
+  for (const [term, e] of [...suppressed].sort((a, b) => b[1].n - a[1].n)) {
+    say(`     ${term} ×${e.n} — ${e.path}: ${e.text}`)
+  }
+  say('   ⚠ A PROPER NOUN HERE IS A LEAK. An ordinary English word almost never is.')
 }
 
 say()

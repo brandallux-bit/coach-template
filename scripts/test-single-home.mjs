@@ -480,11 +480,11 @@ const FIGURES = [
     // Anchored on the word, and requiring the comma-grouped thousands form, so a statement about
     // the CALORIE budget sitting in the same bullet cannot be read as a statement about this one.
     figure: /(?:budget|allowance)\D{0,40}?\b(\d{1,2},\d{3})\s*kcal/gi,
-    why: 'the figure is the athlete\'s own (2026-08-14) and the weekly FOOD allowance is derived '
+    why: 'the figure is the athlete\'s own and the weekly FOOD allowance is derived '
       + 'by subtracting it — so a prose copy that drifts moves a number they never touched, and '
       + 'moves it silently, in the direction of more food',
-    note: 'nutrition/plan.md carried "~1,200–1,400 kcal/week" as an OBSERVATION of their intake for '
-      + 'eight days before they ruled on it; that sentence is kept, marked historical, because the '
+    note: 'nutrition/plan.md carried a weekly figure as an OBSERVATION of their intake for '
+      + 'days before they ruled on it; that sentence is kept, marked historical, because the '
       + 'distinction between an observation and a budget is the whole reason X-16 exists.',
   },
   {
@@ -723,12 +723,12 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
   yes('Today renders the day\'s alcohol, and its daily meter only where a target exists',
     /targetAlcoholKcal/.test(src('src/app/today/page.tsx')))
 
-  // ⚠ REWRITTEN 2026-08-14: THE PREMISE OF THE OLD ASSERTION WAS RETIRED BY THE ATHLETE.
+  // ⚠ REWRITTEN: THE PREMISE OF THE OLD ASSERTION WAS RETIRED BY THE ATHLETE.
   //
   // It read "the Meals caption does not promise an alcohol budget nobody has set", and it was
-  // right for eight days — plan.md's ~1,200–1,400 kcal/week was an OBSERVATION of what they drink,
-  // and drawing a meter against it would have filed a coach's inference as their instruction. Then
-  // they set one, athlete-confirmed. The finding that asked for it
+  // right for as long as plan.md's weekly figure was an OBSERVATION of what they drink: drawing a
+  // meter against it would have filed a coach's inference as their instruction. Then they set one,
+  // athlete-confirmed. The finding that asked for it
   // (`alcohol-budget-unset`) closed the way it was designed to — by them answering, not by anyone
   // picking a number.
   //
@@ -807,17 +807,17 @@ console.log('\n4 · one CSV grammar, and it survives an inch mark (F-10)')
 // =================================================================================================
 
 {
-  const t = 'date,weight_lb,note\n2026-08-01,181,Waist measured at 35.25" this morning\n'
+  const t = 'date,weight_lb,note\n2026-08-01,181,Waist measured at 31.75" this morning\n'
     + '2026-08-02,180,Normal day\n2026-08-03,179,Another\n'
   const rows = parseCsv(t)
   yes('a mid-field quote is a literal, not the start of a quoted field', rows.length === 4,
     `${rows.length} rows, not 4 — three days of weigh-ins parsed as one, and validate-data reports `
     + 'nothing because what survives is a well-formed, ordered, non-duplicate row')
-  yes('...and the inch mark is preserved in the note', rows[1][2].includes('35.25"'), rows[1]?.[2])
+  yes('...and the inch mark is preserved in the note', rows[1][2].includes('31.75"'), rows[1]?.[2])
 
   // Both entry points, one grammar: the single-line parser must agree with the multi-line one.
   const header = ['date', 'item', 'note']
-  const line = '2026-08-01,"Coffee, black","said ""fine"" — waist 35.25"" flat tape"'
+  const line = '2026-08-01,"Coffee, black","said ""fine"" — waist 31.75"" flat tape"'
   const viaLine = parseLine(line, header)
   const viaCsv = Object.fromEntries(header.map((h, i) => [h, parseCsv(line)[0][i]]))
   yes('parseLine and parseCsv agree field for field', JSON.stringify(viaLine) === JSON.stringify(viaCsv),

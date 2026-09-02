@@ -93,9 +93,9 @@ export function Tile({
  * "where the plan wanted me" are readable in one glance without a second axis. `pace` is the same
  * device for a figure that moves during the period — where the plan says they should be *by now*.
  *
- * **The figures render twice, in kcal and in %, and CSS shows one.** The athlete asked for a
- * toggle: *"So I can see how many calories I've consumed in each category vs the weekly target or
- * toggle to what % of the target I have consumed."* Rendering both and hiding one keeps the client
+ * **The figures render twice, in kcal and in %, and CSS shows one.** Both readings answer a real
+ * question — how much of the weekly target a category has used, in calories and as a proportion —
+ * and neither subsumes the other. Rendering both and hiding one keeps the client
  * boundary at a single button (`UnitToggle`) — the meters, and everything they read, stay on the
  * server. Both forms come from the same `pctOfTarget` call, so they cannot disagree.
  */

@@ -28,9 +28,10 @@ console.log(modeBanner('rowwrite'))
 /**
  * Inline fixtures, not the live chart (audit F-30).
  *
- * These three files were read off `data/` until 2026-08-14, and four assertions named this
- * athlete's own cells — `merge keeps the existing weight 179.4`, `2026-08-11,179.4,34.75,16.00`.
- * On an empty chart they failed, so a new athlete's first push was red for having no history.
+ * These three files were read off `data/` until a review moved them here, and four assertions
+ * named one athlete's own cells — a weight, a waist, a dated row, quoted straight into an
+ * assertion label. On an empty chart they failed, so a new athlete's first push was red for having
+ * no history.
  *
  * Each fixture is a real historical shape rather than an invented one: a `body.csv` row whose note
  * a partial update must not destroy, a `sets.csv` with the trailing newline the insert relies on,
@@ -42,7 +43,7 @@ const header = (file) => SPEC[file].header.join(',')
 const FIXTURE = {
   'body.csv': `${header('body.csv')}
 2026-08-05,181.9,,,7,4,,4,3,4,First morning of the chart
-2026-08-11,179.4,35.25,16.00,7.5,4,,4,2,4,"Third morning-protocol reading, taken fasted"
+2026-08-11,164.2,31.75,14.25,7.5,4,,4,2,4,"Third morning-protocol reading, taken fasted"
 `,
   'sets.csv': `${header('sets.csv')}
 2026-08-11,Session Two,Push-up,1,,20,,2,
@@ -94,7 +95,7 @@ const check = (name, cond, detail = '') => {
   const before = FIXTURE['body.csv']
   const partial = { date: '2026-08-11', waist_in: '34.75', weight_lb: '', neck_in: '', note: '' }
   const merged = mergeIntoExisting(before, 'body.csv', partial)
-  check('merge keeps the existing weight', merged.weight_lb === '179.4', merged.weight_lb)
+  check('merge keeps the existing weight', merged.weight_lb === '164.2', merged.weight_lb)
   check('merge applies the new waist', merged.waist_in === '34.75', merged.waist_in)
   check('merge keeps the existing note', merged.note.startsWith('Third morning-protocol'), merged.note)
 
@@ -102,7 +103,7 @@ const check = (name, cond, detail = '') => {
   check('body.csv row count unchanged on update',
     after.trimEnd().split('\n').length === before.trimEnd().split('\n').length)
   check('updated row carries the new waist',
-    after.includes('2026-08-11,179.4,34.75,16.00'), after)
+    after.includes('2026-08-11,164.2,34.75,14.25'), after)
 }
 
 // --- out-of-order insert keeps the file date-ordered -------------------------------------------

@@ -104,7 +104,7 @@ const SEVERITY = ['critical', 'attention', 'info']
  * on a read-only page next to an internal chart-integrity note.
  *
  * A finding is `athlete` ONLY if all three hold:
- *   1. it is true about HIM, not about the chart's internal state;
+ *   1. it is true about THEM, not about the chart's internal state;
  *   2. it changes what they do, or whether they should trust the page in front of them;
  *   3. the action is available from where they are standing.
  *
@@ -659,11 +659,11 @@ export function buildFindings({
 
   // --- the calorie budget and the rate goal are different numbers -------------------------------
   //
-  // NOT A VIOLATION, AND THE WORDING HAS TO CARRY THAT. On 2026-08-14 the athlete's own rate went
-  // on record — "1 lb per week is my goal. More is great. Anything over .5 lb is acceptable. I am
-  // not striving for perfection." — replacing a [1.1, 1.25] band the coach had set 10-25% above
-  // their stated rate and never put back to them. The calorie budget was built for the old band and
-  // still implies a faster rate than the goal it now serves.
+  // NOT A VIOLATION, AND THE WORDING HAS TO CARRY THAT. The case this fires on is an athlete
+  // stating their own target rate and it landing BELOW the band the coach had been working to — a
+  // band set above the stated rate and never put back to them. The calorie budget was built for the
+  // old band, so it goes on implying a faster rate than the goal it now serves. Nothing is broken;
+  // two numbers that used to agree no longer do, and only the athlete can say which one moves.
   //
   // So this is a mismatch between two of the coach's own artifacts, not something the athlete is
   // doing wrong, and it is well under the §5.2 ceiling (which has its own finding above). It

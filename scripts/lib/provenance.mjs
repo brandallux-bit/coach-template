@@ -2,12 +2,11 @@
  * Provenance — the one home for "where did this number come from?"
  *
  * WHY THIS EXISTS. On 2026-08-13 the chart was found to contain three numbers the coach had
- * produced and filed in the athlete's own goals: a 185 lb weight ceiling, a 135/85 blood-pressure
- * threshold invented to make a failing check go green, and a BMI justification in a chart whose
- * profile.md bans BMI outright. Their response to the first:
- *
- *   > "I don't know what that is or where it came from. I never provided that weight and if I get
- *   > close to it, I will throw this whole system away and call it a failure."
+ * produced and filed in the athlete's own goals: a weight ceiling nobody could source, a clinical
+ * threshold invented to make a failing check go green, and a justification resting on a measure the
+ * chart's own profile bans outright. An athlete who reads a goal they never set does not read it as
+ * a typo — they read it as evidence the system is making things up about them, and one of them said
+ * so and meant it.
  *
  * Every other number in this system can be recomputed if it is lost. A goal cannot — there is no
  * data from which to re-derive what someone wants. So the goals files are the one place where a

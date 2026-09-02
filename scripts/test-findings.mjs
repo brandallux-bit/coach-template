@@ -615,8 +615,8 @@ check('  today is not a follow-up — it is today',
 
 console.log('\nalcohol — the data half ships, the denominator waits (W6, audit F-38/F-69)')
 // The whole point is that this finding CANNOT be closed by the runner. It closes when the athlete
-// says something, and the alternative — reading nutrition/plan.md's ~1,200–1,400 kcal/week as the
-// budget — records an observation of what they already drink as a line they agreed to hold. That is
+// says something, and the alternative — reading whatever weekly figure nutrition/plan.md carries
+// as the budget — records an observation of what they already drink as a line they agreed to hold. That is
 // X-16's defect with unusually good justification, which makes it harder to catch, not easier.
 {
   const withAlcohol = (date, alcohol) => ({ ...target(date, 1700), alcohol_kcal: String(alcohol) })

@@ -32,7 +32,7 @@ const REHAB = {
 
 **Nothing that puts valgus or rotational torque through the knee, at any phase, until Phase 3
 says so.** That means: no planted-foot pivots, no cutting, no lateral lunges, no cossack squats,
-no knee-caving-inward on any squat, and **no butterfly hooks in Court**.
+no knee-caving-inward on any squat, and **no butterfly hooks in Grappling**.
 
 ## Phase 1 — Settle (now)
 
@@ -44,9 +44,9 @@ no knee-caving-inward on any squat, and **no butterfly hooks in Court**.
 
 ### Not in Phase 1
 
-Step-ups and stairs as *exercise*, split squats, lunges, goblet squats, band TKE, **Peloton of any
-kind — including the seated easy spin, re-excluded 2026-08-13 after the test ride failed at ~1
-min**, hilly walking, Court. Also excluded, because they read as knee-free and are not: **burpees**,
+Step-ups and stairs as *exercise*, split squats, lunges, goblet squats, band TKE, **Cycling of any
+kind — including the seated easy spin, re-excluded after a trial ride failed inside a minute**,
+hilly walking, Grappling. Also excluded, because they read as knee-free and are not: **burpees**,
 jump squats, jumping jacks, jump rope, high knees, mountain climbers.
 
 > **Explicitly NOT on the list, and why:** burpees, jump squats, jumping jacks, jump rope, high
@@ -60,7 +60,7 @@ jump squats, jumping jacks, jump rope, high knees, mountain climbers.
 |---|---|---|
 | Straight-line step-ups, **low box** | 3 × 8–10/leg | Bodyweight |
 
-**Still not in Phase 2:** pivoting, cutting, lateral movement, butterfly hooks, Court, standing
+**Still not in Phase 2:** pivoting, cutting, lateral movement, butterfly hooks, Grappling, standing
 climbs, hilly descents.
 
 ## Phase 3 — Robust
@@ -77,7 +77,7 @@ console.log('1 · what the block says is out')
 // =================================================================================================
 
 yes('the "Not in Phase 1" list is read out of the paragraph under its heading',
-  ['step up', 'split squat', 'lunge', 'goblet squat', 'band tke', 'peloton', 'hilly walking', 'court']
+  ['step up', 'split squat', 'lunge', 'goblet squat', 'band tke', 'cycling', 'hilly walking', 'grappling']
     .every(has),
   suspensions.map((s) => s.key).join(' · '))
 
@@ -107,17 +107,18 @@ yes('a FUTURE phase listing a movement is not a suspension of it',
   'Phase 3 lists what comes back; reading it as an exclusion would invert the block')
 
 // =================================================================================================
-console.log('\n2 · RED FIXTURE — the seated bike, still on Tue and Sat (2026-08-13, verbatim)')
-// The instance INVARIANTS.md uses as its worked example of the operating rule. The test ride failed
-// at ~1 minute at 16:00; `_weeklyTemplateNote` said Peloton was suspended for several hours while
-// the data beside it prescribed 45-minute rides twice a week, and the data is what renders.
+console.log('\n2 · RED FIXTURE — the seated bike, still on Tue and Sat')
+// The instance INVARIANTS.md uses as its worked example of the operating rule. A trial ride failed
+// inside a minute and the bike went back out; `_weeklyTemplateNote` recorded the suspension in
+// prose for hours while the data beside it went on prescribing 45-minute rides twice a week — and
+// the data is what renders.
 // =================================================================================================
 
 {
   const bikeTemplate = {
     Mon: { type: 'lift', session: 'Session Two', focus: 'Upper push', durationMin: 35 },
-    Tue: { type: 'peloton', session: 'Seated Peloton', focus: 'Easy spin', durationMin: 45, met: 6.8 },
-    Sat: { type: 'peloton', session: 'Seated Peloton', focus: 'Easy spin', durationMin: 45, met: 6.8 },
+    Tue: { type: 'cycling', session: 'Seated bike', focus: 'Easy spin', durationMin: 45, met: 6.8 },
+    Sat: { type: 'cycling', session: 'Seated bike', focus: 'Easy spin', durationMin: 45, met: 6.8 },
   }
   const { collisions } = suspensionCollisions({ planDocs: [REHAB], weeklyTemplate: bikeTemplate })
   const days = collisions.filter((c) => c.surface === 'weeklyTemplate')
@@ -132,8 +133,8 @@ console.log('\n2 · RED FIXTURE — the seated bike, still on Tue and Sat (2026-
     Tue: {
       type: 'circuit',
       session: 'Upper-body circuit (or extra flat walking)',
-      focus: 'Replaces the seated Peloton ride, which left Phase 1 on 2026-08-13 after failing at '
-        + '~1 min. Knee-free contents only — no step-ups, no split squats',
+      focus: 'Replaces the seated bike ride, which left Phase 1 after failing inside a minute. '
+        + 'Knee-free contents only — no step-ups, no split squats',
       durationMin: 20,
     },
   }
@@ -339,7 +340,7 @@ Phase 2 opens on *no soreness at rest, walking pain-free*; the test is *no impro
 
 ### Not in Phase 1
 
-Peloton of any kind, Court.
+Cycling of any kind, Grappling.
 `,
   }
   const all = extractSuspensions([gates])
@@ -347,7 +348,7 @@ Peloton of any kind, Court.
   yes('a gate criterion written as "no X, no Y" is kept by the check…',
     all.some((s) => s.key === 'soreness'), all.map((s) => s.key).join(' · '))
   yes('…and kept OFF the athlete\'s banner, which shows the exclusion lists',
-    !shown.some((s) => s.key === 'soreness') && shown.some((s) => s.key === 'peloton'),
+    !shown.some((s) => s.key === 'soreness') && shown.some((s) => s.key === 'cycling'),
     shown.map((s) => s.key).join(' · '))
   yes('an enumeration-only term that actually collides IS shown',
     reportableSuspensions(all, new Set(['soreness'])).some((s) => s.key === 'soreness'))

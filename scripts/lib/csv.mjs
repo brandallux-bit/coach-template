@@ -11,7 +11,7 @@ import { readFileSync, existsSync } from 'node:fs'
  *
  * ⚠ **A QUOTE ONLY OPENS A QUOTED FIELD AT THE START OF A FIELD** — `field === ''`. RFC 4180
  * treats a quote anywhere else as a literal character, and this parser used to treat it as an
- * opening delimiter (audit F-10). A note reading `Waist 35.25" flat tape` — an inch mark, in a
+ * opening delimiter (audit F-10). A note reading `Waist 31.75" flat tape` — an inch mark, in a
  * chart whose primary metric is measured in inches — therefore opened a quoted section that
  * swallowed every comma and newline until the next `"` in the file. Three days of weigh-ins parsed
  * as one row, the two later days appeared in no chart and no rollup, and `validate-data.mjs`

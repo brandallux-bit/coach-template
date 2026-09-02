@@ -2,12 +2,13 @@
 /**
  * Fixtures for scripts/lib/provenance.mjs and the provenance finding in scripts/lib/findings.mjs.
  *
- * WHAT THIS PROTECTS. On 2026-08-13 the chart was found holding three numbers the coach had
- * produced and filed as the athlete's: a 185 lb weight ceiling, a 135/85 BP threshold invented to
- * clear a failing check, and a BMI justification in a chart that bans BMI. Their words on the first
- * were "I don't know what that is or where it came from... if I get close to it, I will throw this
- * whole system away and call it a failure." Every other number here can be recomputed; a goal
- * cannot, which is why this is the one file whose corruption is unrecoverable.
+ * WHAT THIS PROTECTS. A chart was once found holding three numbers the coach had produced and
+ * filed as the athlete's: a weight ceiling nobody could source, a clinical threshold invented to
+ * clear a failing check, and a justification resting on a measure that chart banned outright. An
+ * athlete who reads a goal they never set does not read it as a typo — they read it as the system
+ * inventing things about them, and one of them said so in terms that included abandoning the chart
+ * entirely. Every other number here can be recomputed; a goal cannot, which is why this is the one
+ * file whose corruption is unrecoverable.
  *
  * EVERY CHECK BELOW SHIPS WITH THE INPUT THAT MAKES IT FAIL (INVARIANTS.md X-10). The red fixtures
  * are the `red(...)` cases: each one is a constants object carrying the exact defect the check

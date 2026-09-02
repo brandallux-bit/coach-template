@@ -561,10 +561,10 @@ console.log('\nforecast — a day with two sessions')
 }
 
 // =================================================================================================
-console.log('\nthe weekly budget card — /today, 2026-08-14')
-// The request, in shape: a weekly target chart like the daily one, but including
-// alcohol. So each day, I can see where I stand for the day and for the week. Both charts should
-// show both calories and %."
+console.log('\nthe weekly budget card — /today')
+// The request, in shape: a weekly target chart alongside the daily one, alcohol included, so that
+// each day shows where the athlete stands for the day AND for the week — both charts carrying both
+// calories and percentage.
 //
 // The arithmetic is asserted in scripts/test-aggregations.mjs against the real functions. What is
 // checked here is the RENDERING, because that is where the flattering pairing lives: a numerator
@@ -684,9 +684,9 @@ console.log('\nthe weekly budget card — /today, 2026-08-14')
 }
 
 // =================================================================================================
-console.log('\nthe week\'s estimated in / out / produced — /today, 2026-08-15')
-// The framing: the goal for the week is a rate, so the week needs an estimated cals in and
-// estimated cals out to achieve that, and they need to be divided logically amongst the 7 days."
+console.log('\nthe week\'s estimated in / out / produced — /today')
+// The framing: the goal for the week is a rate, so the week needs an estimated calories-in and
+// calories-out that would achieve it, divided sensibly across all seven days.
 //
 // The arithmetic is asserted in scripts/test-aggregations.mjs against the real functions. What is
 // checked here is the RENDERING: which day set the figures cover, that the page does not compute
@@ -750,9 +750,9 @@ console.log('\nthe week\'s estimated in / out / produced — /today, 2026-08-15'
     : fail('the projection does not say what it covers',
       'a bare total cannot be told from a measured one')
 
-  // ⚠ HIS RENAME, 2026-08-15: "Meals" -> "Today's Meals", because the card below it is the weekly
-  // one and the daily card has to say which scale it is. Asserted as a pair — renaming the weekly
-  // card instead would satisfy a check that only looked for the new string.
+  // ⚠ THE RENAME: "Meals" -> "Today's Meals", because the card below it is the weekly one and the
+  // daily card has to say which scale it is. Asserted as a pair — renaming the weekly card instead
+  // would satisfy a check that only looked for the new string.
   ;(/title="Today's Meals"/.test(page) && /title="This week"/.test(page))
     ? ok('the daily card says Today\'s Meals and the weekly card still says This week')
     : fail('the two cards must name their own scale',

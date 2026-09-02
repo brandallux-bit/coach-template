@@ -145,13 +145,10 @@
 
 ## Provenance — every number records who it came from
 
-> **⚠ Added 2026-08-13, after three numbers the coach produced were written into the athlete's own
-> chart in a single day and became indistinguishable from things they had said.**
+> **⚠ Added after three numbers a coach produced were written into an athlete's own chart in a
+> single day and became indistinguishable from things they had said.**
 >
-> - **A weight ceiling**, invented and recorded in `goals.md` beside a floor they did own. Their
->   reaction two days later: *"I don't know what that is or where it came from. I never provided
->   that weight and if I get close to it, I will throw this whole system away and call it a
->   failure."*
+> - **A weight ceiling**, invented and recorded in `goals.md` beside a floor they did own. An athlete who reads a goal they never set does not read it as a typo. They read it as the system inventing things about them — and one of them said exactly that, in terms that included abandoning the chart if the number were ever approached.
 > - **A blood-pressure threshold**, invented to make the coach's own failing check go green — a
 >   clinical decision belonging to them and their doctor, made to satisfy a test.
 > - **A BMI justification** for a weight floor, in a chart whose `profile.md` bans BMI outright and
@@ -604,12 +601,12 @@ domain, because a metric no domain needs is a chore the coach invented (CLAUDE.m
 > whole-day projection, used only where a projection is what is wanted (the Today tab's "full day
 > projects to" line).
 >
-> **The PLAN side of the pair is NOT prorated, by the athlete's explicit instruction
-> (2026-08-13).** The coach's first fix scaled the maintenance line by the elapsed fraction too,
-> reasoning that comparing a part-day burn against a whole-day figure reads as a shortfall. They
-> overrode it: *"I want the target to be the whole day, not prorated. This number is intended to
-> show me where I am right now (or since my last data input) vs my daily plan. Being well short
-> is not a sign of a problem. It just tells me what remains."*
+> **The PLAN side of the pair is NOT prorated, by an athlete's explicit instruction.** The
+> coach's first fix scaled the maintenance line by the elapsed fraction too, reasoning that
+> comparing a part-day burn against a whole-day figure reads as a shortfall. That was overridden:
+> the target is the whole day, because its job is to say where the athlete stands right now
+> against the day's plan and therefore **what remains**. Being well short at 10:00 is not a sign
+> of a problem, and a target that shrinks through the day cannot say so.
 >
 > **The two sides answer different questions on purpose.** Actual = what has happened. Target =
 > the whole day's plan. The gap between them is **budget remaining**, which is the number that

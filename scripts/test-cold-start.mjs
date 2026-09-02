@@ -782,6 +782,59 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       `exit ${chased.code}\n${chased.out.slice(0, 400)}`)
 
     /**
+     * ⚠ **EVERY CONCRETE `_example` IN `constants.template.json` IS RUN THROUGH THE VALIDATOR,
+     * BECAUSE THE EXAMPLE IS WHAT PEOPLE COPY.**
+     *
+     * The comment is what a user reads; the `_example` is what they paste. Nothing checked the
+     * paste. The file's history is exactly this defect — it documented `mon|tue|…` in two
+     * `_comment` strings AND in its own `_example` while every lookup in the code produced `Mon`,
+     * so a chart that followed its own template had seven right numbers under seven wrong names.
+     * A JSON parse could never have caught that: `{"mon": …}` is valid JSON. Only running it
+     * could.
+     *
+     * ⚠ **AND A PLACEHOLDER EXAMPLE IS DELIBERATELY NOT VALIDATED — X-12.** Several `_example`
+     * blocks are SHAPES, not values: `"<the goals.md heading, copied exactly>"` is an instruction
+     * to the reader, and it is *supposed* to fail a validator. Asserting those pass would force
+     * somebody to invent a domain, a session name and a MET to make a check go green, which is
+     * the check X-12 says must not be written. So the split is by the file's own `<…>` convention,
+     * and the shape examples get the assertion they CAN carry: that they are shapes all the way
+     * down, with no half-filled entry that is neither copyable nor a placeholder.
+     */
+    {
+      const tmpl = JSON.parse(readFileSync(join(ROOT, 'athlete', 'constants.template.json'), 'utf8'))
+      // `_`-prefixed keys are the file's own notes to the reader, not part of the example anyone
+      // copies — every reader in this repo skips them and so does this.
+      const strings = (v) => (typeof v === 'string' ? [v]
+        : v && typeof v === 'object'
+          ? Object.entries(v).filter(([k]) => !k.startsWith('_')).flatMap(([k, x]) => [k, ...strings(x)])
+          : [])
+      const sections = Object.entries(tmpl).filter(([, v]) => v && typeof v === 'object' && v._example)
+      if (!sections.length) fail('constants.template.json still carries worked examples', 'none found')
+      for (const [section, node] of sections) {
+        const all = strings(node._example)
+        const holes = all.filter((t) => /^<.*>$/.test(t))
+        if (holes.length) {
+          // A shape. Assert it is one consistently: a concrete value sitting among placeholders is
+          // an example nobody can either copy or read as a form.
+          const concrete = all.filter((t) => !/^<.*>$/.test(t) && /^[a-z]/i.test(t) && t.includes(' '))
+          if (!concrete.length) ok(`${section}._example is a shape, and is one all the way down`)
+          else {
+            fail(`${section}._example is a shape, and is one all the way down`,
+              `these read as real values among the placeholders: ${concrete.join(' | ')}`)
+          }
+          continue
+        }
+        const copied = withMap((c) => { c[section] = { ...node._example } })
+        if (copied.code === 0) ok(`${section}._example validates when copied verbatim into a chart`)
+        else {
+          fail(`${section}._example validates when copied verbatim into a chart`,
+            `exit ${copied.code} — this is what a user gets for following the template\n`
+            + copied.out.slice(0, 500))
+        }
+      }
+    }
+
+    /**
      * ⚠ **AND THE OTHER CONFIGURATION IS STILL FIRST-CLASS.** A chart WITH a wearable declares the
      * feed and prices its walking type at MET 0, and that has to stay green — the point of this
      * phase is that neither configuration is the fallback for the other. Without this fixture the

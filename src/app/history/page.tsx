@@ -316,9 +316,9 @@ export default function HistoryPage() {
               // The Calories column keeps its plan side, because intake and its target are the
               // same quantity measured two ways; burn and a 1.5 estimate are not.
               //
-              // The athlete's 2026-08-13 instruction about this pair — *"I want the target to be
-              // the whole day, not prorated… it just tells me what remains"* — was about
-              // PRORATION, and it still holds wherever a target exists. Nothing here is prorated.
+              // The standing rule about this pair — a target is the WHOLE day, never prorated to
+              // the hour, because its job is to say what remains — is about PRORATION, and it holds
+              // wherever a target exists. Nothing here is prorated.
               const burnActual = d.burnToDateKcal
               return (
                 <details className="day-row" key={d.date}>

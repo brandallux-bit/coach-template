@@ -47,6 +47,43 @@ const warn = (f, msg) => warnings.push(`${f}: ${msg}`)
   }
 }
 
+/**
+ * ⚠ **AND THE TEMPLATE'S OWN SHIPPED CSVs ARE HEADER-CHECKED, FOR THE SAME REASON, ONE DIRECTORY
+ * OVER.** This is the defect the block above was written for, found by asking the same question
+ * about `data/` — and it was not hypothetical: `data/energy.csv` shipped for five phases without
+ * `incidental_kcal`, a column added to `SPEC` when the burn model gained a second movement term.
+ * Every fork inherited it, and the first thing to hit it was their first push after intake: step
+ * 1 of 19 red, on a file they never touched.
+ *
+ * ⚠ **AND NOTHING COULD SEE IT, INCLUDING THE SUITE WRITTEN FOR EXACTLY THIS.** The row checks
+ * below sit under the no-chart gate, so on the template they never ran. `test-cold-start.mjs`
+ * looks like the backstop and is not: `emptyTheChart()` REWRITES every file in `data/` from
+ * `SPEC.header` before validating, so the suite whose whole subject is a stranger's fork
+ * overwrites the broken file with the right one and then checks the right one. A fixture that
+ * repairs its subject cannot fail on it (INVARIANTS.md X-10).
+ *
+ * Header only, and deliberately: a shipped CSV is empty by design, so there are no rows to check
+ * and an empty file is the correct state, not a gap.
+ */
+{
+  const { SPEC } = await import('./lib/schema.mjs')
+  for (const [file, spec] of Object.entries(SPEC)) {
+    const path = join(DATA, file)
+    if (!existsSync(path)) {
+      err(file, 'is missing from the template. Every fork starts from these files; one that is '
+        + 'absent is a chart that cannot record the thing it names.')
+      continue
+    }
+    const first = readFileSync(path, 'utf8').split('\n')[0].replace(/\r$/, '').trim()
+    const want = spec.header.join(',')
+    if (first !== want) {
+      err(file, `header does not match SPEC — every fork inherits this file verbatim, so it is `
+        + `their build that goes red, on a file they never touched.\n    expected: ${want}\n`
+        + `    shipped:  ${first}`)
+    }
+  }
+}
+
 // The template repo has no chart yet — no constants, no rows. There is nothing further to
 // validate, and failing here would just teach people to ignore a red build.
 if (!existsSync(join(DATA, '..', 'athlete', 'constants.json'))) {
@@ -865,9 +902,10 @@ if (noRir) warn('sets.csv', `${noRir} of ${sets.length} sets have no RIR — the
 
 // NOTE ON WHAT DOES *NOT* BELONG IN THIS FILE.
 //
-// On 2026-08-13 the CLAUDE.md §5.2 safety floors were implemented here as hard errors — a calorie
-// target below RMR, a loss rate above 1%/wk, a deficit phase past 16 weeks. That was wrong, and
-// the athlete caught it: "It can't make me eat. It should inform and recommend."
+// The CLAUDE.md §5.2 safety floors were once implemented here as hard errors — a calorie target
+// below RMR, a loss rate above the ceiling, a deficit phase past its cap. That was wrong, and an
+// athlete caught it: a validator cannot make anyone eat. It informs and recommends; the record is
+// the record, and refusing to write down what actually happened does not change what happened.
 //
 // This validator's only duty is FIDELITY — does the file faithfully record what was decided and
 // what happened? Every rule above is that shape: a malformed date, an out-of-order row, a blank

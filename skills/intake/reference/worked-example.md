@@ -22,7 +22,7 @@ look structurally identical and share none of these domains.
   muscle, no love handles.
 - **Primary metric:** a tape measurement taken the same way each time (inches, down is better) — chosen by the athlete over
   scale weight, explicitly: *"much more important than weight."*
-- **Baseline:** 35.25″ on 2026-08-07, morning and fasted, per `photos/PROTOCOL.md`.
+- **Baseline:** their first protocol-compliant reading — morning, fasted, per `photos/PROTOCOL.md`, with the date it was taken.
 - **Demotion trigger:** waist ≤ 33″. Weight figures (175 lb, −5 to −8 lb) are **review
   checkpoints**, not end conditions.
 

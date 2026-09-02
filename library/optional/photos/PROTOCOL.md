@@ -22,9 +22,11 @@ water, and glycogen — not fat.
 
 # Waist Tape Protocol
 
-> Added 2026-08-07. The waist is the **primary progress metric** by the athlete's explicit
-> instruction (`goals.md`), and it gates the Phase 1 demotion trigger at 34.5". An unstandardized
-> tape can move ±0.5" on technique alone — enough to flip a phase on noise. Standardize it.
+> **Why this is standardized rather than just taken.** On a chart where the waist is a primary
+> metric, it is usually also a threshold in `goals.md` — a promotion or demotion trigger with a
+> number on it. An unstandardized tape moves ±0.5" on technique alone, which is enough to flip a
+> phase on noise. Fill the threshold in from the athlete's own goals; never carry one over from
+> another chart.
 
 - **When:** same weekday, weekly. First thing in the morning.
 - **State:** fasted, post-toilet, **before** training and before any drink. Waist is smallest
@@ -44,10 +46,10 @@ water, and glycogen — not fat.
 
 # Neck Tape Protocol
 
-> Added 2026-08-07. The neck is the **missing input to the Navy tape method**, which is currently
-> the best body-fat estimator available off their own numbers. Without it the estimate is a ±8-point
-> guess (`logs/2026-08-07.md`: "**~18–29%, and no tighter**"). With it, the Navy number becomes a
-> single defensible figure. Ten seconds, tape already in hand.
+> **Why the neck at all.** It is the missing input to the Navy tape method — the best body-fat
+> estimator available off tape alone. Without it, the estimate is a range about eight points wide,
+> which is not a number anybody can act on. With it, it becomes one defensible figure. Ten seconds,
+> tape already in hand.
 
 - **When:** the same morning session as the waist. Fasted, post-toilet, before training or drinking.
   Both numbers feed one formula — taking them days apart mixes states.
@@ -78,71 +80,81 @@ water, and glycogen — not fat.
 Both are easy to make and they push in opposite directions, so they don't cancel — they just widen
 the spread. Level, snug, chin neutral.
 
-## What their number will mean (waist 35.25", height 69")
+## What the number will mean
 
-Navy method, men: `%BF = 86.010 × log₁₀(waist − neck) − 70.041 × log₁₀(height) + 36.76` (inches).
+Navy tape method — **it is sex-specific, and the two formulas take different inputs.** Inches.
 
-| Neck | Est. body fat | | Neck | Est. body fat |
-|---|---|---|---|---|
-| 15.00" | 20.3% | | 16.25" | 18.0% |
-| 15.25" | 19.9% | | 16.50" | 17.5% |
-| 15.50" | 19.4% | | 16.75" | 17.0% |
-| 15.75" | 18.9% | | 17.00" | 16.4% |
-| 16.00" | 18.4% | | | |
+    men     %BF = 86.010 × log₁₀(waist − neck)       − 70.041 × log₁₀(height) + 36.76
+    women   %BF = 163.205 × log₁₀(waist + hip − neck) − 97.684 × log₁₀(height) − 78.387
 
-**≈1 percentage point per half-inch.** That is why the tension and the tape angle are worth caring
-about — but note it is also *bounded*: even a sloppy half-inch miss moves the answer ~1 point, not
-10. Get it roughly right and the number is usable.
+The women's form needs a **hip** measurement as well — at the widest point of the glutes, same
+tape, same morning, same rules as above. A chart that uses the women's formula and standardizes
+only waist and neck has standardized two of its three inputs.
+
+**Compute the athlete's own table once, from their own height, and put it in their chart.** Vary
+the neck across the plausible half-inch either side of their reading, hold waist and height at
+their measured values, and read off how much the answer moves. Do not copy a table from another
+chart — height is in the formula, so somebody else's table is somebody else's answer.
 
 ## What this does and does not resolve — read before over-reading the result
 
-- **It DOES** convert the Navy estimate from "18–20% depending on an assumed neck" into one number,
+- **It DOES** convert the estimate from "a range depending on an assumed neck" into one number,
   carrying the method's own error against DEXA of roughly **±3–4 points**.
 - **It DOES NOT** improve *tracking*. The neck is near-constant, so the Navy trend is essentially
-  the waist trend — which is already the primary metric. **The neck buys a defensible baseline
-  number, not a better progress signal.** Do not let it displace the waist tape.
-- ⛔ **The Deurenberg estimator is RETIRED (2026-08-07) — do not reintroduce it.** It is BMI-based,
-  and **BMI is not to be used for this athlete** (`athlete/profile.md`, standing instruction).
+  the waist trend — which is already the metric. **The neck buys a defensible baseline number, not
+  a better progress signal.** Do not let it displace the waist tape.
+- ⛔ **Do not substitute a BMI-based estimator** (Deurenberg and its relatives). It reads height and
+  weight and knows nothing about where the mass sits, so on a lifter it is wrong in a direction that
+  does not average out. Some charts also carry a standing instruction against BMI in
+  `athlete/profile.md` — check before putting the letters on a page.
 
 ---
 
-# How well does the Navy method track *change*? — the honest answer
+# How well does the Navy method track *change*?
 
-> Answering the athlete's own question. Where they are explicit that **direction matters
-> more to them than the absolute number.** Good news: direction is the thing this method does well.
+Worth answering before the first reading, because the honest answer is "badly at the level, well at
+the direction" and that changes what the number is for.
 
 ## Separate three properties — they have very different answers
 
 | Property | Verdict |
 |---|---|
-| **Absolute accuracy** ("am I really 18.4%?") | **Poor–moderate.** ±3–4 points vs DEXA, and the offset never resolves without a scan. |
-| **Precision** (same body, repeat reading) | **Good.** ~±0.5 point, and that is *entirely* their tape technique — the formula adds no noise of its own. |
-| **Sensitivity to real change** (the one they care about) | **Good, and better than the absolute number deserves.** See below. |
+| **Absolute accuracy** — is the level right? | **Poor–moderate.** ±3–4 points vs DEXA, and the offset never resolves without a scan. |
+| **Precision** (same body, repeat reading) | **Good.** ~±0.5 point, and that is *entirely* tape technique — the formula adds no noise of its own. |
+| **Sensitivity to real change** | **Good, and better than the absolute number deserves.** See below. |
 
 ## Why direction survives even though the level is wrong
 
 The method's error is **largely a systematic offset**, and an offset **cancels when you subtract two
-readings.** If the formula reads them 3 points low today, it reads roughly 3 points low in October —
-so the *change* is right even when the *level* is not. This is exactly the property they want.
+readings.** If the formula reads 3 points low today, it reads roughly 3 points low in three months —
+so the *change* is right even when the *level* is not.
 
 Caveat, stated honestly: the offset is not *perfectly* constant across the range (the formula is a
-log curve and its bias vs DEXA drifts somewhat). Over a 4–6 point change, treating it as constant is
+log curve and its bias vs DEXA drifts). Over a 4–6 point change, treating it as constant is
 reasonable. Over 15 points it is not.
 
-## The numbers
+## The sensitivity rule, and how to get this chart's version of it
 
 Height is fixed and the neck is near-constant, so **the Navy figure is a monotonic transform of the
-waist.** Sensitivity at their current numbers (waist 35.25", neck 16.00"):
+waist.** Across the range most charts sit in, that transform runs at roughly:
 
-**≈1.94 body-fat points per inch of waist** — call it **~2 points per inch, ~0.5 per quarter-inch.**
-(Rises slightly as they lean out: ~2.05 at a 34.25" waist, ~2.20 at their 33" ambition.)
+> **≈2 body-fat points per inch of waist — about 0.5 per quarter-inch.**
+>
+> It *rises* as the waist shrinks, because the formula takes the log of `waist − neck`: the same
+> inch is a larger proportional change on a smaller waist. Expect a slope near the bottom of a
+> phase noticeably steeper than the slope at the top of it.
+
+That rule is enough to reason with. For the actual figure, evaluate the formula at the athlete's
+own numbers twice, an inch apart, and subtract — a two-line calculation, and the only one that is
+about them.
+
+**What follows from the rule, whatever the exact slope:**
 
 | Waist change | Navy %BF change | Roughly |
 |---|---|---|
-| −0.25" | −0.5 pt | inside measurement noise |
-| −0.50" | −1.0 pt | ~2 weeks at target rate |
-| −1.00" | −1.9 pt | ~4–5 weeks |
-| −2.25" (35.25 → 33") | −4.4 pt | the Phase-1 ambition |
+| −0.25" | ~0.5 pt | inside measurement noise |
+| −0.50" | ~1 pt | detectable |
+| −1.00" | ~2 pt | a phase's worth on most plans |
 
 **Minimum detectable real change ≈ 0.5" of waist ≈ 1 body-fat point.** Below that it is tape noise.
 → **Weekly readings are noise. 2–3 week comparisons begin to be signal. 4+ weeks is solid.**
@@ -151,18 +163,19 @@ Consistent with the trend-over-point rule below — read the trend line, never t
 ## Three limits that do not go away
 
 1. **Re-measure the neck, don't reuse it.** The neck does shrink over a long deficit. Carrying a
-   stale 16.00" forward while the real neck is 15.75" **overstates fat loss by ~0.5 points.** Take
-   it alongside the waist; monthly at the absolute minimum.
+   stale quarter-inch forward **overstates fat loss by roughly half a point.** Take it alongside
+   the waist; monthly at the absolute minimum.
 2. **It cannot tell fat loss from lean loss at the waist.** It reads circumference, not tissue. Gut
    content, water and lost abdominal muscle all move it the same direction as fat.
-3. **It is blind to the limbs and chest entirely.** Only waist and neck are inputs.
+3. **It is blind to the limbs and chest entirely.** Only the tape sites are inputs.
 
-→ **Which is why the strength numbers, not this formula, remain the instrument for "am I keeping
-muscle."** The Navy figure translates the waist tape into a percentage that can be compared against
-a goal ("abs at ~12–15%"). It is a better *unit*, not a second *opinion*.
-- **The waist input is itself still provisional.** The 35.25" is a single reading taken *before* the
-  waist protocol above existed. Any Navy figure computed today inherits that. **Take neck and waist
-  together at the next protocol-compliant morning session** and compute from that pair.
+→ **Which is why the strength numbers, not this formula, remain the instrument for whether lean
+mass is being held.** The Navy figure translates the waist tape into a percentage that can be compared against
+a goal. It is a better *unit*, not a second *opinion*.
+
+- **A baseline taken before this protocol existed is provisional, and should be labelled so.** Any
+  figure computed from it inherits whatever the tape was doing that day. **Take the pair again at
+  the next protocol-compliant morning session** and compute from that.
 
 ---
 

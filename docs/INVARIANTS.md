@@ -770,8 +770,9 @@ order to protect a test about a chart with no meals in it. It runs in `validate-
 > athlete's own standing-instruction heading — English grammar, not this athlete's vocabulary — and
 > a chart with no such heading runs the check and it does nothing. Scope is the chart's live
 > decision surfaces plus the surfaces that speak to the athlete (`src/`, `skills/`,
-> `.claude/agents/`), because *"never quoted or used by any agent evaluating my status or
-> progress"* are their words. `decisions.md`, `logs/`, `docs/` and `data/METHOD.md` are out: the
+> `.claude/agents/`), because a ban of this kind is written against being *quoted or used by any
+> agent evaluating the athlete's status or progress* — that is its scope, in the athlete's own
+> framing. `decisions.md`, `logs/`, `docs/` and `data/METHOD.md` are out: the
 > history of a ban is not a use of it, and a shared system document is where one athlete's
 > preference must never become a rule.
 
@@ -924,9 +925,10 @@ it describes before the fix landed. Item 5 ships as a **finding, not an assertio
    which **reports and can never block**. Every mismatch it finds closes by choosing a load, a dose
    or a marker, and none of those belongs to the check; a check that cannot go green without
    someone inventing a number is the one that produced the 135/85 threshold. It finds **six of the
-   seven markers unreadable** against the live block, including the suitcase carry still prescribed
-   at 30-40 s/side in `Session One (modified)` against a marker that fires below 49 s — the same row
-   corrected in one session and missed in the session written beside it the same day.
+   seven markers unreadable** against the live block — including a carry still prescribed in
+   seconds-per-side against a progression marker written as a single total, so the two cannot be
+   compared at all; the same row corrected in one session and missed in the session written beside
+   it the same day.
    *Closes F-01, F-37.*
 6. ✅ **Most-recent-on-or-before, not exact-match** — `latestOnOrBefore` in `src/lib/data.ts`, and
    the Today tab stamps a note that is not today's with its own date. An older note rendered
@@ -1073,11 +1075,11 @@ never reaches the athlete."*
    The plan asked for a budget constant, a per-day allocation and a meter. **The budget is not the
    maintainer's to write, and reading `plan.md` carefully says it is not the coach's either.**
 
-   > ### ✅ CLOSED 2026-08-14, LATER THE SAME DAY — **by the athlete, which is the only way it could
-   > ### close.** He asked for a weekly chart and set the number: **1,400 kcal/week**, the top of
-   > the range the plan already carried, recorded `athlete-confirmed` with the date and the answer
-   > they gave. The `alcohol-budget-unset` finding stopped firing on its own. **Nobody picked a
-   > number; the finding did its whole job, which was to keep asking until they did.**
+   > ### ✅ CLOSED THE SAME DAY — **by the athlete, which is the only way it could close.** They
+   > asked for the weekly form and set the number themselves, and it was recorded
+   > `athlete-confirmed` with the date and the answer they gave. The `alcohol-budget-unset` finding
+   > stopped firing on its own. **Nobody picked a number; the finding did its whole job, which was
+   > to keep asking until they did.**
    >
    > **What did NOT change is the more interesting half.** The per-day allocation the original plan
    > asked for is *still* refused, and now has a check of its own: `generate-targets.mjs` still
@@ -1147,13 +1149,11 @@ the athlete said it, the athlete confirmed it, the coach proposed it, it was der
 from outside. A number the coach produced is **never** recorded in a form that reads as the
 athlete's instruction — and a number nobody has ruled on is surfaced until someone does.
 
-**Why it needed naming.** Three violations in one day, 2026-08-13, and they are one defect:
+**Why it needed naming.** Three violations in one day, and they are one defect:
 
-- A **185 lb weight ceiling** the coach invented on 2026-08-11 and wrote into `goals.md` beside a
-  floor the athlete did own. *"I don't know what that is or where it came from. I never provided
-  that weight and if I get close to it, I will throw this whole system away and call it a
-  failure."*
-- A **135/85 BP threshold** invented to make the coach's own failing check go green (X-7's failure
+- A **weight ceiling** the coach invented days earlier and wrote into `goals.md` beside a floor the
+  athlete did own. An athlete who reads a goal they never set does not read it as a typo. They read it as the system inventing things about them — and one of them said exactly that, in terms that included abandoning the chart if the number were ever approached.
+- A **clinical threshold** invented to make the coach's own failing check go green (X-7's failure
   mode wearing X-16's clothes).
 - A **BMI justification** for the 170 lb floor, in a chart whose `profile.md` bans BMI outright
   and simultaneously claimed no threshold anywhere referenced it.

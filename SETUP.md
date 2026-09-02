@@ -7,8 +7,8 @@ whole design depends on the athlete's goals being elicited before any category i
 > a step says otherwise. Open Terminal with ⌘-Space → type "Terminal" → Enter. Paste each
 > block, press Enter, wait for it to finish before the next one.
 >
-> Replace `NAME` with the athlete's first name in lower case, and `HER-USERNAME` /
-> `THEIR-USERNAME` with their GitHub username, everywhere those appear.
+> Replace `NAME` with the athlete's first name in lower case, and `THEIR-USERNAME` with their
+> GitHub username, everywhere those appear.
 
 ## 0. Accounts and tools
 

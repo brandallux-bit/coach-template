@@ -132,8 +132,20 @@ convenience dressed as the athlete's problem.
 **A metric with no feed only exists when they report it — so check, then ask.** Read this rule
 off `athlete/constants.json` → `metrics`, never off a list of metric names in your head.
 
-Every registered metric declares `feed` (`manual` or `automated`) and `cadence` (`daily`,
-`episodic` or `lab`). The rule follows from the pair:
+A registered metric **may** declare `feed` (`manual` or `automated`) and `cadence` (`daily`,
+`episodic` or `lab`). **Both are optional, and most entries will carry neither** — a registry
+written before these keys existed, or by an intake that did not ask, has only `label`, `unit`,
+`direction` and `domain`. An entry that omits one is read as **`manual`** and **`episodic`**
+respectively, so *the default is the second bullet below*: nothing writes it, and nothing chases
+it. That is deliberate — a wrong default should cost a question nobody asks, never a daily nag
+about a number a device already recorded.
+
+⚠ **The defaults are not permission to leave them unset.** Where the athlete has a metric they are
+supposed to report every day, the registry is where that becomes true; if the entry says nothing,
+ask them once and write `feed` and `cadence` in. `athlete/constants.template.json` → `metrics`
+documents the pair, and `scripts/validate-data.mjs` rejects a value outside these enums.
+
+The rule follows from the pair:
 
 - **`manual` + `daily`** — nothing writes it unless they say it, and a gap in it is a real gap.
   **Whenever they give you morning numbers or any daily check-in, before anything else, check
@@ -149,10 +161,11 @@ Every registered metric declares `feed` (`manual` or `automated`) and `cadence` 
   chart already has. A missing day is the feed's problem, not theirs: it belongs in the
   workflow-health findings, not in a question. Read, don't ask.
 
-⚠ **This section names no metric on purpose, and that is the fix rather than an omission.** It
-used to name two, which meant every chart forked from this one carried a rule about somebody
-else's body — and a chart tracking something different got no rule at all until someone edited
-the charter. The registry says which metrics this applies to; this says what to do about them.
+⚠ **This section names no metric on purpose, and that is the fix rather than an omission.** The
+chart this rule was written on states it over two named metrics — which is fine there and fatal
+here: forked, it would give every athlete a standing instruction about somebody else's body, and
+give a chart tracking something different no rule at all until someone edited the charter. The
+registry says which metrics this applies to; this says what to do about them.
 
 **Never recommend a session without reading the last three days first — the template is a
 proposal, not the answer.** This applies **where this chart has a training domain and

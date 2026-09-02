@@ -204,6 +204,15 @@ type Bundle = {
     string,
     {
       label: string; unit: string; direction: 'up' | 'down'; domain: string
+      /**
+       * Optional, and read by the COACH rather than by any page — see `CLAUDE.md` §0.2. `feed`
+       * says whether anything writes this without the athlete saying it; `cadence` says whether a
+       * gap in it is a real gap. Absent means `manual` and `episodic`, which together mean "never
+       * chased", so a renderer that wants the effective value must apply those defaults itself
+       * rather than treating `undefined` as a third state.
+       */
+      feed?: 'manual' | 'automated'
+      cadence?: 'daily' | 'episodic' | 'lab'
       /** Optional: this metric makes another measurement unreliable. See `confoundedDates`. */
       confounds?: { measure: string; atOrAbove: number; lagDays?: number }
     }

@@ -110,14 +110,16 @@
         "countsTowardFloor": false,
         "standingDurationMin": 20,
         "domain": "<the goals.md heading this serves>",
-        "note": "The third entry exists to show what `standingDurationMin` is for. Because this always takes the same time, a row logged without a duration can be costed at the declared figure rather than estimated \u2014 and the ledger and the forward view then agree about it."
+        "note": "<what it is, in one line>",
+        "_whyThisEntryIsHere": "It shows what `standingDurationMin` is for. Because this always takes the same time, a row logged without a duration can be costed at the declared figure rather than estimated \u2014 and the ledger and the forward view then agree about it."
       },
       "<a walking type, on a chart with no step feed>": {
         "met": 3.5,
         "countsTowardFloor": false,
         "loading": false,
         "domain": "<the goals.md heading this serves>",
-        "note": "The second entry exists to show the ONE case `loading` is for. With no step feed nothing else counts this movement, so it is priced as a session at a real MET \u2014 and the default would then call it loading and read a week of walks as a week with no rest day."
+        "note": "<what it is, in one line>",
+        "_whyThisEntryIsHere": "It shows the ONE case `loading` is for. With no step feed nothing else counts this movement, so it is priced as a session at a real MET \u2014 and the default would then call it loading and read a week of walks as a week with no rest day."
       }
     }
   },

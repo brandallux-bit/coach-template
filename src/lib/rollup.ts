@@ -23,11 +23,12 @@ export type DayRoll = {
   /**
    * Today's alcohol allowance, from `targets.csv`.
    *
-   * **Normally absent, and that is the correct state of this chart, not a gap.** `nutrition/plan.md`
-   * prices alcohol at ~1,200–1,400 kcal/week, but read the sentence: *"priced at their REAL intake,
-   * not a wishful number"*, off `values.md`'s athlete-stated ~7–9 glasses in a typical week. That
-   * is an OBSERVATION of what they drink, not a budget they agreed to — and a meter needs a
-   * denominator that somebody owns. Nothing here invents one (INVARIANTS.md X-16).
+   * **Normally absent, and that is the correct state of a fresh chart, not a gap.** A
+   * `nutrition/plan.md` will often carry a weekly alcohol figure — but read how such a sentence is
+   * written: priced at the athlete's REAL intake rather than a wishful number, off what they said
+   * they drink in a typical week. That is an OBSERVATION of current behaviour, not a budget they
+   * agreed to hold — and a meter needs a denominator somebody owns. Nothing here invents one
+   * (INVARIANTS.md X-16).
    *
    * A coaching session may write a real allowance into a day's row — 2026-08-07 has one, 330
    * against a logged 392 — and on those days the meter renders. On every other day the figure
@@ -217,9 +218,9 @@ export type WeekRoll = {
   /**
    * **The week's estimated calories in, estimated calories out, and what they produce.**
    *
-   * Asked for on 2026-08-15: *"my goal for the week is still lose 1 lb, so the week needs an
-   * estimated cals in and estimated cals out to achieve that, and they need to be divided
-   * logically amongst the 7 days."*
+   * The ask this answers: a weekly rate goal needs an estimated calories-in and calories-out that
+   * would achieve it, divided sensibly across all seven days — not a figure for the days that
+   * happen to be logged so far.
    *
    * ⚠ **ITS DAY SET IS ALL SEVEN DAYS, WHICH IS THE OPPOSITE OF `intake` ABOVE, ON PURPOSE.**
    * `intake` answers "where do I stand *so far*" and is truncated at today; this answers "where
