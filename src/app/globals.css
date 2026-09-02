@@ -157,7 +157,7 @@ a { color: inherit; }
   position: absolute; top: -3px; bottom: -3px; width: 2px;
   background: var(--text-primary); opacity: 0.55;
 }
-/* Where the plan says he should be BY NOW, as against `.marker`'s "where the plan's line is".
+/* Where the plan says the athlete should be BY NOW, as against `.marker`'s "where the plan's line is".
    Dashed so the two are distinguishable on a track that carries both. */
 .meter .marker.pace {
   width: 0; border-left: 2px dashed var(--text-primary); background: none; opacity: 0.75;

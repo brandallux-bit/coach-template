@@ -329,15 +329,16 @@ export default function TodayPage() {
       </Card>
 
       {/*
-        THE WEEK. Asked for directly on 2026-08-14: "We should have a weekly target chart, just like
-        the daily, but including alcohol. So each day, I can see where I stand for the day and for
-        the week."
+        THE WEEK. Asked for directly: a weekly target chart alongside the daily one, drink included,
+        so each day shows where the athlete stands for the day AND for the week.
 
         ⚠ **THE DENOMINATOR IS THE FULL WEEK AND THE PACE LINE IS WHAT KEEPS THAT HONEST.** A
-        week-to-date total against a full-week budget flatters them, and on a Tuesday it flatters them
-        enormously — 4,000 against 12,950 reads as 31% used and looks like enormous headroom when they are roughly on pace. The budget stays the denominator because that is the number they asked to
-        see; the marker on the Food and Total tracks is the plan's OWN arithmetic over the days that
-        have happened (Σ targets.csv kcal), never the budget divided by seven. See
+        week-to-date total against a full-week budget flatters them, and early in the week it
+        flatters them enormously — a third of the budget spent by Tuesday reads as enormous headroom
+        when they are in fact roughly on pace. The budget stays the denominator because that is the
+        number they asked to see; the marker on the Food and Total tracks is the plan's OWN
+        arithmetic over the days that have happened (Σ targets.csv kcal), never the budget divided
+        by seven. See
         scripts/lib/aggregate.mjs `weekIntake` for why prorating was rejected.
       */}
       {wi.budget.total != null && (

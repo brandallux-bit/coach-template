@@ -180,6 +180,21 @@ the design.
 > **Omit it entirely on a chart with no menu.** That is a normal chart, not an incomplete one:
 > building a session from the last three days is a complete answer.
 
+> **Two keys that change what the BUILD does, and are easy to need without knowing they exist.**
+>
+> `plan.dailyKcalTargetPolicy` is the ONLY way a chart says it wants no daily calorie targets. Set
+> it to `"none"` and write the reason in `plan._dailyKcalTargetPolicy_note` — the note is required,
+> and a policy of `"none"` with no note is an error, because the reason is the thing a future
+> session has to be able to disagree with. Leave the key out and every day gets a target, with the
+> build failing on a gap; that is the correct default for any chart with an energy domain, and
+> `"none"` is the correct setting for a chart without one.
+>
+> `plan.macroCompletenessFrom` is a **date**, absent by default, and absent means *always*: every
+> food row must carry an estimate in every macro column, because a blank is summed as zero and
+> biases the day downward. A chart with older rows logged under looser wording sets this to the
+> date it adopted the rule, so those rows are exempt rather than demanding macros nobody measured.
+> Move the date back as they get filled in by real derivation — label, by difference, build-up.
+
 > **`metrics.<key>.feed` and `.cadence` — whether the coach chases a number, and both optional.**
 > `feed` is `manual` or `automated`: does anything write this without the athlete saying it?
 > `cadence` is `daily`, `episodic` or `lab`: is a gap in it a real gap, does it only exist when it
@@ -360,9 +375,11 @@ confined to system files you've deliberately customised.
 > fatal: refusing to merge unrelated histories
 > ```
 >
-> That is not a reason to pass `--allow-unrelated-histories`. It would "succeed" by treating every
-> file in the chart as a conflict against a file it has never seen, including files upstream is
-> supposed to leave alone — the athlete's own — and the result needs resolving by hand anyway.
+> That is not a reason to pass `--allow-unrelated-histories`. It "succeeds" by add/add-conflicting
+> every file the two sides both have — verified: `CONFLICT (add/add)` on `CLAUDE.md`, on every
+> script, and, worst, **on every `data/*.csv`, which is the ledger**. (The athlete's prose files do
+> not conflict, because the template ships them as `TEMPLATE-*` or not at all.) The result needs
+> resolving by hand anyway, over the one directory that must never be resolved carelessly.
 >
 > **Pull the files across individually instead.** Check what actually moved, then take the paths
 > you want:
@@ -377,6 +394,18 @@ confined to system files you've deliberately customised.
 > this way — anything not on that list is the chart's own and must never be overwritten from
 > upstream. A chart in this position is not broken and does not need recreating; it just does this
 > instead, every time, forever.
+>
+> Two things `git checkout` cannot do, and both matter:
+>
+> - **It adds and overwrites; it never deletes.** For `scripts/` and `src/` that is not enough —
+>   those two are supposed to MIRROR the template exactly, and a chart-only script left behind
+>   answers an import or satisfies a definition scan, so the suite goes green on a file the
+>   template does not ship (`scripts/port-overlay.mjs` explains why it copies those two
+>   wholesale). After taking files across, delete anything under `scripts/` or `src/` that upstream
+>   no longer has.
+> - **`CLAUDE.md` is on the shared list, so `git checkout upstream/main -- CLAUDE.md` overwrites
+>   the charter.** That is right for a chart that never customised it and destructive for one that
+>   did. Diff it first, every time, and merge by hand rather than taking it.
 
 Run `npm run validate` after any merge.
 

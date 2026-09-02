@@ -63,8 +63,9 @@ action.
   and check whether that combination has tripped a health promotion trigger.
 - **Back and knees.** Any niggle, any next-day knee response, any early-warning sign
   from `athlete/injury-history.md`. Ask specifically; don't wait for it to be reported.
-- **Social eating.** Wine nights and restaurant meals for the week. Not to police —
-  to make the arithmetic honest when the numbers don't match the logged intake.
+- **Social eating and drinking.** Whatever `athlete/values.md` says is a standing part of their
+  week, for the week just gone. Not to police — to make the arithmetic honest when the numbers
+  do not match the logged intake.
 
 ## 4. Diagnose
 

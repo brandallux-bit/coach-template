@@ -99,10 +99,13 @@ chart — height is in the formula, so somebody else's table is somebody else's 
 ## What this does and does not resolve — read before over-reading the result
 
 - **It DOES** convert the estimate from "a range depending on an assumed neck" into one number,
-  carrying the method's own error against DEXA of roughly **±3–4 points**.
-- **It DOES NOT** improve *tracking*. The neck is near-constant, so the Navy trend is essentially
-  the waist trend — which is already the metric. **The neck buys a defensible baseline number, not
-  a better progress signal.** Do not let it displace the waist tape.
+  carrying the method's own error against DEXA — a standard error of estimate around **3–4
+  points**, with individual agreement looser than that. See the properties table below.
+- **It DOES NOT** improve *tracking*. The neck is near-constant, so on the men's formula the Navy
+  trend is essentially the waist trend — which is already the metric. **The neck buys a defensible
+  baseline number, not a better progress signal.** Do not let it displace the waist tape. (On the
+  women's formula the hip is a third input and it *does* move through a phase, so that sentence
+  does not carry over — see the sensitivity section.)
 - ⛔ **Do not substitute a BMI-based estimator** (Deurenberg and its relatives). It reads height and
   weight and knows nothing about where the mass sits, so on a lifter it is wrong in a direction that
   does not average out. Some charts also carry a standing instruction against BMI in
@@ -119,8 +122,8 @@ the direction" and that changes what the number is for.
 
 | Property | Verdict |
 |---|---|
-| **Absolute accuracy** — is the level right? | **Poor–moderate.** ±3–4 points vs DEXA, and the offset never resolves without a scan. |
-| **Precision** (same body, repeat reading) | **Good.** ~±0.5 point, and that is *entirely* tape technique — the formula adds no noise of its own. |
+| **Absolute accuracy** — is the level right? | **Poor–moderate.** The method's standard error of estimate against DEXA is around 3–4 points, but *individual* agreement is looser than that — published comparisons commonly show several points of mean bias with limits of agreement around ±8, and wider in women. The offset never resolves without a scan. |
+| **Precision** (same body, repeat reading) | **Good, in the best case.** The formula adds no noise of its own; all of it is tape technique. This protocol tolerates 0.25″ on waist **and** 0.25″ on neck, and those combine — so ~±0.5 point is the floor, not the typical figure, and the neck is the larger contributor. |
 | **Sensitivity to real change** | **Good, and better than the absolute number deserves.** See below. |
 
 ## Why direction survives even though the level is wrong
@@ -133,38 +136,63 @@ Caveat, stated honestly: the offset is not *perfectly* constant across the range
 log curve and its bias vs DEXA drifts). Over a 4–6 point change, treating it as constant is
 reasonable. Over 15 points it is not.
 
-## The sensitivity rule, and how to get this chart's version of it
+## The sensitivity rule — compute it, and note that the two formulas do not share one
 
-Height is fixed and the neck is near-constant, so **the Navy figure is a monotonic transform of the
-waist.** Across the range most charts sit in, that transform runs at roughly:
+⚠ **THE SLOPE IS SEX-SPECIFIC AND THE DIFFERENCE IS ABOUT A FACTOR OF TWO.** Do not carry a figure
+from one chart to another, and do not carry the men's rule of thumb into a chart using the women's
+formula. Differentiating each formula with respect to the waist gives:
 
-> **≈2 body-fat points per inch of waist — about 0.5 per quarter-inch.**
->
-> It *rises* as the waist shrinks, because the formula takes the log of `waist − neck`: the same
-> inch is a larger proportional change on a smaller waist. Expect a slope near the bottom of a
-> phase noticeably steeper than the slope at the top of it.
+    men     d%BF/d(waist) = 37.35 / (waist − neck)
+    women   d%BF/d(waist) = 70.88 / (waist + hip − neck)
 
-That rule is enough to reason with. For the actual figure, evaluate the formula at the athlete's
-own numbers twice, an inch apart, and subtract — a two-line calculation, and the only one that is
-about them.
+Both are **inches**, and both are a two-number calculation on this athlete's own tape. Evaluate one
+of them once and write the answer into their chart; it is the only figure here that is about them.
 
-**What follows from the rule, whatever the exact slope:**
+For scale, so an implausible result is recognisable:
 
-| Waist change | Navy %BF change | Roughly |
+| Formula | Tape (in) | Points per inch of waist |
 |---|---|---|
-| −0.25" | ~0.5 pt | inside measurement noise |
-| −0.50" | ~1 pt | detectable |
-| −1.00" | ~2 pt | a phase's worth on most plans |
+| men | 42 / 17 | 1.49 |
+| men | 35 / 15 | 1.87 |
+| men | 30 / 14 | 2.33 |
+| women | 38 / 48 / 13.5 | 0.98 |
+| women | 30 / 40 / 12.5 | 1.23 |
+| women | 26 / 36 / 12 | 1.42 |
 
-**Minimum detectable real change ≈ 0.5" of waist ≈ 1 body-fat point.** Below that it is tape noise.
+**The slope rises as the tape shrinks**, on both formulas, because each takes a logarithm: the same
+inch is a larger proportional change on a smaller measurement. Expect the figure near the bottom of
+a phase to be noticeably steeper than the one at the top of it.
+
+⚠ **AND FOR THE WOMEN'S FORMULA, THE WAIST IS NOT THE WHOLE STORY.** Height is fixed and the neck
+is near-constant, so on the **men's** formula the Navy figure really is a monotonic transform of the
+waist and the waist trend is the Navy trend. The women's formula takes a **hip** measurement too,
+and the hip is *not* near-constant through a fat-loss phase. Waist and hip falling together move the
+answer by roughly **twice** the waist-alone figure. So on a chart using the women's formula, take
+both, and never reason about the Navy number from the waist alone.
+
+**Then build this chart's own version of the table** — this is the men's 35/15 row, shown as a
+worked example of the shape, not as a figure to copy:
+
+| Waist change | Navy %BF change (at 1.87 pts/in) | Roughly |
+|---|---|---|
+| −0.25" | −0.47 pt | inside measurement noise |
+| −0.50" | −0.93 pt | detectable |
+| −1.00" | −1.87 pt | a phase's worth on most plans |
+
+**Minimum detectable real change ≈ 1 body-fat point**, and how much waist that is depends entirely
+on the slope above: about half an inch at 1.9 points per inch, closer to **0.81″** at 1.23. Below
+that it is tape noise, and a chart that assumed the wrong slope will read real progress as noise
+for a whole phase.
 → **Weekly readings are noise. 2–3 week comparisons begin to be signal. 4+ weeks is solid.**
 Consistent with the trend-over-point rule below — read the trend line, never two adjacent readings.
 
 ## Three limits that do not go away
 
-1. **Re-measure the neck, don't reuse it.** The neck does shrink over a long deficit. Carrying a
-   stale quarter-inch forward **overstates fat loss by roughly half a point.** Take it alongside
-   the waist; monthly at the absolute minimum.
+1. **Re-measure the neck, don't reuse it.** The neck does shrink over a long deficit, and in both
+   formulas it enters with **the same weight as the waist and the opposite sign** — so a stale
+   quarter-inch of neck costs exactly what a quarter-inch of waist buys, at whatever slope the
+   section above gave this chart, and it **overstates fat loss**. Take it alongside the waist;
+   monthly at the absolute minimum.
 2. **It cannot tell fat loss from lean loss at the waist.** It reads circumference, not tissue. Gut
    content, water and lost abdominal muscle all move it the same direction as fat.
 3. **It is blind to the limbs and chest entirely.** Only the tape sites are inputs.

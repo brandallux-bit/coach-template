@@ -102,10 +102,15 @@ fact and it is a yes/no question, which is why it works where X-9 did not.
 
 ## The table
 
-Fifteen invariants. X-1 to X-10 are the existing corpus, restated unchanged. X-11 to X-15 were
+Eighteen invariants. X-1 to X-10 are the existing corpus, restated unchanged. X-11 to X-15 were
 found by mapping the audit's 72 findings to mechanisms — five classes the corpus never named, which
 is itself the finding: **F-01, F-52, F-53, F-54, F-58 and F-60 are one defect (X-13) that has no
-name, which is why it keeps being fixed one instance at a time.**
+name, which is why it keeps being fixed one instance at a time.** X-16 to X-18 were found the same
+way afterwards, each from a cluster of defects nothing above it covered.
+
+⚠ **These two counts are hand-maintained and have gone stale before** — the file said "fifteen"
+and "twelve of the sixteen" against an eighteen-row table for as long as nobody added them up.
+Count the rows when you add one.
 
 | # | Invariant | Status | Findings |
 |---|---|---|---|
@@ -126,10 +131,11 @@ name, which is why it keeps being fixed one instance at a time.**
 | X-15 | **Every prescribed number has a rendering surface.** | `ENFORCED` ✓ | 6 |
 | X-16 | **Every number records who it came from.** | `ENFORCED` ✓ | *(new)* |
 | X-17 | **A machine-readable default always answers. Prose may refine it, never suppress it.** | `ENFORCED` ✓ | *(new)* |
-| X-18 | **A proposal is checked against the record before it is presented.** | `ENFORCED` ✓ | *(new)* |
+| X-18 | **A proposal is checked against the record before it is presented.** | `PARTIAL` | *(new)* |
 
-Twelve of the sixteen are enforced. The audit found no violations of X-4 or X-5, which is worth
-knowing — they are prose and they are holding, so they stay prose for now.
+Thirteen of the eighteen are enforced; two are `PARTIAL` and three `UNENFORCED`. The audit found
+no violations of X-4 or X-5, which is worth knowing — they are prose and they are holding, so they
+stay prose for now.
 
 ---
 
@@ -1248,12 +1254,31 @@ describes what was supposed to happen. A schedule, a plan document and a default
 *proposals*. The ledger is the only account of what occurred, and a proposal that never opened it
 is a guess wearing the costume of a recommendation.
 
-**Status:** `ENFORCED` ✓ — `scripts/lib/recent-work.mjs` (the overlap rule),
-`skills/library/session-recommendation/SKILL.md` (the procedure, and the confirm / adapt / replace
-it forces a coach to declare), `session-repeats-recent-work` in `scripts/lib/findings.mjs` (the
-backstop for a session that skips the procedure), `scripts/lib/aggregate.mjs`'s `anchoredTrend` and
-`observedDailyBurn` (the ledger-first forms of two figures that used to be plan lookups),
-`scripts/test-recent-work.mjs` and `scripts/test-session-table.mjs` (fixtures).
+**Status:** `PARTIAL` — and the gap is named rather than rounded up, because rounding it up is how
+a stamp stops meaning anything.
+
+**What exists and runs:** `scripts/lib/recent-work.mjs` (the overlap rule) and
+`scripts/lib/session-table.mjs` (what a card may claim), both covered by
+`scripts/test-recent-work.mjs` and `scripts/test-session-table.mjs`, which run in `check-all.mjs`
+on a chart-less repo; `scripts/lib/aggregate.mjs`'s `anchoredTrend` and `observedDailyBurn`, the
+ledger-first forms of two figures that used to be plan lookups, covered by
+`scripts/test-aggregations.mjs`.
+
+**What does NOT make it enforced, stated plainly:**
+
+- `skills/library/session-recommendation/SKILL.md` is **prose**. Nothing runs a skill, and a
+  session that skips it fails nothing.
+- `session-repeats-recent-work` in `scripts/lib/findings.mjs` is a **finding**, and `CLAUDE.md`
+  §0.2 is explicit that findings are not gates. It reports; it cannot refuse.
+- The founding defect's own site — `planDay()` in `src/lib/forecast.ts` — has only a MIRROR test
+  (`scripts/test-views.mjs` re-implements the logic and compares). `grep -rn "recent-work" src/`
+  returns nothing: **the forward proposal path still imports no ledger reader.** Nothing goes red
+  if a new proposal surface skips the record.
+
+**What would earn `ENFORCED`:** the shape X-1 uses — a *registry*, so that a new proposal surface
+fails until it is registered as reading the ledger. X-1 gets its stamp because a new page rendering
+an unregistered value goes red. X-18 has no equivalent, and until it does this stamp is `PARTIAL`
+by the file's own rule that status is derived from what runs in CI rather than asserted by hand.
 
 **Why it needed naming, and why it is not any of the seventeen above.** Three defects of one shape,
 found in three unrelated parts of the system:

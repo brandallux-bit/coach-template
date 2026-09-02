@@ -44,7 +44,7 @@ if (optedOut) {
 const read = (f) => (existsSync(join(DATA, f)) ? readCsv(join(DATA, f)) : [])
 const targets = read('targets.csv')
 
-// The FIRST DAY HE ATE AGAINST A PLAN. It is the evidence that closes both holes in the domain
+// THE FIRST DAY THE ATHLETE ATE AGAINST A PLAN. It is the evidence that closes both holes in the domain
 // rule below, and it is data the chart already holds rather than a second registry.
 const firstMeal = read('meals.csv').map((r) => r.date).filter(Boolean).sort()[0]
 

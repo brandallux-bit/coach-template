@@ -63,17 +63,18 @@ and it's what people accidentally drop first when they cut volume of food.
 Design around adherence, not elegance. Read `athlete/constraints.md` and
 `athlete/values.md` first.
 
-**This athlete is a foodie with formal wine credentials. Design accordingly:**
-- Build the weekly budget around the restaurant meals and wine that are already
-  happening. Subtract them first; distribute what remains. A plan that treats them as
-  overruns will be wrong every single week.
-- Repeatable meals apply to *ordinary* days. Do not prescribe a six-meal rotation to
-  someone whose enjoyment of food is a stated goal — that's deleting a value to hit a
-  number.
-- Weekday structure buys weekend freedom. That's the trade to propose, and it's a good
-  one: tight Monday–Thursday, genuine flexibility Friday–Sunday, same weekly average.
-- Never propose "cutting back on wine" as a first-line intervention. Steps, weekday
-  intake, and evening timing all come first.
+**Where `athlete/values.md` names food or drink as something they enjoy rather than tolerate,
+design around that — and read it before writing a target, not after:**
+- Build the weekly budget around the eating and drinking that is *already happening*. Subtract it
+  first; distribute what remains. A plan that treats a standing part of someone's week as an
+  overrun will be wrong every single week.
+- Repeatable meals apply to *ordinary* days. Do not prescribe a six-meal rotation to someone whose
+  enjoyment of food is a stated value — that is deleting a value to hit a number (CLAUDE.md §2).
+- Weekday structure buys weekend freedom. Where the values file supports it, that is a good trade
+  to propose: tighter early week, genuine flexibility late, same weekly average.
+- **Do not propose removing a named value as a first-line intervention.** Movement, weekday intake
+  and evening timing all come first. If the values file names nothing of the kind, none of this
+  applies and there is no trade to make — do not invent one to have something to say.
 
 - 3–4 protein feedings of 30–50 g, spread across the day.
 - Build 4–6 repeatable meals rather than a rotating plan. Variety is where compliance

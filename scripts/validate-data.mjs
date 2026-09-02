@@ -64,8 +64,16 @@ const warn = (f, msg) => warnings.push(`${f}: ${msg}`)
  *
  * Header only, and deliberately: a shipped CSV is empty by design, so there are no rows to check
  * and an empty file is the correct state, not a gap.
+ *
+ * ⚠ **AND IT RUNS ONLY WHERE THE BELOW-GATE CHECK CANNOT — X-8.** The header comparison further
+ * down does the same equality on a chart, *with a migration message written for that reader*:
+ * "it is generated and its columns have changed — run compute-energy.mjs". Running both meant a
+ * fork merging a template update that adds a column read this block's sentence FIRST, and this
+ * block's sentence is false on their chart — their `energy.csv` is generated from their own data,
+ * not inherited verbatim — and offers no fix, burying the one that does. Two homes for one check,
+ * and the duplicate degraded the original.
  */
-{
+if (!existsSync(join(DATA, '..', 'athlete', 'constants.json'))) {
   const { SPEC } = await import('./lib/schema.mjs')
   for (const [file, spec] of Object.entries(SPEC)) {
     const path = join(DATA, file)
@@ -792,6 +800,16 @@ try {
   )
   for (const [key, def] of Object.entries(registry)) {
     if (!def?.domain) err('athlete/constants.json', `metrics.${key} must name the goals.md domain it serves`)
+    // The registry's own `_comment` says every entry must name its unit and `src/lib/data.ts` types
+    // it as required — but nothing checked it, so an entry without one built green and rendered
+    // `undefined` beside the number. A documented "must" with no check is a comment, not a rule.
+    if (!String(def?.label ?? '').trim()) err('athlete/constants.json', `metrics.${key} must carry a label — it is what every page prints instead of the raw key`)
+    if (!String(def?.unit ?? '').trim()) {
+      err('athlete/constants.json',
+        `metrics.${key} must name its unit — a bare number with no unit is not a reading, and `
+        + 'every surface that renders this one prints the unit beside it. Use the athlete\'s own '
+        + 'words for it ("0-3 scale", "minutes", "mmHg").')
+    }
     if (!['up', 'down'].includes(def?.direction)) {
       err('athlete/constants.json', `metrics.${key}.direction must be "up" or "down" (which way is progress)`)
     }
@@ -837,8 +855,8 @@ meals.forEach((m, i) => {
 
   // data/METHOD.md rule 3a. A blank macro is NOT an honest gap: every consumer of this file
   // (rollup, compute-energy, every daily total) sums the column, so a blank contributes 0 and
-  // silently biases the day downward. 2026-08-12 read as 36.7 g fat with one cell blank; the
-  // true figure was 72.7 g, and both coach and athlete reasoned from the wrong number.
+  // silently biases the day downward. One blank fat cell on a real day halved that day's fat total,
+  // and both coach and athlete reasoned from the wrong number for as long as it stood.
   // Estimate it — by difference, by build-up, from a photo — and put the method in the note.
   //
   // ⚠ **A chart ADOPTS this rule on a date, and rows before it are exempt.**

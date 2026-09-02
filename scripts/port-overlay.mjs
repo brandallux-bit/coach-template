@@ -220,10 +220,39 @@ const isProse = (path, text) => !/\.(mjs|js|ts|tsx)$/.test(path) || /^\s*(\/\/|\
  */
 const isRenderedCopy = (path, text) => /\.tsx$/.test(path) && !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(text)
 
+/**
+ * ⚠ **PROSE INSIDE A NON-COMMENT STRING LITERAL IS THE BLIND SPOT, AND IT IS THE ONE THAT
+ * RENDERS.** `isProse` calls a `.mjs` line prose only when it STARTS with a comment marker, so a
+ * string-continuation line — `+ 'Their own words are on file — "…"'` — took the code branch, where
+ * `QUOTE_CODE_RE` demands markdown emphasis before the quote. A plain `"` inside a JS string
+ * matched neither branch. A review found exactly that: a verbatim athlete quote and two of one
+ * chart's plan figures in a FINDING's `action` string — not a comment, a sentence the next coach
+ * reads — reported as zero by this screen. The same hole swallowed a dated quote inside a JSX
+ * comment block, because only its OPENING line starts with a marker and the rest do not.
+ *
+ * So the prose quote rule now applies to code lines too, filtered by SHAPE rather than by
+ * position: between the opening quote and the first-person word there may be PROSE and nothing
+ * else — no bracket, brace, angle, equals or parenthesis. Without that filter the rule fires on
+ * `className="text">{i.label}`, where the CLOSING attribute quote opens a span running into a JSX
+ * loop variable, and fifteen of eighteen hits over `scripts/` and `src/` were exactly that. With
+ * it, the same sweep returns the real ones and three false positives fall to zero. Measured on the
+ * tree, not assumed.
+ *
+ * ⚠ **THE PUNCTUATION CLASS IS THE WHOLE FILTER, so keep it narrow.** Widening it to exclude, say,
+ * a comma or a dash would silently stop matching ordinary English, which is the thing it is for.
+ * The semicolon is in the class for one reason and it is a trade: `'\"'; i++` in a CSV parser was
+ * the last false positive on the tree, and a semicolon inside a quoted athlete sentence is rarer
+ * than that line is.
+ */
+const PROSE_SHAPED = new RegExp(`${Q}[^"\u201c\u201d{}<>=()\[\];]*\b${FIRST_PERSON}\b`, 'i')
+const quoteHit = (path, text) => (isProse(path, text)
+  ? QUOTE_PROSE_RE.test(text)
+  : QUOTE_CODE_RE.test(text) || PROSE_SHAPED.test(text))
+
 const deathleteHit = (path, text) => {
   const prose = isProse(path, text)
   return PRONOUN_RE.test(text)
-    || (prose ? QUOTE_PROSE_RE : QUOTE_CODE_RE).test(text)
+    || quoteHit(path, text)
     || ((prose || isRenderedCopy(path, text)) && DATE_RE.test(text))
 }
 

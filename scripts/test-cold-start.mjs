@@ -65,9 +65,9 @@ const ok = (name) => console.log(`  ok   ${name}`)
 const fail = (name, detail = '') => { failed++; console.log(`  FAIL ${name}\n${String(detail).split('\n').map((l) => `       ${l}`).join('\n')}`) }
 
 /**
- * A chart that is not this one. Every field is the shape intake writes, and nothing in it is
- * recognisable: if a check still only passes for a 59-year-old man in Los Angeles who grapples,
- * it fails here.
+ * A chart that is not the one this system was built on. Every field is the shape intake writes,
+ * and nothing in it is carried over: a different sex, a different decade, a different timezone, a
+ * different sport. If a check still only passes for the original athlete, it fails here.
  */
 const FRESH_CHART = {
   _README: 'A chart written by intake. See data/METHOD.md.',
@@ -366,10 +366,25 @@ const cloneRepo = () => {
   return { dir, repo }
 }
 
-/** Strip a chart back to an empty one: headers only, no constants, no prose. */
+/**
+ * Strip a chart back to an empty one: headers only, no constants, no prose.
+ *
+ * ⚠ **THE HEADER IS THE SHIPPED ONE, TRUNCATED — NEVER REGENERATED FROM `SPEC`.** This function
+ * used to write `spec.header.join(',')`, and that made the suite whose entire subject is a
+ * stranger's fork **repair its own subject**: `data/energy.csv` shipped for five phases missing a
+ * column `SPEC` had gained, every fork would have gone red on their first push, and this suite
+ * stayed green because it overwrote the broken file with the right one and then checked the right
+ * one. A fixture that repairs its subject cannot fail on it (INVARIANTS.md X-10).
+ *
+ * So: keep line one exactly as the repo ships it and drop the body. A fork gets the shipped header;
+ * so does this. `validate-data.mjs` holds it against `SPEC` above its no-chart gate, and now the
+ * two agree about what is being tested.
+ */
 const emptyTheChart = (repo) => {
-  for (const [file, spec] of Object.entries(SPEC)) {
-    writeFileSync(join(repo, 'data', file), `${spec.header.join(',')}\n`)
+  for (const file of Object.keys(SPEC)) {
+    const path = join(repo, 'data', file)
+    const shipped = existsSync(path) ? readFileSync(path, 'utf8').split('\n')[0] : ''
+    writeFileSync(path, `${shipped}\n`)
   }
   rmSync(join(repo, 'athlete', 'constants.json'), { force: true })
   // Prose an intake would write for THIS athlete, not the previous one. A fork carries the
@@ -802,33 +817,65 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
      */
     {
       const tmpl = JSON.parse(readFileSync(join(ROOT, 'athlete', 'constants.template.json'), 'utf8'))
-      // `_`-prefixed keys are the file's own notes to the reader, not part of the example anyone
-      // copies — every reader in this repo skips them and so does this.
-      const strings = (v) => (typeof v === 'string' ? [v]
+      const HOLE = /^<.*>$/
+      /**
+       * ⚠ **CLASSIFY PER VALUE, NOT PER SECTION — both halves of this used to be per section and
+       * both were wrong for it.** A review put a one-word sport name in a placeholder `domains`
+       * entry and an illegal `cadence` in a placeholder `metrics` entry; the first passed because
+       * the concreteness filter demanded a space in the string, the second because ONE placeholder
+       * anywhere made the whole section skip the validator. So:
+       *
+       * 1 · **A concrete string VALUE among placeholders is a finding** — one word or twenty. Keys
+       *     are exempt because a key is often schema-fixed (`Mon`, `weeklyTemplate`), and so are
+       *     numbers and booleans, which are the shape rather than the content: `met: 0` and
+       *     `standingDurationMin: 20` are what those fields look like, not somebody's data.
+       * 2 · **Every section is validated, placeholders and all.** A placeholder is substituted with
+       *     a neutral token so the CONCRETE fields beside it still meet the schema. That is a
+       *     stand-in, not invented data (X-12): nothing about it is a claim about an athlete, and
+       *     it exists only so the validator can reach the fields that do have rules.
+       */
+      const values = (v) => (typeof v === 'string' ? [v]
         : v && typeof v === 'object'
-          ? Object.entries(v).filter(([k]) => !k.startsWith('_')).flatMap(([k, x]) => [k, ...strings(x)])
+          ? Object.entries(v).filter(([k]) => !k.startsWith('_')).flatMap(([, x]) => values(x))
           : [])
+      /**
+       * ⚠ **A PLACEHOLDER THAT SAYS "OMIT" IS OMITTED, AND THAT IS THE FILE'S OWN CONVENTION RATHER
+       * THAN A SPECIAL CASE.** `dailyBlockType`'s placeholder reads *"a registry key from
+       * sessionTypes, or omit"* — a CROSS-REFERENCE, and the neutral token cannot satisfy one: the
+       * validator holds it against the registered types and rightly rejects `example`. Making that
+       * green would mean inventing a session type, a MET and a domain purely to feed a check, which
+       * is the check X-12 says must not be written. So the substitution reads the instruction the
+       * placeholder already carries and takes the branch a real user is told they may take.
+       */
+      const OPTIONAL_HOLE = /\bomit\b/i
+      let n = 0
+      const fill = (v) => {
+        if (typeof v === 'string') return HOLE.test(v) ? 'example' : v
+        if (Array.isArray(v)) return v.map(fill)
+        if (v && typeof v === 'object') {
+          return Object.fromEntries(Object.entries(v)
+            .filter(([k, x]) => !k.startsWith('_')
+              && !(typeof x === 'string' && HOLE.test(x) && OPTIONAL_HOLE.test(x)))
+            .map(([k, x]) => [HOLE.test(k) ? `example${++n}` : k, fill(x)]))
+        }
+        return v
+      }
       const sections = Object.entries(tmpl).filter(([, v]) => v && typeof v === 'object' && v._example)
       if (!sections.length) fail('constants.template.json still carries worked examples', 'none found')
       for (const [section, node] of sections) {
-        const all = strings(node._example)
-        const holes = all.filter((t) => /^<.*>$/.test(t))
-        if (holes.length) {
-          // A shape. Assert it is one consistently: a concrete value sitting among placeholders is
-          // an example nobody can either copy or read as a form.
-          const concrete = all.filter((t) => !/^<.*>$/.test(t) && /^[a-z]/i.test(t) && t.includes(' '))
-          if (!concrete.length) ok(`${section}._example is a shape, and is one all the way down`)
-          else {
-            fail(`${section}._example is a shape, and is one all the way down`,
-              `these read as real values among the placeholders: ${concrete.join(' | ')}`)
-          }
-          continue
-        }
-        const copied = withMap((c) => { c[section] = { ...node._example } })
-        if (copied.code === 0) ok(`${section}._example validates when copied verbatim into a chart`)
+        const concrete = values(node._example).filter((t) => !HOLE.test(t))
+        if (!concrete.length) ok(`${section}._example carries no value that is one athlete's`)
+        else if (section === 'metrics') ok(`${section}._example is concrete on purpose — it validates below`)
         else {
-          fail(`${section}._example validates when copied verbatim into a chart`,
-            `exit ${copied.code} — this is what a user gets for following the template\n`
+          fail(`${section}._example carries no value that is one athlete's`,
+            `these are real values sitting among placeholders: ${concrete.join(' | ')}`)
+        }
+
+        const copied = withMap((c) => { c[section] = fill(node._example) })
+        if (copied.code === 0) ok(`...and it validates when a user copies it`)
+        else {
+          fail(`${section}._example validates when a user copies it`,
+            `exit ${copied.code} — this is what they get for following the template\n`
             + copied.out.slice(0, 500))
         }
       }

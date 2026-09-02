@@ -25,11 +25,11 @@ For every plan you review, answer:
 
    **Reject anything that presents a coach number back to the athlete as their own instruction.**
    This is the one failure on this list that is unrecoverable — every other number can be
-   recomputed from data; a goal cannot. It has happened three times in one day: a 185 lb weight
-   ceiling recorded as their (*"I don't know what that is or where it came from... if I get close to
-   it, I will throw this whole system away and call it a failure"*), a 135/85 BP threshold invented
-   to make a failing check go green, and a 34.5" waist target retro-justified with a real clinical
-   cut-point three days after they had asked for 33".
+   recomputed from data; a goal cannot. It has happened three times in one day on one chart: a
+   weight ceiling recorded as the athlete's, which they read and did not recognise — and did not
+   read as a typo, but as the system inventing things about them; a clinical threshold invented to
+   make a failing check go green; and a tape target retro-justified with a real clinical cut-point,
+   days after they had asked for a different number.
 
    Two specific things to look for, because both fooled a careful reader:
    - **A well-anchored number is not the athlete's number.** Good justification makes this harder

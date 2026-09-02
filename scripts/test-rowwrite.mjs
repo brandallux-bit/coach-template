@@ -93,17 +93,17 @@ const check = (name, cond, detail = '') => {
 // --- body.csv: a partial update must NOT blank the columns already on file ----------------------
 {
   const before = FIXTURE['body.csv']
-  const partial = { date: '2026-08-11', waist_in: '34.75', weight_lb: '', neck_in: '', note: '' }
+  const partial = { date: '2026-08-11', waist_in: '30.50', weight_lb: '', neck_in: '', note: '' }
   const merged = mergeIntoExisting(before, 'body.csv', partial)
   check('merge keeps the existing weight', merged.weight_lb === '164.2', merged.weight_lb)
-  check('merge applies the new waist', merged.waist_in === '34.75', merged.waist_in)
+  check('merge applies the new waist', merged.waist_in === '30.50', merged.waist_in)
   check('merge keeps the existing note', merged.note.startsWith('Third morning-protocol'), merged.note)
 
   const after = insertRow(before, 'body.csv', merged)
   check('body.csv row count unchanged on update',
     after.trimEnd().split('\n').length === before.trimEnd().split('\n').length)
   check('updated row carries the new waist',
-    after.includes('2026-08-11,164.2,34.75,14.25'), after)
+    after.includes('2026-08-11,164.2,30.50,14.25'), after)
 }
 
 // --- out-of-order insert keeps the file date-ordered -------------------------------------------

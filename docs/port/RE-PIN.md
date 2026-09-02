@@ -14,11 +14,29 @@ mechanism working. It also means a port of this size expires the lot at once.
 
 Counted from `92898e3` (the merge-base this port started from) to the current head:
 
-- **74 shared system paths changed.** That is the number the next parity run will report,
-  not the ~31 the port plan estimated — the estimate predated three phases of de-athleting, which
-  touched files the plan had not listed.
-- **6 more files changed that are NOT shared**, so they need no entry at all:
-  `SETUP.md`, `athlete/constants.template.json`, `data/energy.csv`, `library/optional/photos/PROTOCOL.md`, `library/optional/program/conditioning-menu.md`, `library/optional/program/exercise-library.md`.
+- **79 shared system paths changed.** That is the number the next parity run will report, not the
+  ~31 the port plan estimated — the estimate predated three phases of de-athleting and two rounds
+  of review fixes, which touched files the plan had not listed.
+- **7 more files changed that are NOT shared**, so they need no entry at all: `SETUP.md`,
+  `athlete/constants.template.json`, `data/energy.csv`, this file, and the three under
+  `library/optional/`.
+
+⚠ **THESE THREE COUNTS ARE HAND-WRITTEN AND WILL ROT.** Recount before acting on them — the same
+mistake `docs/INVARIANTS.md` made with its own table, where "fifteen invariants" sat above eighteen
+rows for as long as nobody added them up:
+
+```bash
+# in the TEMPLATE, against the port baseline
+node -e '
+  const { execFileSync } = require("node:child_process"), { existsSync } = require("node:fs")
+  const { SYSTEM_PATHS: SP } = await import("./scripts/lib/system-paths.mjs")
+  const shared = (p) => SP.some((s) => p === s || p.startsWith(s + "/"))
+  const c = execFileSync("git", ["diff", "--name-only", "92898e3"], { encoding: "utf8" }).split("\n").filter(Boolean)
+  const sys = c.filter(shared)
+  const only = sys.filter((p) => !existsSync(`/path/to/chart/${p}`))
+  console.log(`shared=${sys.length} both=${sys.length - only.length} templateOnly=${only.length} other=${c.length - sys.length}`)
+'
+```
 
 ## The two buckets, which the parity report does not distinguish and you must
 
@@ -29,7 +47,7 @@ wearing its own uniform.
 
 ### Bucket 1 · Mirror these, do not acknowledge them
 
-64 paths exist in both repos and moved here. Read the diff, take the change, and pin only
+68 paths exist in both repos and moved here. Read the diff, take the change, and pin only
 what you deliberately keep different afterwards. Where the chart's copy carries this athlete's
 prose and the template's carries the de-athleted form, **the prose difference is the acknowledgement
 you write** — one entry per file, reason "template is de-athleted by design", after the code change
@@ -37,14 +55,18 @@ has crossed.
 
 ### Bucket 2 · Template-only — nothing to mirror, nothing to acknowledge
 
-10 paths do not exist in the chart at all. A parity run reports them as "template ahead";
-that is correct and permanent for some, and a genuine missing feature for others. Decide per file:
+11 paths do not exist in the chart at all. ⚠ **The parity report has no category for this and no
+word for it** — `check-template-parity.mjs` prints `added+ removed-  path` for every divergence
+alike, so these read as a large pure-addition count and nothing labels them. That is what you are
+inferring, not something the tool tells you. Correct and permanent for some of them, a genuine
+missing feature for others. Decide per file:
 
 - `scripts/lib/movement.mjs`
 - `scripts/lib/session-table.mjs`
 - `scripts/lib/system-paths.mjs`
 - `scripts/port-overlay.mjs`
 - `scripts/test-session-table.mjs`
+- `skills/library/nutrition-targets/SKILL.md`
 - `skills/library/photo-assessment/SKILL.md`
 - `skills/library/program-design/SKILL.md`
 - `skills/library/session-recommendation/SKILL.md`

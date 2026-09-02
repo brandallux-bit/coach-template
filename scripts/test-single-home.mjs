@@ -807,7 +807,7 @@ console.log('\n4 · one CSV grammar, and it survives an inch mark (F-10)')
 // =================================================================================================
 
 {
-  const t = 'date,weight_lb,note\n2026-08-01,181,Waist measured at 31.75" this morning\n'
+  const t = 'date,weight_lb,note\n2026-08-01,166,Waist measured at 31.75" this morning\n'
     + '2026-08-02,180,Normal day\n2026-08-03,179,Another\n'
   const rows = parseCsv(t)
   yes('a mid-field quote is a literal, not the start of a quoted field', rows.length === 4,

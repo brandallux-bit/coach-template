@@ -993,19 +993,19 @@ export function buildFindings({
 
   // --- a target column that is measured against and never set ------------------------------------
   //
-  // `targets.csv` carries an `alcohol_kcal` column. `meals.csv` carries one too, and it is filled
-  // in — 330 on 08-07, 392 the same day against it, 600 on another. The target side has been blank
-  // on every row ever written, because `generate-targets.mjs` has nothing to write there: there is
-  // no `plan.weeklyAlcoholKcalBudget` and **W6 deliberately did not invent one.**
+  // `targets.csv` carries an `alcohol_kcal` column. `meals.csv` carries one too, and on a chart
+  // that tracks it the intake side gets filled in day by day. The target side stays blank on every
+  // row, because `generate-targets.mjs` has nothing to write there without a
+  // `plan.weeklyAlcoholKcalBudget` — and it deliberately does not invent one.
   //
-  // WHY IT IS A FINDING AND NOT A CONSTANT. `nutrition/plan.md` prices alcohol at ~1,200–1,400
-  // kcal/week and calls it their single largest discretionary lever, and it is tempting to read that
-  // as the budget. Read the sentence: *"priced at their REAL intake, not a wishful number"*, computed
-  // off `athlete/values.md`'s athlete-stated ~7–9 glasses in a typical week. **That is an
-  // observation of what they drink, not a line they agreed to hold.** Promoting it to a target would
-  // record a coach's inference as the athlete's own instruction, which is X-16's defect exactly —
-  // the same shape as the 185 lb ceiling, in a different unit and with better justification, which
-  // makes it harder to catch rather than easier (red-team, item 3).
+  // WHY IT IS A FINDING AND NOT A CONSTANT. A `nutrition/plan.md` will often price a typical week
+  // and call alcohol the largest discretionary lever, and it is tempting to read that as the
+  // budget. Read what the sentence is doing: a figure priced at the athlete's REAL intake rather
+  // than a wishful number, computed off what they said they drink, is an **observation of current
+  // behaviour, not a line they agreed to hold.** Promoting it to a target would record a coach's
+  // inference as the athlete's own instruction, which is X-16's defect exactly — the same shape as
+  // a weight ceiling nobody could source, in a different unit and with better justification, which
+  // makes it harder to catch rather than easier.
   //
   // So the data half ships and the denominator waits: the figure is recorded, the week's total is
   // rendered on History, and the gap is reported here as **their to close**. An absent budget renders
@@ -1025,18 +1025,18 @@ export function buildFindings({
           + `${withFigure.length} of ${targets.length} so far.`,
         detail: `No plan.weeklyAlcoholKcalBudget exists, so scripts/generate-targets.mjs writes a `
           + `blank alcohol_kcal on every automated row and the Today meter has no line to draw. `
-          + `Days with a figure: ${withFigure.map((t) => t.date).join(', ')}. nutrition/plan.md `
-          + 'prices a typical week at ~1,200–1,400 kcal and states the exchange rate — ~0.35 '
-          + 'lb/week of loss forgone — but that figure is an OBSERVATION of what they already '
-          + 'drinks, taken off athlete/values.md. It is not a budget they agreed to.',
+          + `Days with a figure: ${withFigure.map((t) => t.date).join(', ')}. Where nutrition/plan.md `
+          + 'carries a weekly figure, read what that sentence is doing before using it: a figure '
+          + 'priced off what they said they drink is an OBSERVATION of current behaviour, not a '
+          + 'budget they agreed to hold, and a meter needs a denominator somebody owns.',
         action: 'Ask them whether they want a line here, and if so what it is. **Do not pick one.** '
-          + 'Their own words are on file — "if not for the fitness goals, I\'d open a bottle every '
-          + 'night" — so this is a value they are already spending willpower on, not a number to '
-          + 'optimise on their behalf. If they set one, record it with their quote and its provenance; '
-          + 'if they do not want one, record that too and this stops. A per-day allocation can '
-          + 'then be written into targets.csv and the Today meter draws itself.',
-        source: 'nutrition/plan.md "Alcohol"; athlete/values.md "Wine — non-negotiable"; '
-          + 'data/targets.csv alcohol_kcal',
+          + 'Alcohol is usually a value the athlete is already spending willpower on rather than a '
+          + 'number to optimise on their behalf — athlete/values.md is where that is written down, '
+          + 'in their words, and it is worth re-reading before asking. If they set a figure, record '
+          + 'it with their own words and its provenance; if they do not want one, record that too '
+          + 'and this stops. A per-day allocation can then be written into targets.csv and the '
+          + 'Today meter draws itself.',
+        source: 'nutrition/plan.md; athlete/values.md; data/targets.csv alcohol_kcal',
         domain: APPEARANCE,
       })
     }
