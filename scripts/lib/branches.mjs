@@ -45,7 +45,11 @@ export function isStrayBranch(name) {
 export const strayBranchNames = (names) => names.filter(isStrayBranch)
 
 /**
- * What `.github/workflows/absorb-branches.yml` must carry in `on: push: branches-ignore:`.
- * Asserted against the real file by `scripts/test-git-sync.mjs`.
+ * What `absorb-branches.yml` must carry in `on: push: branches-ignore:`.
+ *
+ * Asserted against the real file by `scripts/test-git-sync.mjs`, which looks for it in
+ * `.github/workflows/` first — the installed copy GitHub actually evaluates — and falls back to
+ * the shipped scaffold at `library/optional/workflows/`. The absorber is opt-in, so which of those
+ * exists depends on the chart; the rule has to be held honest in either configuration.
  */
 export const WORKFLOW_BRANCHES_IGNORE = [MAIN_BRANCH, `${KEEP_PREFIX}**`]

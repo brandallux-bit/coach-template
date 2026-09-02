@@ -335,6 +335,34 @@ do. Instead `build-findings` raises `movement-level-unanswered` on every run unt
 answers, and every surface that renders the figure says out loud that it is a default nobody
 has confirmed. The chart works; it just keeps asking.
 
+## 4b. Stray-branch absorption — optional, and OFF by default
+
+Some surfaces a coach connects from create their own branch instead of committing to `main`. When
+that happens the data is *in git and invisible*: `main` never gets it, the build never sees it, and
+the dashboard shows a blank panel for a meal logged hours ago.
+
+**Two things already handle this and neither needs setting up.** The dashboard shows a loud
+stray-branch banner on every page, so nothing sits unnoticed; and `CLAUDE.md` §0.1 makes a coaching
+session find, merge and delete stray branches before it does anything else.
+
+**The optional third is an automation that shortens the window to seconds:**
+
+```bash
+mkdir -p .github/workflows
+cp library/optional/workflows/absorb-branches.yml .github/workflows/
+git add .github/workflows/absorb-branches.yml && git commit -m "Enable stray-branch absorption"
+```
+
+⚠ **Read its header before you copy it, because the trade is real.** It merges *every* pushed
+branch into `main` within seconds, with no human and no review. That is right where this repo is
+one athlete's chart with no pull-request workflow — there, a branch is a bug report rather than a
+feature. It is wrong anywhere anyone pushes a branch on purpose: it would land work-in-progress on
+`main` the moment it was pushed and destroy the review a pull request exists to provide. **The
+template ships it disabled for exactly that reason.**
+
+It never merges a conflict — resolving one means combining rows, which is a judgement call it must
+not make — so §0.1's manual check stays in the session protocol whether or not this is installed.
+
 ## 5. Dashboard — optional, and after intake
 
 Import the repo at [vercel.com/new](https://vercel.com/new), root directory `./`, and set

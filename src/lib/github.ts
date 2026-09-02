@@ -155,15 +155,22 @@ export type BranchCheck =
 /**
  * Is anything sitting on a branch right now?
  *
- * `absorb-branches.yml` merges stray branches into `main` within seconds of a push, so this
- * should always come back empty. It exists for when it doesn't: the workflow disabled, its
+ * ⚠ **THIS IS THE GUARANTEE, NOT A BACKSTOP TO ONE, AND THAT IS WHY IT DEPENDS ON NOTHING.**
+ * Where the optional absorber (`library/optional/workflows/absorb-branches.yml`) is installed,
+ * stray branches merge into `main` within seconds of a push and this should usually come back
+ * empty. Where it is NOT installed — the default — a branch sits until a coaching session runs
+ * `CLAUDE.md` §0.1, which may be hours. Either way this check is what tells the athlete, and it
+ * must keep working in both configurations: never make it conditional on the workflow, and never
+ * soften its wording on the assumption that something else is watching.
+ *
+ * It also covers what the absorber cannot do even when installed: the workflow disabled, its
  * credentials expired, or — by design — a merge conflict it deliberately refuses to resolve.
  *
- * ⚠ The alarm belongs HERE, on the surface the athlete actually looks at. On 2026-08-11 a
- * breakfast logged to a branch was invisible on this dashboard for two hours and thirteen
- * minutes, and nothing on screen suggested anything was wrong — the panel was simply empty,
- * which is indistinguishable from not having eaten. A failing CI run is only visible to someone
- * who goes looking, and the whole point is that they should not have to.
+ * ⚠ The alarm belongs HERE, on the surface the athlete actually looks at. A meal logged to a
+ * branch was once invisible on this dashboard for over two hours, with nothing on screen
+ * suggesting anything was wrong — the panel was simply empty, which is indistinguishable from
+ * not having eaten. A failing CI run is only visible to someone who goes looking, and the whole
+ * point is that they should not have to.
  *
  * ⚠ AND IT MUST MEAN SOMETHING WHEN IT FIRES. "Stray" is decided by `isStrayBranch`, the same
  * function the absorber uses, so this banner cannot disagree with the automation about what it is

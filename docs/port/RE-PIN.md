@@ -14,11 +14,11 @@ mechanism working. It also means a port of this size expires the lot at once.
 
 Counted from `92898e3` (the merge-base this port started from) to the current head:
 
-- **80 shared system paths changed.** That is the number the next parity run will report, not the
+- **84 shared system paths changed.** That is the number the next parity run will report, not the
   ~31 the port plan estimated — the estimate predated three phases of de-athleting and two rounds
   of review fixes, which touched files the plan had not listed.
-- **7 more files changed that are NOT shared**, so they need no entry at all: `SETUP.md`,
-  `athlete/constants.template.json`, `data/energy.csv`, this file, and the three under
+- **8 more files changed that are NOT shared**, so they need no entry at all: `SETUP.md`,
+  `athlete/constants.template.json`, `data/energy.csv`, this file, and the four under
   `library/optional/`.
 
 ⚠ **THESE THREE COUNTS ARE HAND-WRITTEN AND WILL ROT.** Recount before acting on them — the same
@@ -50,9 +50,25 @@ follows is not that. It is an improvement the chart should **take**, and pinning
 fix as a permanent divergence — the exact failure the acknowledgement mechanism exists to prevent,
 wearing its own uniform.
 
+### ⚠ One path in bucket 1 is a DELETION, and mirroring it turns an automation off
+
+`.github/workflows/absorb-branches.yml` is **gone from the template**. It merged every pushed
+branch into `main` within seconds, which is right for one athlete's chart and wrong for a
+repository people fork and send pull requests to — so it now ships at
+`library/optional/workflows/absorb-branches.yml`, disabled, with the trade written in its header.
+
+**On a chart, that is a decision and not a fix.** Taking the deletion stops stray branches merging
+themselves, and `CLAUDE.md` §0.1's manual sweep becomes the only thing that clears them, which runs
+only when a session runs. If the chart wants the automation, **keep the file and pin the
+divergence**, reason: *"the template disabled this because it is a template; on a single-athlete
+chart with no PR workflow it is correct and stays on."* Nothing else in either bucket changes
+behaviour by being mirrored; this one does.
+
+The dashboard's stray-branch banner is unaffected either way — it never depended on the workflow.
+
 ### Bucket 1 · Mirror these, do not acknowledge them
 
-68 paths exist in both repos and moved here. Read the diff, take the change, and pin only
+71 paths exist in both repos and moved here. Read the diff, take the change, and pin only
 what you deliberately keep different afterwards. Where the chart's copy carries this athlete's
 prose and the template's carries the de-athleted form, **the prose difference is the acknowledgement
 you write** — one entry per file, reason "template is de-athleted by design", after the code change
@@ -60,7 +76,7 @@ has crossed.
 
 ### Bucket 2 · Template-only — nothing to mirror, nothing to acknowledge
 
-12 paths do not exist in the chart at all. ⚠ **The parity report has no category for this and no
+13 paths do not exist in the chart at all. ⚠ **The parity report has no category for this and no
 word for it** — `check-template-parity.mjs` prints `added+ removed-  path` for every divergence
 alike, so these read as a large pure-addition count and nothing labels them. That is what you are
 inferring, not something the tool tells you. Correct and permanent for some of them, a genuine

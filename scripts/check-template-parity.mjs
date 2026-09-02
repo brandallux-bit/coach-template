@@ -23,7 +23,7 @@
  *
  * ⚠ **IT REPORTS AND NEVER MERGES.** Bringing two divergent copies together means deciding which
  * side is right, file by file, and that is a judgement call — the same one
- * `.github/workflows/absorb-branches.yml` refuses to make when a branch merge conflicts. This
+ * `absorb-branches.yml` refuses to make when a branch merge conflicts. This
  * prints what has moved and who is ahead. A person decides what crosses.
  *
  * ⚠ **NOT IN `check-all.mjs`, ON PURPOSE.** It needs an `upstream` remote and a recent fetch,

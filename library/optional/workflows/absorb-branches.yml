@@ -1,6 +1,26 @@
+# ⚠ **OPT-IN. THIS FILE DOES NOTHING WHERE IT SITS — GitHub only runs a workflow under
+# `.github/workflows/`.** To turn it on in a chart:
+#
+#     mkdir -p .github/workflows
+#     cp library/optional/workflows/absorb-branches.yml .github/workflows/
+#
+# **WHY THE TEMPLATE DOES NOT SHIP IT ENABLED.** It merges every pushed branch into `main` within
+# seconds, with no human and no review. On a personal chart that is exactly right — see below. On
+# the TEMPLATE it is wrong twice over: a template is a repository people fork and send pull
+# requests to, so auto-merging every branch destroys the review step a PR exists to provide; and a
+# contributor's work-in-progress branch would land on `main` the moment they pushed it. Enabled in
+# the template, it also silently absorbed the branches of the very work that removed it.
+#
+# **DECIDE BEFORE COPYING IT IN, because the trade is real.** Turn it on where the repository is
+# one athlete's chart, has no PR workflow, and a branch is therefore a bug report rather than a
+# feature. Leave it off where anyone else pushes branches on purpose. It is not needed for
+# correctness either way: the dashboard's stray-branch banner surfaces unmerged data whether or not
+# this runs, and `CLAUDE.md` §0.1 makes a coaching session find and merge stray branches at session
+# start. This turns that cleanup from "whenever a session happens to run" into "within seconds".
+#
 # Merges any branch that isn't `main` back into `main`, immediately and automatically.
 #
-# WHY THIS EXISTS. This repo has no PR workflow. A branch is not a feature here — it is a bug
+# WHY IT EXISTS AT ALL. This repo has no PR workflow. A branch is not a feature here — it is a bug
 # report. Some surfaces the athlete coaches from create their own branch instead of committing to
 # `main`, and when they do, the data is *in git and invisible*: `main` never gets it, the build
 # never sees it, and the dashboard shows a blank panel for a meal that was logged hours ago.

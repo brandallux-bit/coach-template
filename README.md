@@ -45,7 +45,8 @@ data/                  Every number, structured. METHOD.md has the schema.
 logs/                  Daily entries + weekly reviews. The reasoning.
 skills/                Core procedures + library/ of domain-provisioned ones
 .claude/agents/        Universal specialists + library/ of domain-provisioned ones
-library/optional/      Scaffolds copied up only if a domain needs them
+library/optional/      Scaffolds copied up only if a domain needs them — including
+                       workflows/, which holds an automation the template ships OFF
 scripts/               Validation, energy model, dashboard data build
 src/                   The dashboard (Next.js)
 ```

@@ -132,14 +132,29 @@ eq('  an empty name is not a branch', isStrayBranch(''), false)
 {
   // The workflow's `on: push: branches-ignore:` is evaluated by GitHub before any of this code
   // runs, so that list is a third home for the rule and can only be kept honest by reading it.
-  const yaml = readFileSync(join(REPO, '.github/workflows/absorb-branches.yml'), 'utf8')
-  const block = yaml.match(/branches-ignore:\n((?:\s+-\s+.*\n)+)/)?.[1] ?? ''
-  const listed = [...block.matchAll(/-\s+'?([^'\s#]+)'?/g)].map((m) => m[1])
+  //
+  // ⚠ **TWO PLACES, BECAUSE THE ABSORBER IS OPT-IN AND THE COPY THAT MATTERS IS THE INSTALLED
+  // ONE.** The template ships it under `library/optional/workflows/` where GitHub does not run it;
+  // a chart that wants it copies it into `.github/workflows/`. Check the installed copy where one
+  // exists — that is the file GitHub actually evaluates — and the shipped scaffold otherwise, so
+  // the rule is held honest in whichever configuration this repo is in.
+  const INSTALLED = '.github/workflows/absorb-branches.yml'
+  const SHIPPED = 'library/optional/workflows/absorb-branches.yml'
+  const where = [INSTALLED, SHIPPED].find((rel) => existsSync(join(REPO, rel)))
   const want = WORKFLOW_BRANCHES_IGNORE
-  if (listed.length === want.length && want.every((w) => listed.includes(w))) {
-    ok(`  absorb-branches.yml ignores exactly [${want.join(', ')}]`)
+  if (!where) {
+    // Not a skip that proves nothing: a repo with neither copy runs no absorber, so there is no
+    // third home to disagree with the module and nothing for this rule to be about.
+    ok(`  no absorber is installed or shipped here, so [${want.join(', ')}] has only one home`)
   } else {
-    bad('  the workflow filter and scripts/lib/branches.mjs have drifted', `yaml=[${listed}] module=[${want}]`)
+    const yaml = readFileSync(join(REPO, where), 'utf8')
+    const block = yaml.match(/branches-ignore:\n((?:\s+-\s+.*\n)+)/)?.[1] ?? ''
+    const listed = [...block.matchAll(/-\s+'?([^'\s#]+)'?/g)].map((m) => m[1])
+    if (listed.length === want.length && want.every((w) => listed.includes(w))) {
+      ok(`  ${where} ignores exactly [${want.join(', ')}]`)
+    } else {
+      bad(`  ${where}'s filter and scripts/lib/branches.mjs have drifted`, `yaml=[${listed}] module=[${want}]`)
+    }
   }
 
   // Comments stripped, the same way test-prescriptions.mjs does it: a rule about what the CODE

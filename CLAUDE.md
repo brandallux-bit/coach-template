@@ -29,14 +29,18 @@ recommendation, read"):
    report** — something committed data somewhere other than `main`, whether the athlete
    asked for a branch or not.
 
-   > ✅ **This is now automated — `.github/workflows/absorb-branches.yml` merges stray branches
-   > into `main` within seconds of the push, and hourly as a backstop.** Keep doing this check
-   > anyway: the automation deliberately **refuses to merge a conflict**, because resolving one
-   > means combining rows and that is a judgement call it must not make. So a branch still sitting
-   > here means either the automation is broken or it hit a conflict and is waiting for you.
-   > Added after a breakfast logged to a branch at 09:56 was still invisible on the dashboard at
-   > 12:09 — the manual protocol below only runs when a session happens to run, and the athlete
-   > had been reading a wrong dashboard for two hours.
+   > ⚠ **THIS STEP IS THE MECHANISM. Do it every session, whatever else is set up.** It exists
+   > because the manual protocol is the only one guaranteed to be running: a meal logged to an
+   > auto-created branch mid-morning stayed off the dashboard for hours, and nothing said so.
+   >
+   > **An optional automation can shorten that window and is not enabled by default.**
+   > `library/optional/workflows/absorb-branches.yml` merges stray branches into `main` within
+   > seconds of the push, and hourly as a backstop — copy it into `.github/workflows/` to turn it
+   > on, and read its header first, because auto-merging every branch is right for a personal
+   > chart and wrong for any repository people send pull requests to. **Where it IS installed,
+   > keep doing this check anyway:** it deliberately **refuses to merge a conflict**, because
+   > resolving one means combining rows and that is a judgement call it must not make. So a branch
+   > still sitting here means either the automation is off, broken, or waiting on you.
 
    For every branch listed:
    1. Check what it has that `main` doesn't: `git log main..origin/<branch> --oneline`

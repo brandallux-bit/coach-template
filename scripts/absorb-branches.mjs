@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * The CLI `.github/workflows/absorb-branches.yml` calls: absorb every stray branch into `main`.
+ * The CLI `absorb-branches.yml` calls: absorb every stray branch into `main`. That workflow is
+ * OPT-IN and ships at `library/optional/workflows/`; this CLI also runs by hand, which is the
+ * other supported way to use it.
  *
  * The logic is in `scripts/lib/absorb.mjs` — read that file for what it does and why. This one
  * only turns results into a report and an exit code. It operates on `process.cwd()`, so the

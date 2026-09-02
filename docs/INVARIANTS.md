@@ -394,6 +394,15 @@ algorithm), `scripts/lib/branches.mjs` (what "stray" means), `scripts/lib/git.mj
 `scripts/absorb-branches.mjs` and `scripts/git-commit-push.mjs` (the two CLIs the workflows call).
 Fixtured in `scripts/test-git-sync.mjs`, which builds bare repositories and races real pushes.
 
+⚠ **THE WORKFLOW IS OPT-IN AND THE TEMPLATE DOES NOT SHIP IT ENABLED**, so on most repositories
+none of the above runs on a schedule. It sits at `library/optional/workflows/absorb-branches.yml`
+and a chart copies it into `.github/workflows/` to turn it on; the reason is in its header, and it
+is that auto-merging every pushed branch is right for one athlete's chart and wrong for any
+repository people send pull requests to. **Everything in this section describes what the absorber
+does WHEN IT RUNS, not something that is always happening.** What is always happening is the
+dashboard's stray-branch banner (`src/lib/github.ts`), which depends on none of it — see the
+warning there about never making that check conditional on this workflow.
+
 **Checks — ✅ DONE 2026-08-14 (W3):**
 
 1. ✅ **F-04, the delete race.** A captured SHA is merged, not a ref name, and the delete is leased
@@ -463,7 +472,7 @@ this document. **A check that cannot run is prose with extra steps.**
 
    | Workflow | Before | Now |
    |---|---|---|
-   | `absorb-branches` | validate + rowwrite | full suite |
+   | `absorb-branches` *(now opt-in)* | validate + rowwrite | full suite |
    | `daily-rollover` | validate only | full suite |
    | `log-steps` | **nothing**, and no `setup-node` either | full suite, Node pinned |
    | `validate-data` | five inline steps | one call |
