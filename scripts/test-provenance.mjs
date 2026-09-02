@@ -4,7 +4,7 @@
  *
  * WHAT THIS PROTECTS. On 2026-08-13 the chart was found holding three numbers the coach had
  * produced and filed as the athlete's: a 185 lb weight ceiling, a 135/85 BP threshold invented to
- * clear a failing check, and a BMI justification in a chart that bans BMI. His words on the first
+ * clear a failing check, and a BMI justification in a chart that bans BMI. Their words on the first
  * were "I don't know what that is or where it came from... if I get close to it, I will throw this
  * whole system away and call it a failure." Every other number here can be recomputed; a goal
  * cannot, which is why this is the one file whose corruption is unrecoverable.
@@ -42,20 +42,20 @@ const green = () => ({
     date: '2026-01-01',
     weightLb: 180,
     _provenance: {
-      date: { class: 'athlete-stated', asOf: '2026-01-01', measured: 'data/body.csv row 1', source: 'logs/', note: 'His first weigh-in.' },
-      weightLb: { class: 'derived', asOf: '2026-01-01', inputs: 'mean of 5 mornings', source: 'logs/', note: 'Arithmetic on his readings.' },
+      date: { class: 'athlete-stated', asOf: '2026-01-01', measured: 'data/body.csv row 1', source: 'logs/', note: 'Their first weigh-in.' },
+      weightLb: { class: 'derived', asOf: '2026-01-01', inputs: 'mean of 5 mornings', source: 'logs/', note: 'Arithmetic on their readings.' },
     },
   },
   plan: {
     proteinFloorG: 150,
     _provenance: {
-      proteinFloorG: { class: 'coach-proposed-unconfirmed', asOf: '2026-01-01', source: 'nutrition/plan.md', note: 'The coach set it; he has not ruled on it.' },
+      proteinFloorG: { class: 'coach-proposed-unconfirmed', asOf: '2026-01-01', source: 'nutrition/plan.md', note: 'The coach set it; they have not ruled on it.' },
     },
   },
   triggers: {
     weightFloorLb: 170,
     _provenance: {
-      weightFloorLb: { class: 'athlete-confirmed', asOf: '2026-01-05', quote: 'the floor you set', source: 'decisions.md', note: 'He called it his own.' },
+      weightFloorLb: { class: 'athlete-confirmed', asOf: '2026-01-05', quote: 'the floor you set', source: 'decisions.md', note: 'They called it their own.' },
     },
   },
 })
@@ -125,7 +125,7 @@ const chart = (asOf) => ({
     _provenance: {
       stepsPerDayTarget: {
         class: 'coach-proposed-unconfirmed', asOf, source: 'athlete/goals.md',
-        note: 'The coach put it in the process goals at intake; no statement from him is on record.',
+        note: 'The coach put it in the process goals at intake; no statement from them is on record.',
       },
     },
   },
@@ -159,18 +159,18 @@ const confirmed = {
     _provenance: {
       stepsPerDayTarget: {
         class: 'athlete-confirmed', asOf: '2026-01-01', quote: 'nine thousand is right',
-        source: 'decisions.md', note: 'He ruled on it.',
+        source: 'decisions.md', note: 'They ruled on it.',
       },
     },
   },
 }
 const afterRuling = buildFindings({ constants: confirmed, targets: [], body: [], today: '2026-06-01' })
   .filter((f) => f.id.startsWith('provenance-unconfirmed'))
-if (afterRuling.length === 0) ok('  once he rules on it, it stops being asked about')
-else bad('  once he rules on it, it stops being asked about', 'still reported after confirmation')
+if (afterRuling.length === 0) ok('  once they rule on it, it stops being asked about')
+else bad('  once they rule on it, it stops being asked about', 'still reported after confirmation')
 
 // -------------------------------------------------------------------------------------------
-console.log('the contract — this finding reports, names whose call it is, and never instructs him')
+console.log('the contract — this finding reports, names whose call it is, and never instructs them')
 
 // A chart with no markers at all (the template, or a section not yet marked) must produce silence,
 // not a crash and not an invented complaint. The audit is what catches a missing marker; the
@@ -187,7 +187,7 @@ const f = stale[0]
 if (f && /athlete's decision, not the coach's/i.test(f.action)) ok('  the action says whose decision it is')
 else bad('  the action must name the owner of the decision', JSON.stringify(f?.action))
 
-// The failure mode this finding could easily become: the coach reading "he has not ruled on it"
+// The failure mode this finding could easily become: the coach reading "they have not ruled on it"
 // and resolving it by picking a value, which is the 185 lb ceiling being re-created by the very
 // mechanism built to prevent it. Both escape hatches are closed in the text and asserted here.
 if (f && /do not delete it/i.test(f.action)) ok('  the action forbids deleting the value to silence the finding')
@@ -208,7 +208,7 @@ if (f && !/\b(he|him|his|she|her|hers)\b/i.test(`${f.headline} ${f.action}`)) {
 }
 
 if (f && !/should be|set it to|recommend (?:raising|lowering)/i.test(f.action)) {
-  ok('  the action does not tell him what to decide')
+  ok('  the action does not tell them what to decide')
 } else {
   bad('  the finding must not instruct the athlete', JSON.stringify(f?.action))
 }

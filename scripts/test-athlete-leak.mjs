@@ -133,7 +133,7 @@ console.log('\ncode: a literal is a leak, a comment is a record')
   // RED FIXTURE — SCREAMING_SNAKE. `\b` counts `_` as a word character, so `\bWren\b` does NOT
   // match `WREN_WAIST_BASELINE`, and a constant named after the athlete is one of the most
   // ordinary ways a leak reaches shared code. Found by planting exactly this and watching the
-  // check pass: `const BRUCE = 1` failed and `const BRUCE_WAIST = 36.5` came back clean. The
+  // check pass: `const WREN = 1` failed and `const WREN_WAIST = 36.5` came back clean. The
   // matcher anchors on letters, not `\w`, so `_`, digits and punctuation are all separators.
   const snake = leaks({ 'src/lib/z.ts': 'const WREN_WAIST_BASELINE = 36.5\n' })
   eq('a constant named after the athlete fails, underscores and all',
@@ -157,7 +157,7 @@ console.log('\nmarkdown: prose is instruction, so prose counts')
 {
   // RED FIXTURE — F-34: an agent asserting this athlete's domain ranking.
   const red = leaks({
-    '.claude/agents/strength.md': 'Note that strength ranks below Swim faster by his own choice.\n',
+    '.claude/agents/strength.md': 'Note that strength ranks below Swim faster by their own choice.\n',
   })
   eq('an agent naming a chart domain fails', red.failures.map((f) => f.path),
     ['.claude/agents/strength.md'])
@@ -352,7 +352,7 @@ console.log('\nthe banned-term check is the ATHLETE\'s, and it is inert without 
   // The scope is decision-bearing surfaces, not the history of the decision.
   inChart({
     'athlete/profile.md': BAN,
-    'decisions.md': '2026-08-13: BMX is retired at his request.\n',
+    'decisions.md': '2026-08-13: BMX is retired at their request.\n',
     'logs/2026-08-07.md': 'Computed BMX 26.5 before the ban.\n',
     'docs/audit/FINDINGS.md': 'F-43: the BMX ban is violated in the weight-floor note.\n',
   }, (root) => {
@@ -360,7 +360,7 @@ console.log('\nthe banned-term check is the ATHLETE\'s, and it is inert without 
   })
 
   // The surfaces that speak to the athlete are in scope — "never quoted or used by any agent
-  // evaluating my status or progress" are his own words.
+  // evaluating my status or progress" are their own words.
   inChart({
     'athlete/profile.md': BAN,
     '.claude/agents/nutrition.md': 'Check their BMX before setting a target.\n',

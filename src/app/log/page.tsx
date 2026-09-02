@@ -55,7 +55,7 @@ export default async function LogPage({
   // Both are gone. The candidates below are the day's actual sessions, ordered by the shared
   // resolver, plus the block template's session when it is not already among them — that last one
   // matters on a day like 2026-08-14, where the only written rows are "no session" and the rehab
-  // block, and a set he logs anyway belongs under the template's session, not under either of
+  // block, and a set they log anyway belongs under the template's session, not under either of
   // those. Every candidate carries its OWN prescription, so nothing on this page can offer an
   // exercise from one session under the name of another.
   type Candidate = { session: string; rx: Row[] }
@@ -65,9 +65,9 @@ export default async function LogPage({
     candidates.push({ session: name, rx: rxFor(name, now) })
   }
   for (const s of sessions) push(s.session)
-  // The template only fills a gap. When a written row already IS that session — "Session B" on the
-  // template, "Session B — Upper Push/Pull + Core" written — adding it again would put two options
-  // meaning the same session in the picker, and half his sets would file under a different string
+  // The template only fills a gap. When a written row already IS that session — "Session Two" on the
+  // template, "Session Two — Upper Push/Pull + Core" written — adding it again would put two options
+  // meaning the same session in the picker, and half their sets would file under a different string
   // from the other half.
   const tmpl = templated?.session
   if (tmpl && !candidates.some((c) => sessionKey(c.session) === sessionKey(tmpl))) push(tmpl)
@@ -199,7 +199,7 @@ export default async function LogPage({
           <div className="fields">
             <Field name="date" label="Date" type="date" defaultValue={now} required />
             {/* A choice, not a guess. With more than one session on the day there is no answer
-                the page can be sure of, and this is the one surface he can answer on. */}
+                the page can be sure of, and this is the one surface they can answer on. */}
             {candidates.length > 1 ? (
               <SelectField
                 name="session" label="Session"

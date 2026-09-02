@@ -24,9 +24,9 @@ export type DayRoll = {
    * Today's alcohol allowance, from `targets.csv`.
    *
    * **Normally absent, and that is the correct state of this chart, not a gap.** `nutrition/plan.md`
-   * prices alcohol at ~1,200–1,400 kcal/week, but read the sentence: *"priced at his REAL intake,
+   * prices alcohol at ~1,200–1,400 kcal/week, but read the sentence: *"priced at their REAL intake,
    * not a wishful number"*, off `values.md`'s athlete-stated ~7–9 glasses in a typical week. That
-   * is an OBSERVATION of what he drinks, not a budget he agreed to — and a meter needs a
+   * is an OBSERVATION of what they drink, not a budget they agreed to — and a meter needs a
    * denominator that somebody owns. Nothing here invents one (INVARIANTS.md X-16).
    *
    * A coaching session may write a real allowance into a day's row — 2026-08-07 has one, 330
@@ -180,8 +180,8 @@ export type WeekRoll = {
    * and never as one "protein days hit"** (audit F-29).
    *
    * The floor and the aim are two different quantities — 150 g and 165 g — and both are live: the
-   * dashboard graded days on the floor while `goals.md`'s process goal graded him on the aim, so a
-   * 155 g day was simultaneously a hit and a miss and neither surface said which line it meant.
+   * dashboard graded days on the floor while `goals.md`'s process goal graded them on the aim, so a
+   * day between the floor and the aim was simultaneously a hit and a miss and neither surface said which line it meant.
    * The fix is not to pick one. It is to render both, from the two constants that already exist.
    */
   proteinFloorDays: number
@@ -192,7 +192,7 @@ export type WeekRoll = {
    *
    * Rendered with the day count beside it because the two are not separable: a 600 kcal week over
    * two logged days is not a low-drinking week, it is a mostly-unlogged one, and stating the total
-   * alone would read as the first. `nutrition/plan.md` calls this his single largest discretionary
+   * alone would read as the first. `nutrition/plan.md` calls this their single largest discretionary
    * lever and prices a week of it at ~0.35 lb of loss forgone; until W6 the figure it describes was
    * written on every meal row and rendered on no page at all (audit F-38, F-69).
    *
@@ -210,7 +210,7 @@ export type WeekRoll = {
    * Added 2026-08-14 at the athlete's request — *"a weekly target chart, just like the daily, but
    * including alcohol. So each day, I can see where I stand for the day and for the week."*
    * `budget.food` is DERIVED (`total − alcohol`) and exists nowhere else; the pace figures are what
-   * stop a week-to-date total read against a full-week budget from flattering him. See
+   * stop a week-to-date total read against a full-week budget from flattering them. See
    * `scripts/lib/aggregate.mjs`.
    */
   intake: WeekIntake

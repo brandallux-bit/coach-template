@@ -32,7 +32,7 @@ const REHAB = {
 
 **Nothing that puts valgus or rotational torque through the knee, at any phase, until Phase 3
 says so.** That means: no planted-foot pivots, no cutting, no lateral lunges, no cossack squats,
-no knee-caving-inward on any squat, and **no butterfly hooks in BJJ**.
+no knee-caving-inward on any squat, and **no butterfly hooks in Court**.
 
 ## Phase 1 — Settle (now)
 
@@ -46,7 +46,7 @@ no knee-caving-inward on any squat, and **no butterfly hooks in BJJ**.
 
 Step-ups and stairs as *exercise*, split squats, lunges, goblet squats, band TKE, **Peloton of any
 kind — including the seated easy spin, re-excluded 2026-08-13 after the test ride failed at ~1
-min**, hilly walking, BJJ. Also excluded, because they read as knee-free and are not: **burpees**,
+min**, hilly walking, Court. Also excluded, because they read as knee-free and are not: **burpees**,
 jump squats, jumping jacks, jump rope, high knees, mountain climbers.
 
 > **Explicitly NOT on the list, and why:** burpees, jump squats, jumping jacks, jump rope, high
@@ -60,7 +60,7 @@ jump squats, jumping jacks, jump rope, high knees, mountain climbers.
 |---|---|---|
 | Straight-line step-ups, **low box** | 3 × 8–10/leg | Bodyweight |
 
-**Still not in Phase 2:** pivoting, cutting, lateral movement, butterfly hooks, BJJ, standing
+**Still not in Phase 2:** pivoting, cutting, lateral movement, butterfly hooks, Court, standing
 climbs, hilly descents.
 
 ## Phase 3 — Robust
@@ -77,7 +77,7 @@ console.log('1 · what the block says is out')
 // =================================================================================================
 
 yes('the "Not in Phase 1" list is read out of the paragraph under its heading',
-  ['step up', 'split squat', 'lunge', 'goblet squat', 'band tke', 'peloton', 'hilly walking', 'bjj']
+  ['step up', 'split squat', 'lunge', 'goblet squat', 'band tke', 'peloton', 'hilly walking', 'court']
     .every(has),
   suspensions.map((s) => s.key).join(' · '))
 
@@ -85,7 +85,7 @@ yes('...including the second clause after its embedded colon',
   ['burpee', 'jump squat', 'jumping jack', 'jump rope', 'high knee', 'mountain climber'].every(has),
   'an exclusion sentence with two clauses lost its second half when the fragment splitter '
   + 'stopped at "and are not:" — burpees, the single most tempting knee-free-LOOKING option in '
-  + 'his garage, went missing while the check still reported 13 healthy-looking problems')
+  + 'their garage, went missing while the check still reported 13 healthy-looking problems')
 
 yes('a bulleted subject-verb exclusion is read: "The bike is out of Phase 1 entirely"', has('bike'),
   suspensions.map((s) => s.key).join(' · '))
@@ -115,7 +115,7 @@ console.log('\n2 · RED FIXTURE — the seated bike, still on Tue and Sat (2026-
 
 {
   const bikeTemplate = {
-    Mon: { type: 'strength', session: 'Session B', focus: 'Upper push', durationMin: 35 },
+    Mon: { type: 'lift', session: 'Session Two', focus: 'Upper push', durationMin: 35 },
     Tue: { type: 'peloton', session: 'Seated Peloton', focus: 'Easy spin', durationMin: 45, met: 6.8 },
     Sat: { type: 'peloton', session: 'Seated Peloton', focus: 'Easy spin', durationMin: 45, met: 6.8 },
   }
@@ -147,8 +147,8 @@ console.log('\n2 · RED FIXTURE — the seated bike, still on Tue and Sat (2026-
 // =================================================================================================
 console.log('\n3 · RED FIXTURE — the library pre-authorising step-ups and split squats (F-19)')
 // "A substitution keeps the pattern and the rep range… and does not need approval", over a table
-// whose Lunge row offers a step-up and a split squat. He is authorised in writing to substitute
-// into contraindicated work at the moment he is least likely to open a second file.
+// whose Lunge row offers a step-up and a split squat. They are authorised in writing to substitute
+// into contraindicated work at the moment they are least likely to open a second file.
 // =================================================================================================
 
 {
@@ -194,7 +194,7 @@ console.log('\n3 · RED FIXTURE — the library pre-authorising step-ups and spl
   // ⚠ THE BUG THIS ASSERTION EXISTS FOR. The first version treated `## Contraindicated for this
   // athlete` as a heading scoping a LIST, so every `Sub:` under it — plank, bird dog, incline
   // walk, hip thrust, leg press — was filed as SUSPENDED. 116 collisions, most of them the
-  // opposite of the truth, and a banner telling the athlete his rehab core work was forbidden.
+  // opposite of the truth, and a banner telling the athlete their rehab core work was forbidden.
   const suspended = extractSuspensions([REHAB, library]).map((s) => s.key)
   yes('a substitute is never read as a suspension',
     !suspended.includes('leg press') && !suspended.includes('ruck')
@@ -231,19 +231,19 @@ console.log('\n3 · RED FIXTURE — the library pre-authorising step-ups and spl
 }
 
 // =================================================================================================
-console.log('\n4 · RED FIXTURE — a live prescription row (the goblet squat under `Session A`)')
-// Effective dating means a session resolves to its newest dated rows. `Session A`'s 2026-08-06
-// rows still prescribe a goblet squat and left-knee step-ups; they are harmless ONLY because the
-// template stopped naming `Session A`. The moment anything schedules it again, they are live.
+console.log('\n4 · RED FIXTURE — a live prescription row (the goblet squat under `Session One`)')
+// Effective dating means a session resolves to its newest dated rows. An older session's rows go on
+// prescribing exactly what they named; they are harmless ONLY while nothing schedules that session.
+// The moment the weekly template names it again, they are live — and a suspension has to see them.
 // =================================================================================================
 
 {
   const prescriptions = [
-    { date: '2026-08-06', session: 'Session A', order: '2', exercise: 'Goblet squat', load: 'KB', note: '' },
-    { date: '2026-08-06', session: 'Session A', order: '5', exercise: 'Left-knee rehab: step-ups + band TKE + shallow wall-sit', load: 'BW', note: '' },
+    { date: '2026-08-06', session: 'Session One', order: '2', exercise: 'Goblet squat', load: 'KB', note: '' },
+    { date: '2026-08-06', session: 'Session One', order: '5', exercise: 'Left-knee rehab: step-ups + band TKE + shallow wall-sit', load: 'BW', note: '' },
     {
       date: '2026-08-14',
-      session: 'Session A (knee-free)',
+      session: 'Session One (modified)',
       order: '3',
       exercise: 'KB RDL',
       load: '35 lb',
@@ -252,14 +252,14 @@ console.log('\n4 · RED FIXTURE — a live prescription row (the goblet squat un
   ]
 
   const scheduled = suspensionCollisions({
-    planDocs: [REHAB], prescriptions, sessions: ['Session A'], today: '2026-08-14',
+    planDocs: [REHAB], prescriptions, sessions: ['Session One'], today: '2026-08-14',
   })
   yes('a scheduled session whose live rows name a suspended movement is caught',
     scheduled.collisions.filter((c) => c.surface === 'prescriptions.csv').length >= 2,
     JSON.stringify(scheduled.collisions.map((c) => c.text)))
 
   const current = suspensionCollisions({
-    planDocs: [REHAB], prescriptions, sessions: ['Session A (knee-free)'], today: '2026-08-14',
+    planDocs: [REHAB], prescriptions, sessions: ['Session One (modified)'], today: '2026-08-14',
   })
   yes('a session the block no longer schedules is not live, however recent its rows',
     current.collisions.length === 0, JSON.stringify(current.collisions.map((c) => c.text)))
@@ -269,7 +269,7 @@ console.log('\n4 · RED FIXTURE — a live prescription row (the goblet squat un
     + 'correction as the defect it corrected.')
 
   const undated = suspensionCollisions({
-    planDocs: [REHAB], prescriptions, sessions: ['Session A'], today: '2026-08-05',
+    planDocs: [REHAB], prescriptions, sessions: ['Session One'], today: '2026-08-05',
   })
   yes('a prescription dated after today is not in force yet', undated.collisions.length === 0,
     JSON.stringify(undated.collisions.map((c) => c.text)))
@@ -324,7 +324,7 @@ Push-ups 3×AMRAP−2 · Rows or pull-ups 3× · Suitcase carry 2× · low-back 
 
 // =================================================================================================
 console.log('\n7 · the banner shown to the athlete stays legible')
-// SURFACES.md: a list he learns to skip is how the one line that matters gets missed.
+// SURFACES.md: a list they learn to skip is how the one line that matters gets missed.
 // =================================================================================================
 
 {
@@ -339,7 +339,7 @@ Phase 2 opens on *no soreness at rest, walking pain-free*; the test is *no impro
 
 ### Not in Phase 1
 
-Peloton of any kind, BJJ.
+Peloton of any kind, Court.
 `,
   }
   const all = extractSuspensions([gates])

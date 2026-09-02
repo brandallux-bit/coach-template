@@ -36,7 +36,7 @@ export const specFor = (file) => {
  * **This used to read `if (file !== 'training.csv') reject`** — a list of one masquerading as a
  * principle, and it cost the athlete a real thing: `targets.csv` is prescribed by exactly the same
  * argument, so a trip's targets could not be written before the trip and the only remedy was a
- * coaching session every morning of it, during his #1 documented streak-ender (audit F-23). The
+ * coaching session every morning of it, during their #1 documented streak-ender (audit F-23). The
  * rule now reads `records` off `SPEC`, so the next prescribed file gets this right by declaring
  * what it is rather than by someone remembering to widen a condition here.
  *
@@ -75,7 +75,7 @@ export function futureRowRejection(file, row) {
  * The tier an unassigned remainder of a session's duration is counted as.
  *
  * `light` and not a flat MET over the whole duration: the athlete described the hard part, so the
- * rest was, by his own account, not the hard part. Under-counting the remainder is the direction
+ * rest was, by their own account, not the hard part. Under-counting the remainder is the direction
  * that keeps burn a floor, which is the convention the whole model already runs on.
  */
 export const REMAINDER_TIER = 'light_min'

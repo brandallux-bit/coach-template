@@ -4,7 +4,7 @@
  * WHY THIS EXISTS. On 2026-08-13 the chart was found to contain three numbers the coach had
  * produced and filed in the athlete's own goals: a 185 lb weight ceiling, a 135/85 blood-pressure
  * threshold invented to make a failing check go green, and a BMI justification in a chart whose
- * profile.md bans BMI outright. His response to the first:
+ * profile.md bans BMI outright. Their response to the first:
  *
  *   > "I don't know what that is or where it came from. I never provided that weight and if I get
  *   > close to it, I will throw this whole system away and call it a failure."
@@ -34,7 +34,7 @@ export const PROVENANCE_CLASSES = [
 
 /**
  * The sections of constants.json required to carry markers: the anchor everything is measured
- * against, the targets he is asked to hit, and the thresholds that reorder his goals.
+ * against, the targets they are asked to hit, and the thresholds that reorder their goals.
  *
  * `program`, `events`, `metrics` and `athlete` are deliberately NOT here yet — they are catalogued
  * in docs/audit/PROVENANCE-2026-08-13.md, and a check that demands markers nobody has written is

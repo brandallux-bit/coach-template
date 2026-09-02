@@ -660,7 +660,7 @@ in `athlete/` and is rendered from there.
 
 **Why it needed naming.** `constants.json`'s own header already said *"Nothing in `scripts/` or
 `src/` may hardcode a value about the athlete"* — and the audit confirmed that held for **numbers**
-and failed completely for **prose and enums**. A new athlete got a `primary`-badged "Waist at navel"
+and failed completely for **prose and enums**. A new athlete got a `primary`-badged measurement label
 tile, a card explaining a measurement taken under conditions that made it incomparable, a Today
 tab naming which of the *previous* athlete's days were fixed, and **six CI failures on day one**
 because all three suites asserted on one chart's live rows.
@@ -925,8 +925,8 @@ it describes before the fix landed. Item 5 ships as a **finding, not an assertio
    or a marker, and none of those belongs to the check; a check that cannot go green without
    someone inventing a number is the one that produced the 135/85 threshold. It finds **six of the
    seven markers unreadable** against the live block, including the suitcase carry still prescribed
-   at 30-40 s/side in `Session A (knee-free)` against a marker that fires below 49 s — the same row
-   corrected in `Session B` on 08-13 and missed in the session written beside it the same day.
+   at 30-40 s/side in `Session One (modified)` against a marker that fires below 49 s — the same row
+   corrected in one session and missed in the session written beside it the same day.
    *Closes F-01, F-37.*
 6. ✅ **Most-recent-on-or-before, not exact-match** — `latestOnOrBefore` in `src/lib/data.ts`, and
    the Today tab stamps a note that is not today's with its own date. An older note rendered

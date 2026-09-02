@@ -91,7 +91,7 @@ export function Tile({
 /**
  * A target meter. `floor` places the plan's own line on the track, so "how far along" and
  * "where the plan wanted me" are readable in one glance without a second axis. `pace` is the same
- * device for a figure that moves during the period — where the plan says he should be *by now*.
+ * device for a figure that moves during the period — where the plan says they should be *by now*.
  *
  * **The figures render twice, in kcal and in %, and CSS shows one.** The athlete asked for a
  * toggle: *"So I can see how many calories I've consumed in each category vs the weekly target or
@@ -110,7 +110,7 @@ export function Meter({
   note?: React.ReactNode
   floor?: number
   /**
-   * Where the plan says he should be at this point in the period, and what that figure is.
+   * Where the plan says they should be at this point in the period, and what that figure is.
    * Rendered as a line on the track plus a hover label. Absent means the plan has no per-period
    * figure — which is the correct state for alcohol, whose budget is weekly on purpose.
    */

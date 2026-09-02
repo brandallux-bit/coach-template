@@ -23,7 +23,7 @@ on:
     # Deliberately midday, not dawn. The Shortcut sends *yesterday's* completed total when the
     # athlete first picks up the phone, so yesterday's row does not exist until they do.
     # A 07:00 check would fire before that write and fail every morning on a day that was
-    # about to be fine — and a safety net that false-alarms daily is one he learns to ignore.
+    # about to be fine — and a safety net that false-alarms daily is one they learn to ignore.
     # Midday clears any plausible wake time in both offsets.
     - cron: '0 20 * * *'
   workflow_dispatch:

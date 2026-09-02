@@ -7,8 +7,8 @@
  * hours — the note beside the data said "Peloton is suspended" and the data is what renders. That
  * is the instance. The class is bigger and worse: `program/exercise-library.md` pre-authorises
  * substitutions into **step-ups and split squats** under a standing rule reading *"does not need
- * approval"*, and both patterns are on the rehab block's "Not in Phase 1" list. He is authorised
- * in writing to substitute into contraindicated work **at the moment he is least likely to open a
+ * approval"*, and both patterns are on the rehab block's "Not in Phase 1" list. They are authorised
+ * in writing to substitute into contraindicated work **at the moment they are least likely to open a
  * second file** (audit F-19, F-25, F-33, F-44).
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@
  *                         reading it would flag every session that explains what it replaced.
  *   `prescriptions.csv`   the `exercise` field of a LIVE row only — never `note`, for the same
  *                         reason ("replaces the goblet squat as the day's main driver").
- *   prose OFFERS          a movement a document *hands him to do*: a substitution table, a
+ *   prose OFFERS          a movement a document *hands them to do*: a substitution table, a
  *                         fallback/travel/minimum-viable session, or a `Sub:` clause. Not every
  *                         movement named in `program/` — a rehab file legitimately lists Phase 3's
  *                         split squats while Phase 1 forbids them, and flagging that would make
@@ -73,7 +73,7 @@
  * An offer carrying `⛔` is acknowledged: the document itself says this one is suspended, so it is
  * no longer a pre-approved substitution. The marker is in the athlete's own file rather than in an
  * allowlist inside this script for two reasons — X-11 (no athlete content in `scripts/`), and
- * because the person who needs to know is **him, in the file he opens at the moment of
+ * because the person who needs to know is **them, in the file they open at the moment of
  * substituting**, which is precisely where F-19 says the failure happens.
  *
  * A `⛔` that no longer collides is itself a failure. A stale exemption reads as coverage
@@ -385,12 +385,12 @@ export function extractSuspensions(docs) {
  * at rest, no improvement across ~2 weeks"* are the same construction: one is an exclusion, the
  * other is a gate criterion, and nothing in the sentence distinguishes them. Keeping both is right
  * for the check — the cost of an extra term nothing prescribes is zero — and wrong for a banner in
- * the athlete's own file, where `SURFACES.md` says a list he learns to skip is how the one line
+ * the athlete's own file, where `SURFACES.md` says a list they learn to skip is how the one line
  * that matters gets missed.
  *
  * So the banner shows a term that either **came from a list of exclusions** (a heading, a
  * `**Still not in Phase 2:**` lead, a `X — avoid` bullet) or **actually collides with something
- * the chart prescribes**. An enumeration-only term that collides is by definition worth his
+ * the chart prescribes**. An enumeration-only term that collides is by definition worth their
  * attention; one that collides with nothing is a sentence the parser did not fully understand, and
  * it stays in the check where it costs nothing and out of the file where it costs legibility.
  */
@@ -400,7 +400,7 @@ export function reportableSuspensions(suspensions, colliding = new Set()) {
 }
 
 // -------------------------------------------------------------------------------------------
-// Offer grammar — what a document hands him to DO
+// Offer grammar — what a document hands them to DO
 // -------------------------------------------------------------------------------------------
 
 /**
@@ -498,9 +498,9 @@ export function extractOffers(docs) {
 /**
  * "Live" = the newest set of rows, on or before today, for a session something can still land on.
  *
- * Effective dating means a session's prescription is its newest dated set, so `Session A`'s
+ * Effective dating means a session's prescription is its newest dated set, so `Session One`'s
  * 2026-08-06 goblet squat is still that session's live prescription — but nothing schedules
- * `Session A` any more, `weeklyTemplate` schedules `Session A (knee-free)`. Reserved session
+ * `Session One` any more, `weeklyTemplate` schedules `Session One (modified)`. Reserved session
  * names (`Daily`, `Supplements`) are scheduled by definition: they run every day whatever the
  * template says, which is exactly why the rehab block lives there.
  */

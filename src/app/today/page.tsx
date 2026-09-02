@@ -50,7 +50,7 @@ export default function TodayPage() {
   // Every note on or before today, not just the newest — each is its own dismissible box
   // (`CoachNotes`) rather than one note that a newer one silently buries. Its own date is stamped
   // whenever it is not today's, so a note about Friday's dinner cannot read as advice about today.
-  // The week he is standing in, Monday-anchored, truncated at today — so `days.length` is days
+  // The week they are standing in, Monday-anchored, truncated at today — so `days.length` is days
   // ELAPSED, never seven. See src/lib/rollup.ts and scripts/lib/aggregate.mjs `weekIntake`.
   const wk = rollWeek(weekStart(now), now)
   const wi = wk.intake
@@ -92,14 +92,14 @@ export default function TodayPage() {
   // one session while the table rendered a different, brand-new one.
   // Reported by the athlete against the live dashboard. Scoping the lookup to the session name
   // fixes every case, and the resolver now lives in one place for all three surfaces —
-  // `rxFor` also bridges training.csv's descriptive session names ("Session B — Upper Push/Pull")
-  // to the shorter ones prescriptions.csv uses ("Session B"). Test: scripts/test-prescriptions.mjs.
+  // `rxFor` also bridges training.csv's descriptive session names ("Session Two — Upper Push/Pull")
+  // to the shorter ones prescriptions.csv uses ("Session Two"). Test: scripts/test-prescriptions.mjs.
   const rx = sessionName && sessionName !== DAILY ? rxFor(sessionName, now) : []
   const daily = effectiveRx(DAILY, now)
   const stack = effectiveRx(SUPPLEMENTS, now)
 
   // Sets are matched on the date AND the session. Matching on the date alone meant a morning
-  // session's work rendered an evening session's exercises as "done", and he would skip them —
+  // session's work rendered an evening session's exercises as "done", and they would skip them —
   // the same one-dimensional lookup as the prescription bug above, one file over. The unscoped
   // list stays available below, because hiding logged work is its own defect.
   const dayNames = d.sessions.map((s) => s.session)
@@ -237,7 +237,7 @@ export default function TodayPage() {
         {/* ⚠ NO "full day projects to X" HERE ANY MORE, and no `elapsed >= 1` branch either.
             Both were audit F-55. The figure was `burn_total_kcal` — whole-day RMR and NEAT plus
             activity accrued SO FAR — so at 17:18 it read "full day projects to 1,851" on a chart
-            whose finished days run 2,574–3,038. He subtracts intake from that and believes his
+            whose finished days vary by hundreds of kcal. They subtract intake from that and believes their
             deficit will be ~1,150 when it will be ~1,700. It was labelled a projection and was
             not one; nothing here projects the rest of the day, so nothing here says it does.
             The alternative branch could never fire: fractionOfDayElapsed() maxes at 0.99931, so
@@ -274,7 +274,7 @@ export default function TodayPage() {
         ) : null}
       </div>
 
-      {/* "Today's Meals", not "Meals" — his words: the card below it is the weekly one, so the
+      {/* "Today's Meals", not "Meals" — their words: the card below it is the weekly one, so the
           daily card has to say which scale it is. Nothing keys off the heading; `Card` renders
           `title` as an <h2> and no test, style rule or smoke assertion selects on it. History's
           own <h4>Meals</h4> is a different card on a different surface and is untouched. */}
@@ -334,9 +334,8 @@ export default function TodayPage() {
         the week."
 
         ⚠ **THE DENOMINATOR IS THE FULL WEEK AND THE PACE LINE IS WHAT KEEPS THAT HONEST.** A
-        week-to-date total against a full-week budget flatters him, and on a Tuesday it flatters him
-        enormously — 4,000 against 12,950 reads as 31% used and looks like enormous headroom when he
-        is roughly on pace. The budget stays the denominator because that is the number he asked to
+        week-to-date total against a full-week budget flatters them, and on a Tuesday it flatters them
+        enormously — 4,000 against 12,950 reads as 31% used and looks like enormous headroom when they are roughly on pace. The budget stays the denominator because that is the number they asked to
         see; the marker on the Food and Total tracks is the plan's OWN arithmetic over the days that
         have happened (Σ targets.csv kcal), never the budget divided by seven. See
         scripts/lib/aggregate.mjs `weekIntake` for why prorating was rejected.
@@ -588,7 +587,7 @@ export default function TodayPage() {
       >
         {/* The flex sentence is the CHART's, from `athlete/constants.json`'s `copy`: which days
             are fixed and which move is a fact about one athlete's block, and it was rendered here
-            as a literal naming his sport (INVARIANTS.md X-11, audit F-31). A chart that wrote none
+            as a literal naming their sport (INVARIANTS.md X-11, audit F-31). A chart that wrote none
             gets the first sentence and nothing more. */}
         {!sessions.length && templated && (
           <p className="footnote">
@@ -869,7 +868,7 @@ export default function TodayPage() {
       {stack.length > 0 && (
         <Card
           title="Daily stack"
-          caption="Recorded from his own account and read off the labels — this is what he already
+          caption="Recorded from their own account and read off the labels — this is what they already
             takes, not something prescribed here. One row is a medication, not a supplement, and its
             dose is not daily; the doses column says so. Full reasoning, evidence tiers and the
             items that were stopped: nutrition/supplements.md."

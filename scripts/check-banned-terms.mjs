@@ -44,7 +44,7 @@ if (failures.length) {
     `\n${DECLARING_FILE} records this as a standing instruction from the athlete. Each line above `
     + 'either uses the term or cites it as justification.\n\n'
     + '⚠ If one of them justifies a LIVE THRESHOLD, the fix is not to rewrite the justification. '
-    + 'Report it and take it to the athlete — the number is his and re-justifying it to clear a '
+    + 'Report it and take it to the athlete — the number is their and re-justifying it to clear a '
     + 'check is how a coach comes to invent one (INVARIANTS.md X-12).')
 }
 

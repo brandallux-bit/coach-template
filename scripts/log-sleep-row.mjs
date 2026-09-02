@@ -35,7 +35,7 @@
  * that is only complete once the day ends — a same-day count is a partial masquerading as a whole
  * (see that script's header). A night's sleep does not have that shape: it completes when the
  * athlete wakes, which is almost always well before the day is half over, and the athlete's own
- * manual entries already attribute a night's sleep to the date he woke up on. So `SLEEP_DATE`
+ * manual entries already attribute a night's sleep to the date they woke up on. So `SLEEP_DATE`
  * should ordinarily equal `localToday()` at the moment the Shortcut runs — that is the expected
  * case, not a bug to guard against. `validateRow` (scripts/lib/rowwrite.mjs) still rejects a
  * *future*-dated row, same as every other measurement in this chart (data/METHOD.md rule 6); it is

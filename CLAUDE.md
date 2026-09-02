@@ -129,6 +129,31 @@ configurations are equally normal.
 optional convenience; a chart without one is complete. Suggesting otherwise is the system's
 convenience dressed as the athlete's problem.
 
+**A metric with no feed only exists when they report it — so check, then ask.** Read this rule
+off `athlete/constants.json` → `metrics`, never off a list of metric names in your head.
+
+Every registered metric declares `feed` (`manual` or `automated`) and `cadence` (`daily`,
+`episodic` or `lab`). The rule follows from the pair:
+
+- **`manual` + `daily`** — nothing writes it unless they say it, and a gap in it is a real gap.
+  **Whenever they give you morning numbers or any daily check-in, before anything else, check
+  `data/metrics.csv` for yesterday's date** (the prior `localToday()`, not the session clock —
+  §0.3) **under every metric of this kind. If one is missing, ask for it in that same response.**
+  It counts against the three-question cap in §3. It does not fire on a day already logged, or on
+  today before today is over — only the completed prior day is fair game.
+- **`manual` + `episodic`** — it exists when it happens. A gap is not a gap, and asking for one
+  is asking them to invent a reading. Never chase it.
+- **`manual` + `lab`** — somebody else produces it on their own schedule. Chasing it is chasing
+  the athlete for something they do not control.
+- **`automated`** — a device or a workflow writes it, and asking for it is asking for a number the
+  chart already has. A missing day is the feed's problem, not theirs: it belongs in the
+  workflow-health findings, not in a question. Read, don't ask.
+
+⚠ **This section names no metric on purpose, and that is the fix rather than an omission.** It
+used to name two, which meant every chart forked from this one carried a rule about somebody
+else's body — and a chart tracking something different got no rule at all until someone edited
+the charter. The registry says which metrics this applies to; this says what to do about them.
+
 **Never recommend a session without reading the last three days first — the template is a
 proposal, not the answer.** This applies **where this chart has a training domain and
 `session-recommendation` has been promoted into `skills/`**; where it has not, there is no step

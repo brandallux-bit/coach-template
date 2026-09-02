@@ -2,10 +2,10 @@
  * What counts as a STRAY branch — the single definition, shared by everything that has an opinion.
  *
  * WHY THIS FILE EXISTS. There were two definitions and they disagreed. `absorb-branches.yml`
- * deliberately exempts `keep/**` (the athlete's escape hatch for a branch he wants left alone);
+ * deliberately exempts `keep/**` (the athlete's escape hatch for a branch they want left alone);
  * `src/lib/github.ts` filtered only `name !== 'main'`. So a single `keep/` branch produced a
  * permanent "This chart is incomplete" banner on the dashboard that nothing could ever clear —
- * training him to scroll past the one alarm that must never be ignored (audit F-45).
+ * training them to scroll past the one alarm that must never be ignored (audit F-45).
  *
  * That is INVARIANTS.md X-8 with a branch name instead of a number: one rule, two homes, guaranteed
  * drift. The rule now lives here, in plain ESM, so the node side (`scripts/absorb-branches.mjs`)

@@ -4,16 +4,17 @@
  * WHAT THIS PROTECTS. `constants.json`'s own header has said *"Nothing in `scripts/` or `src/` may
  * hardcode a value about the athlete"* since intake, and the 2026-08-13 audit confirmed that holds
  * for **numbers** and fails completely for **prose and enums**. A second athlete forking this
- * template got a `primary`-badged "Waist at navel" tile, a card explaining a 36.5″ figure taken
- * mid-day off prednisone, a Today tab telling them *"only the BJJ days are fixed"*, and a
- * `training.csv` type enum that was one man's activity list (audit F-31, F-34, F-15).
+ * template got a `primary`-badged tile for a measurement they had never taken, a card explaining a
+ * baseline figure recorded under someone else's medication, a Today tab naming a sport they do not
+ * do, and a `training.csv` type enum that was one prior athlete's activity list (audit F-31, F-34,
+ * F-15).
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────
  * THE SEAM: how "what is about THIS athlete" is derived without hardcoding this athlete
  * ─────────────────────────────────────────────────────────────────────────────────────────────
  *
- * A denylist naming Bruce, BJJ and prednisone, written into `scripts/`, would be the very defect
- * it checks for. So nothing here names anything. Four rules, and the reasoning matters more than
+ * A denylist naming the prior athlete, their sport and their medication, written into `scripts/`,
+ * would be the very defect it checks for. So nothing here names anything. Four rules, and the reasoning matters more than
  * the regexes:
  *
  * 1 · **The denylist is DERIVED from fields the chart already maintains for other reasons.** The
@@ -215,8 +216,8 @@ export function denylistFrom(root) {
    * A whole label or sentence, matched as a phrase.
    *
    * Phrases are how the chart's own PROSE is checked without harvesting its vocabulary: the leak is
-   * `"Morning, fasted, at navel. The 36.5″ intake figure is deliberately excluded…"` appearing as a
-   * literal in a shared component, not the word "figure" appearing in a sentence.
+   * a whole caption a coach wrote about one athlete's measurement protocol appearing as a literal
+   * in a shared component, not the word "figure" appearing in a sentence.
    */
   const addPhrase = (raw, from) => {
     const norm = String(raw ?? '').replace(/\s+/g, ' ').trim()
@@ -444,9 +445,9 @@ export function termMatchers(denylist) {
     // after `.` demands a following word character and a caption ends the string. Both were found
     // by watching the fixtures fail rather than by reading the regex.
     // ⚠ LETTER BOUNDARIES, NOT `\b`, FOR THE WORD CASE. `\b` treats `_` as a word character, so
-    // `\bBruce\b` does not match `BRUCE_WAIST_BASELINE` — and SCREAMING_SNAKE is exactly how an
-    // athlete's name or figure arrives in shared code. Verified: `const BRUCE = 1` was caught and
-    // `const BRUCE_WAIST = 36.5` passed clean. Anchoring on letters instead makes `_`, digits and
+    // `\bWren\b` does not match `WREN_WAIST_BASELINE` — and SCREAMING_SNAKE is exactly how an
+    // athlete's name or figure arrives in shared code. Verified against a fixture name: `const
+    // WREN = 1` was caught and `const WREN_WAIST = 36.5` passed clean. Anchoring on letters instead makes `_`, digits and
     // punctuation all separators, which is what "a word on its own" means here.
     re: d.kind === 'phrase'
       ? new RegExp(bound(esc(d.term).replace(/\\?\s+/g, '\\s+'), d.term), 'i')

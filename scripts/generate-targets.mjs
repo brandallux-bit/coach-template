@@ -19,7 +19,7 @@
  * entitled to an opinion about it.
  *
  * ⚠ **`alcohol_kcal` IS LEFT BLANK ON EVERY ROW THIS WRITES, AND THE 2026-08-14 WEEKLY BUDGET DOES
- * NOT CHANGE THAT** — the budget is weekly *because his drinking is uneven on purpose*, so a
+ * NOT CHANGE THAT** — the budget is weekly *because their drinking is uneven on purpose*, so a
  * seventh of it is a target nobody set. See the comment on the field below.
  *
  * Usage:
@@ -92,13 +92,13 @@ function writeDay(date) {
     fibre_g: plan.fibreTargetG ?? '',
     // ⚠ BLANK ON PURPOSE, AND IT STAYS BLANK NOW THAT A WEEKLY BUDGET EXISTS.
     //
-    // ⚠ **UPDATED 2026-08-14: `plan.weeklyAlcoholKcalBudget` is now on file — 1,400 kcal/week, his
+    // ⚠ **WHERE `plan.weeklyAlcoholKcalBudget` IS ON FILE it is the athlete's
     // number, athlete-confirmed. THIS FIELD IS STILL BLANK, and that is the whole design.** The
     // budget is weekly *because the unevenness is deliberate*: nutrition/plan.md schedules the big
     // wine night at the weekend and away from the BJJ evenings, so 1,400 / 7 = 200 kcal/day is a
     // figure nobody set and one that would mark an ordinary glass as an overage and the planned
     // Saturday bottle as a blow-out. Empty means "no allowance for this day"; a number here would be
-    // a target he is measured against, which is X-16's defect wearing arithmetic.
+    // a target they are measured against, which is X-16's defect wearing arithmetic.
     //
     // A coaching session may still write a real allowance into a day's row — 2026-08-07 has one — and
     // Today's daily meter renders it where it exists. Where it does not, the daily row shows what was

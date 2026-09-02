@@ -385,7 +385,7 @@ console.log('\n2b · the weekly budget — food is derived, and a partial week n
       && Math.round(prorated) - w.planToDateKcal > 500,
     'if these agree the fixture has stopped being an uneven week and the check proves nothing')
 
-  // Every glass is a calorie he does not eat: the food line moves down as alcohol goes up.
+  // Every glass is a calorie they do not eat: the food line moves down as alcohol goes up.
   is('the food pace is the plan through today less what was actually drunk', w.foodPaceKcal, 8095)
   const drier = weekIntake(monToFri.map((d) => ({ ...d, alcoholKcal: null })), B)
   yes('...so a week with no drinks logged has a HIGHER food pace, by exactly the alcohol',
@@ -406,7 +406,7 @@ console.log('\n2b · the weekly budget — food is derived, and a partial week n
   const flattering = sumOrNull(withGap.map((d) => d.targetKcal))
   const honest = g.totalKcal - g.planToDateKcal
   const flattered = g.totalKcal - flattering
-  yes(`over the logged days he is ${Math.round(honest)} over; over all elapsed days he would `
+  yes(`over the logged days they are ${Math.round(honest)} over; over all elapsed days they would `
     + `read ${Math.round(Math.abs(flattered))} ${flattered < 0 ? 'UNDER' : 'over'}`,
     honest > 0 && flattered < 0,
     'the fixture must produce opposite signs, or it does not demonstrate the defect')
@@ -469,7 +469,7 @@ console.log('\n2b · the weekly budget — food is derived, and a partial week n
     const rule = PACED[f]
     if (!rule) {
       bad(`${f} renders a weekly budget figure and is not in the pace registry`,
-        'a week-to-date total against a full-week budget reads as headroom he does not have — '
+        'a week-to-date total against a full-week budget reads as headroom they do not have — '
         + 'render planToDateKcal and inProgressCounted, or register the file with what it renders '
         + 'instead')
       continue
@@ -569,7 +569,7 @@ console.log('\n4 · accumulating metrics exclude the day in progress (F-59)')
     meanOfAccumulating([{ steps: 200, inProgress: true }], (d) => d.steps), null)
 
   // The live shape of the defect: History read Avg steps 5,667 against a 9,000 target for a week
-  // whose completed days averaged 7,551 — he would read himself as 3,300/day behind.
+  // whose completed days averaged 7,551 — they would read himself as 3,300/day behind.
   const real = [{ steps: 9989, inProgress: false }, { steps: 6394, inProgress: false },
     { steps: 6270, inProgress: false }, { steps: 16, inProgress: true }]
   const wrong = meanOrNull(real.map((d) => d.steps))
@@ -887,7 +887,7 @@ console.log('\n9 · a step count dated today is a partial, not a total (F-06)')
   }).filter((f) => f.id === 'steps-implausible')
   is('two suspect days produce ONE finding, not two', one.length, 1)
   yes('...naming both dates', /2026-08-12 = 29.*2026-08-13 = 466/.test(one[0].headline), one[0].headline)
-  is('...for the coach, never the athlete — only he knows which it was', one[0].audience, 'coach')
+  is('...for the coach, never the athlete — only they know which it was', one[0].audience, 'coach')
   is('...and it can never fail a build', one[0].severity, 'attention')
 
   const findings = src('scripts/lib/findings.mjs')
@@ -896,7 +896,7 @@ console.log('\n9 · a step count dated today is a partial, not a total (F-06)')
   yes('...and the finding refuses to decide what the number should be',
     /Do not adjust it on this/.test(findings),
     'a step count nobody confirmed is a number invented to make a check go quiet')
-  yes('...and it is not on the athlete\'s dashboard — it is a question only he can answer',
+  yes('...and it is not on the athlete\'s dashboard — it is a question only they can answer',
     !/'steps-implausible': 'athlete'/.test(findings))
 }
 
@@ -924,7 +924,7 @@ console.log('\n10 · the arithmetic has one home')
 
 // =================================================================================================
 console.log('\n11 · the week\'s estimated in, estimated out, and what they produce')
-// His words, 2026-08-15: "my goal for the week is still lose 1 lb, so the week needs an estimated
+// The ask, in an athlete's own framing: the goal for the week is a rate, so the week needs an
 // cals in and estimated cals out to achieve that, and they need to be divided logically amongst
 // the 7 days."
 //
@@ -1293,7 +1293,7 @@ console.log('\n11 · the week\'s estimated in, estimated out, and what they prod
 console.log('\n12 · a day may never lack a calorie target')
 // 2026-08-15: an automated pre-dawn job read nutrition/plan.md's travel protocol ("a hard calorie
 // ceiling", with no file saying what that ceiling is), decided the weekday figure would contradict
-// the prose, recorded the reasoning in decisions.md and wrote NOTHING. He woke up travelling with
+// the prose, recorded the reasoning in decisions.md and wrote NOTHING. They woke up travelling with
 // no target: "There is ALWAYS a target for every day. That is a bug."
 //
 // The generator was never broken. The defect is that PROSE REASONING OVERRODE A MACHINE-READABLE
@@ -1432,7 +1432,7 @@ console.log('\n12 · a day may never lack a calorie target')
       const emptied = runCheck()
       yes('emptying the file entirely fails too, rather than passing for want of a domain',
         emptied.status !== 0, emptied.out)
-      yes('...naming the first day he ate against no target',
+      yes('...naming the first day they ate against no target',
         /no rows at all/.test(emptied.out), emptied.out)
     } finally {
       writeFileSync(live, original)
@@ -1749,7 +1749,7 @@ console.log('\nthe anchored trend — one estimator for the level and the rate')
     // ⚠ **UNIT-NEUTRAL.** The series may be weight, a tape measure, a symptom score or hours of
     // sleep, so the fields are `current`/`prior` and the caller supplies the label. A field named
     // for pounds would be a shared function asserting one athlete's units (INVARIANTS.md X-11).
-    const t = anchoredTrend([pt(1, 36.5), pt(2, 36.4), pt(13, 35.9), pt(14, 35.8)], at(14))
+    const t = anchoredTrend([pt(1, 50.4), pt(2, 50.2), pt(13, 49.5), pt(14, 49.3)], at(14))
     yes('nothing in the result names a unit',
       !!t && Object.keys(t).every((k) => !/lb|kg|kcal|in$/i.test(k)), Object.keys(t ?? {}).join(', '))
     yes('...and it trends a series that is not weight at all', !!t && t.perWeek < 0)

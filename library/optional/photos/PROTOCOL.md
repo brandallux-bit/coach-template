@@ -45,7 +45,7 @@ water, and glycogen — not fat.
 # Neck Tape Protocol
 
 > Added 2026-08-07. The neck is the **missing input to the Navy tape method**, which is currently
-> the best body-fat estimator available off his own numbers. Without it the estimate is a ±8-point
+> the best body-fat estimator available off their own numbers. Without it the estimate is a ±8-point
 > guess (`logs/2026-08-07.md`: "**~18–29%, and no tighter**"). With it, the Navy number becomes a
 > single defensible figure. Ten seconds, tape already in hand.
 
@@ -78,7 +78,7 @@ water, and glycogen — not fat.
 Both are easy to make and they push in opposite directions, so they don't cancel — they just widen
 the spread. Level, snug, chin neutral.
 
-## What his number will mean (waist 35.25", height 69")
+## What their number will mean (waist 35.25", height 69")
 
 Navy method, men: `%BF = 86.010 × log₁₀(waist − neck) − 70.041 × log₁₀(height) + 36.76` (inches).
 
@@ -108,22 +108,22 @@ about — but note it is also *bounded*: even a sloppy half-inch miss moves the 
 
 # How well does the Navy method track *change*? — the honest answer
 
-> Added 2026-08-07, answering the athlete's own question. He is explicit that **direction matters
-> more to him than the absolute number.** Good news: direction is the thing this method does well.
+> Answering the athlete's own question. Where they are explicit that **direction matters
+> more to them than the absolute number.** Good news: direction is the thing this method does well.
 
 ## Separate three properties — they have very different answers
 
 | Property | Verdict |
 |---|---|
 | **Absolute accuracy** ("am I really 18.4%?") | **Poor–moderate.** ±3–4 points vs DEXA, and the offset never resolves without a scan. |
-| **Precision** (same body, repeat reading) | **Good.** ~±0.5 point, and that is *entirely* his tape technique — the formula adds no noise of its own. |
-| **Sensitivity to real change** (the one he cares about) | **Good, and better than the absolute number deserves.** See below. |
+| **Precision** (same body, repeat reading) | **Good.** ~±0.5 point, and that is *entirely* their tape technique — the formula adds no noise of its own. |
+| **Sensitivity to real change** (the one they care about) | **Good, and better than the absolute number deserves.** See below. |
 
 ## Why direction survives even though the level is wrong
 
 The method's error is **largely a systematic offset**, and an offset **cancels when you subtract two
-readings.** If the formula reads him 3 points low today, it reads roughly 3 points low in October —
-so the *change* is right even when the *level* is not. This is exactly the property he wants.
+readings.** If the formula reads them 3 points low today, it reads roughly 3 points low in October —
+so the *change* is right even when the *level* is not. This is exactly the property they want.
 
 Caveat, stated honestly: the offset is not *perfectly* constant across the range (the formula is a
 log curve and its bias vs DEXA drifts somewhat). Over a 4–6 point change, treating it as constant is
@@ -132,10 +132,10 @@ reasonable. Over 15 points it is not.
 ## The numbers
 
 Height is fixed and the neck is near-constant, so **the Navy figure is a monotonic transform of the
-waist.** Sensitivity at his current numbers (waist 35.25", neck 16.00"):
+waist.** Sensitivity at their current numbers (waist 35.25", neck 16.00"):
 
 **≈1.94 body-fat points per inch of waist** — call it **~2 points per inch, ~0.5 per quarter-inch.**
-(Rises slightly as he leans out: ~2.05 at a 34.25" waist, ~2.20 at his 33" ambition.)
+(Rises slightly as they lean out: ~2.05 at a 34.25" waist, ~2.20 at their 33" ambition.)
 
 | Waist change | Navy %BF change | Roughly |
 |---|---|---|

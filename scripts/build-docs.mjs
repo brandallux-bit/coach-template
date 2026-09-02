@@ -146,7 +146,7 @@ const BLOCKS = {
   },
 
   /**
-   * What the active block has taken out, rendered into the file he opens to substitute.
+   * What the active block has taken out, rendered into the file they open to substitute.
    *
    * F-19's own recommendation, and the reason it is generated rather than typed: the library's
    * contraindication list was last updated for the *pre-rehab* knee and has no notion of an active

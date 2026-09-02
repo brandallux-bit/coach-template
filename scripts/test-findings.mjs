@@ -156,7 +156,7 @@ else { failed++; console.error(`FAIL  checkpoint severity should be attention, g
 // The whole point of this layer: it hands the coach something to SAY, not something to enforce.
 const floorFinding = buildFindings({ today: '2026-08-14', constants: withTriggers, body: flat(168), targets: [] })
   .find((f) => f.id === 'weight-below-floor')
-if (floorFinding && /his call|reassess/i.test(floorFinding.action)) {
+if (floorFinding && /their call|reassess/i.test(floorFinding.action)) {
   console.log('ok    the floor finding asks whether to reassess rather than instructing')
 } else {
   failed++
@@ -588,13 +588,13 @@ check('  today is not a follow-up — it is today',
   { ...soon, chartDocs: doc('- Due 2026-08-14') }, null)
 
 {
-  // Grouped by date, not by line: the 2026-08-27 recalibration is written in nine places in this
+  // Grouped by date, not by line: one recalibration date can be written in many places in this
   // chart, and nine findings for one commitment is how a card stops being read.
   const many = buildFindings({
     today: '2026-08-14', constants: deficitChart, body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)],
     chartDocs: [
       { path: 'nutrition/plan.md', text: '- Review on: 2026-08-27\n- see also 2026-08-27' },
-      { path: 'decisions.md', text: 'deferred to the 2026-08-27 recalibration' },
+      { path: 'decisions.md', text: 'deferred to the recalibration on 2026-08-27' },
     ],
   }).filter((f) => f.id.startsWith('follow-up'))
   if (many.length === 1 && /decisions\.md/.test(many[0].detail) && /nutrition\/plan\.md:1/.test(many[0].detail)) {
@@ -616,7 +616,7 @@ check('  today is not a follow-up — it is today',
 console.log('\nalcohol — the data half ships, the denominator waits (W6, audit F-38/F-69)')
 // The whole point is that this finding CANNOT be closed by the runner. It closes when the athlete
 // says something, and the alternative — reading nutrition/plan.md's ~1,200–1,400 kcal/week as the
-// budget — records an observation of what he already drinks as a line he agreed to hold. That is
+// budget — records an observation of what they already drink as a line they agreed to hold. That is
 // X-16's defect with unusually good justification, which makes it harder to catch, not easier.
 {
   const withAlcohol = (date, alcohol) => ({ ...target(date, 1700), alcohol_kcal: String(alcohol) })
@@ -697,7 +697,7 @@ check('  a chart with no deficit domain is never told about a rate it does not h
     targets: [target('2026-08-13', FLOOR + 600)],
   }).find((x) => x.id === 'budget-implies-faster-than-goal')
 
-  // It is not a breach and the wording has to say so. His words are "more is great"; a finding
+  // It is not a breach and the wording has to say so. Their words are "more is great"; a finding
   // that reads as a telling-off inverts the meaning of the answer it was built from.
   if (f?.severity === 'attention') console.log('ok    it is attention, not critical — nothing is being breached')
   else { failed++; console.error(`FAIL  the budget/goal mismatch must be attention, got ${f?.severity}`) }
@@ -706,7 +706,7 @@ check('  a chart with no deficit domain is never told about a rate it does not h
     console.log('ok    the detail says plainly that neither number is wrong')
   } else { failed++; console.error('FAIL  the budget/goal finding must not imply the athlete is doing something wrong') }
 
-  if (f && /Two options/.test(f.action) && /his call/i.test(f.action)) {
+  if (f && /Two options/.test(f.action) && /their call/i.test(f.action)) {
     console.log('ok    it presents two options and names whose call it is')
   } else { failed++; console.error('FAIL  the budget/goal finding must present a choice, not a correction') }
 
@@ -716,7 +716,7 @@ check('  a chart with no deficit domain is never told about a rate it does not h
   } else { failed++; console.error(`FAIL  expected computed 1.20 vs 1.00 in the headline, got ${f?.headline}`) }
 
   // Quoting what is recorded is rendering; paraphrasing it is how the 185 lb ceiling happened.
-  if (f && /More is great/.test(f.detail)) console.log("ok    it quotes his own words rather than paraphrasing them")
+  if (f && /More is great/.test(f.detail)) console.log("ok    it quotes their own words rather than paraphrasing them")
   else { failed++; console.error('FAIL  the finding should quote the recorded provenance, not restate it') }
 
   // ...and the fallback SAYS it is a fallback. A finding that silently switched inputs would be
@@ -763,7 +763,7 @@ console.log('\n  ...and the burn side is the ledger, not the RMR × 1.5 estimate
   } else { failed++; console.error('FAIL  a lb/wk figure with no %BW cannot be read against §5.2') }
 
   if (ledger?.severity === 'attention' && /More is great/.test(ledger.detail)) {
-    console.log('ok    still attention, still his words — the correction changed the number, not the framing')
+    console.log('ok    still attention, still their words — the correction changed the number, not the framing')
   } else { failed++; console.error(`FAIL  the corrected finding must stay attention and keep the quote, got ${ledger?.severity}`) }
 
   // The two paths must actually differ on the same chart, or this whole block is vacuous: a check

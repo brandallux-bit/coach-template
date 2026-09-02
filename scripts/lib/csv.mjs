@@ -16,7 +16,7 @@ import { readFileSync, existsSync } from 'node:fs'
  * swallowed every comma and newline until the next `"` in the file. Three days of weigh-ins parsed
  * as one row, the two later days appeared in no chart and no rollup, and `validate-data.mjs`
  * reported **no error**, because what survived was a well-formed, correctly ordered, non-duplicate
- * row. The athlete would have seen a gap in the trend and been unable to tell it from days he did
+ * row. The athlete would have seen a gap in the trend and been unable to tell it from days they did
  * not weigh in.
  *
  * The change is strictly more permissive: no file that parsed correctly before parses differently

@@ -68,7 +68,7 @@ export default function HistoryPage() {
   // never be mixed**, because the 1.5 already contains all activity — and those were the two
   // sides of this chart, on one axis, with one of them labelled "plan". The decomposition averages
   // ~2,824 kcal/day against a 2,450 flat line: a structural **+2,618 kcal/week gap that exists
-  // whatever he does**, which reads as "burning well over plan" every single week.
+  // whatever they do**, which reads as "burning well over plan" every single week.
   //
   // Deriving the constant from current weight — the audit's own recommendation — fixes 85 kcal/day
   // of staleness and leaves the 2,618 untouched, because it is still a 1.5 line against a
@@ -90,7 +90,7 @@ export default function HistoryPage() {
   // the `RMR × 1.5` shortcut — plotted against a deficit computed from decomposed burn, so the
   // deficit chart inherited the whole 2,618 kcal/week mixing error from the chart above it. The
   // reference is now **this week's own estimated burn minus the calories the plan asked for**,
-  // over the same `balanceDays` both figures already share: the deficit he would have run if he
+  // over the same `balanceDays` both figures already share: the deficit they would have run if they
   // had eaten exactly to target. Same burn model on both sides, so the only difference between
   // bar and reference is intake — which is the thing the comparison is actually about.
   const deficitGroups = weeks.map((w, i) => ({
@@ -225,8 +225,8 @@ export default function HistoryPage() {
                 {/* Alcohol has its OWN day count, shown with it, because a blank cell means "not
                     recorded" — a 600 kcal week over two logged days is a mostly-unlogged week,
                     not a light one, and the total alone reads as the second. No target column:
-                    plan.md's ~1,200-1,400 kcal/week is an observation of what he drinks, not a
-                    budget he set, and a target column would silently turn one into the other
+                    a chart's plan may record roughly what the athlete drinks; that is an
+                    observation, not a budget they set, and a target column would silently turn one into the other
                     (audit F-38). Until W6 this figure was written on every meal row and rendered
                     nowhere. */}
                 <th>Alcohol</th>

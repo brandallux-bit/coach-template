@@ -17,9 +17,9 @@
  *   > "There is no such thing as 'never let the calorie target drop below your RMR'. Nothing in
  *   > this system can stop that. It can't make me eat. It should inform and recommend. That's it."
  *
- * He is right, and the consequence was concrete: a 2 lb week would have failed `validate-data`,
- * failed `prebuild`, failed the deploy, and frozen his dashboard — for stepping on a scale, with
- * no file he could edit to fix it short of falsifying a weigh-in.
+ * They are right, and the consequence was concrete: a 2 lb week would have failed `validate-data`,
+ * failed `prebuild`, failed the deploy, and frozen their dashboard — for stepping on a scale, with
+ * no file they could edit to fix it short of falsifying a weigh-in.
  *
  * So: **a floor is computed and surfaced. It is never enforced against reality.** The ledger's
  * only duty is fidelity — it records what happened, including things the coach wishes had not.
@@ -63,7 +63,7 @@ const DEFICIT_WARN_WEEKS = 14
  * says anything about how much anyone should walk; `stepsPerDayTarget` is the athlete's own figure
  * and lives in `constants.json`, marked with its provenance. This is a property of the FEED: the
  * iOS Shortcut sometimes sends the current running total instead of the completed one, and the
- * four real incidents on record read 16, 29 and 466 — two orders of magnitude below any lived day,
+ * the real incidents behind it read two orders of magnitude below any lived day,
  * including a day spent in bed. 1,500 sits far below anything a person who left a chair produces
  * and far above anything a mid-morning partial produces, which is what makes it separate the two
  * without ever needing to be tuned.
@@ -92,31 +92,31 @@ const SEVERITY = ['critical', 'attention', 'info']
 
 /**
  * WHO A FINDING IS FOR. Added 2026-08-14 after the first version of the dashboard card rendered
- * all seventeen findings to the athlete and he rejected it outright:
+ * all seventeen findings to the athlete and they rejected it outright:
  *
  *   > "The cards on the dashboard are WAY too much information. And these are all different
  *   > classes of data. They should not be treated the same. ... What does the user need? Why do
  *   > they need it? What are they going to DO with the information?"
  *
- * He was right, and the spec was the defect: it said "render the findings", which is a data-out
+ * They were right, and the spec was the defect: it said "render the findings", which is a data-out
  * exercise, and never asked who each one was for. Severity (`critical`/`attention`/`info`) is a
- * LOG LEVEL. It says how loud, never who for, and sorting by it put a question only he can answer
+ * LOG LEVEL. It says how loud, never who for, and sorting by it put a question only they can answer
  * on a read-only page next to an internal chart-integrity note.
  *
  * A finding is `athlete` ONLY if all three hold:
  *   1. it is true about HIM, not about the chart's internal state;
- *   2. it changes what he does, or whether he should trust the page in front of him;
- *   3. the action is available from where he is standing.
+ *   2. it changes what they do, or whether they should trust the page in front of them;
+ *   3. the action is available from where they are standing.
  *
- * Everything else is `coach` — read at session start and raised in conversation, where he can
- * actually answer — or `maintainer`, which is a defect in the system and never his problem.
+ * Everything else is `coach` — read at session start and raised in conversation, where they can
+ * actually answer — or `maintainer`, which is a defect in the system and never their problem.
  *
- * A QUESTION FOR THE ATHLETE IS NEVER `athlete`. Asking him something on a page he cannot reply
- * on is worse than not asking: it is an unanswerable nag he has to scroll past. If the system
- * needs something from him, the coach asks him for it.
+ * A QUESTION FOR THE ATHLETE IS NEVER `athlete`. Asking them something on a page they cannot reply
+ * on is worse than not asking: it is an unanswerable nag they have to scroll past. If the system
+ * needs something from them, the coach asks them for it.
  */
 const AUDIENCE = {
-  // Safety lines that change what he should do today. One line each on screen, never a paragraph.
+  // Safety lines that change what they should do today. One line each on screen, never a paragraph.
   'rmr-floor-breached': 'athlete',
   'protein-floor-breached': 'athlete',
   'loss-rate-above-ceiling': 'athlete',
@@ -124,14 +124,14 @@ const AUDIENCE = {
   'weight-above-ceiling': 'athlete',
   'deficit-phase-over-cap': 'athlete',
   'waist-goal-met': 'athlete',
-  // "Do not trust the numbers on this page" — the one integrity signal that is genuinely his.
+  // "Do not trust the numbers on this page" — the one integrity signal that is genuinely their.
   'build-stale': 'athlete',
 }
 
 /**
  * Default `coach`, deliberately. A new finding is invisible to the athlete until someone decides
  * it passes the three tests above — the safe direction, since the failure this fixes was
- * everything defaulting onto his screen.
+ * everything defaulting onto their screen.
  */
 export const audienceFor = (id) => {
   if (AUDIENCE[id]) return AUDIENCE[id]
@@ -284,7 +284,7 @@ function newestDate(rows) {
  * so it can be dismissed in a second; a false negative is a stop-test that ends uninterpretably
  * because the athlete left the country two days after the date nobody saw.
  *
- * Grouped by date rather than by line: the 2026-08-27 recalibration is written in five places,
+ * Grouped by date rather than by line: one commitment can be written in several places,
  * and five findings for one commitment is how a card stops being read.
  */
 function datedFollowUps(chartDocs, today) {
@@ -425,8 +425,8 @@ export function parseMarkerTable(goalsText) {
  *
  * "Live" means the newest set, on or before today, for a session the weekly template can land on.
  * A session the block no longer schedules is not a live prescription however recent its rows are —
- * that is precisely the goblet-squat case: it is still written under `Session A`, and `Session A`
- * was replaced by `Session A (knee-free)` when the knee came out of the plan.
+ * that is precisely the goblet-squat case: it is still written under `Session One`, and `Session One`
+ * was replaced by `Session One (modified)` when the knee came out of the plan.
  */
 export function markerAudit({ goalsText = '', prescriptions = [], templateSessions = [], today }) {
   const { domain, markers } = parseMarkerTable(goalsText)
@@ -548,7 +548,7 @@ export function buildFindings({
           id: 'rmr-floor-close',
           severity: 'attention',
           headline: `Calorie target is ${headroom} kcal above the RMR floor (${kcal} vs ${floor}).`,
-          detail: `The floor is recomputed from current weight, so it moves as he does. Any further `
+          detail: `The floor is recomputed from current weight, so it moves as they do. Any further `
             + `cut needs to be checked against it first.`,
           action: 'Do not lower the target without recomputing the floor at that day\'s weight.',
           source: 'CLAUDE.md §5.2',
@@ -662,13 +662,13 @@ export function buildFindings({
   // NOT A VIOLATION, AND THE WORDING HAS TO CARRY THAT. On 2026-08-14 the athlete's own rate went
   // on record — "1 lb per week is my goal. More is great. Anything over .5 lb is acceptable. I am
   // not striving for perfection." — replacing a [1.1, 1.25] band the coach had set 10-25% above
-  // his stated rate and never put back to him. The calorie budget was built for the old band and
+  // their stated rate and never put back to them. The calorie budget was built for the old band and
   // still implies a faster rate than the goal it now serves.
   //
   // So this is a mismatch between two of the coach's own artifacts, not something the athlete is
   // doing wrong, and it is well under the §5.2 ceiling (which has its own finding above). It
   // exists because decisions.md 2026-08-14 deliberately refused to reconcile it silently: moving
-  // his calories is a nutrition decision, not a bookkeeping fix, and the plan quietly targeting a
+  // their calories is a nutrition decision, not a bookkeeping fix, and the plan quietly targeting a
   // number different from the goal is exactly the drift a provenance marker cannot catch.
   //
   // Every figure is computed. Hardcoding "1.20" here would recreate the defect in the check
@@ -754,12 +754,12 @@ export function buildFindings({
           + 'is measured separately and has its own finding. '
           + (above
             ? 'Faster than the goal is not a breach of anything: the rate on file has no upper '
-              + 'bound and he has said so. '
+              + 'bound and they have said so. '
             : '')
           + 'It is worth saying only because the plan and the goal it serves are now visibly '
           + 'different numbers, and neither one is wrong.'
-          + (quote ? ` His words on the goal: "${quote}"` : ''),
-        action: `Two options, and it is his call. Either ${move} the weekly budget by `
+          + (quote ? ` Their words on the goal: "${quote}"` : ''),
+        action: `Two options, and it is their call. Either ${move} the weekly budget by `
           + `${Math.abs(deltaWeekly).toLocaleString()} kcal (~${Math.abs(deltaDaily)} kcal/day, to `
           + `${matchingBudget.toLocaleString()}/wk) so the plan is aimed at ${rate(line)} lb/wk, or `
           + 'keep the budget as it stands and record in decisions.md that the plan runs ahead of '
@@ -856,7 +856,7 @@ export function buildFindings({
   //
   // IT REPORTS AND CANNOT DO ANYTHING ELSE, and the reason is the boundary itself. The only thing
   // that closes it is the athlete saying "yes, that was a real day" or "no, re-read the phone" —
-  // a fact only he holds. A check that cannot go green without its runner inventing something is
+  // a fact only they hold. A check that cannot go green without its runner inventing something is
   // the check that produced the 135/85 blood-pressure threshold (INVARIANTS.md X-12).
   if (today && steps.length) {
     const from = addDays(today, -STEPS_PLAUSIBILITY_WINDOW_DAYS)
@@ -879,9 +879,9 @@ export function buildFindings({
           + `roughly 400 kcal — in the file every rate-of-loss projection is built on. It has `
           + 'happened four times (2026-08-09 = 29, 2026-08-10 = 466, 2026-08-13 = 16). A genuinely '
           + 'small day is also perfectly possible, which is exactly why nothing here decides.',
-        action: 'Ask him which it was, and only then correct the row. Do not adjust it on this '
+        action: 'Ask them which it was, and only then correct the row. Do not adjust it on this '
           + 'finding alone — a step count nobody confirmed is a number invented to make a check go '
-          + 'quiet, and the true figure is on his phone.',
+          + 'quiet, and the true figure is on their phone.',
         source: 'data/steps.csv; scripts/log-steps-row.mjs',
         domain: 'Chart integrity',
       })
@@ -935,7 +935,7 @@ export function buildFindings({
           + 'deficit stops, regardless of where the waist is.',
         action: 'Say so before anything else in the session, then ask whether to reassess the '
           + 'goals — hold the waist target and move the floor, or stop the deficit here. It is '
-          + 'his floor and his call; nothing is enforced either way.',
+          + 'their floor and their call; nothing is enforced either way.',
         domain: HEALTH,
       },
       {
@@ -999,16 +999,16 @@ export function buildFindings({
   // no `plan.weeklyAlcoholKcalBudget` and **W6 deliberately did not invent one.**
   //
   // WHY IT IS A FINDING AND NOT A CONSTANT. `nutrition/plan.md` prices alcohol at ~1,200–1,400
-  // kcal/week and calls it his single largest discretionary lever, and it is tempting to read that
-  // as the budget. Read the sentence: *"priced at his REAL intake, not a wishful number"*, computed
+  // kcal/week and calls it their single largest discretionary lever, and it is tempting to read that
+  // as the budget. Read the sentence: *"priced at their REAL intake, not a wishful number"*, computed
   // off `athlete/values.md`'s athlete-stated ~7–9 glasses in a typical week. **That is an
-  // observation of what he drinks, not a line he agreed to hold.** Promoting it to a target would
+  // observation of what they drink, not a line they agreed to hold.** Promoting it to a target would
   // record a coach's inference as the athlete's own instruction, which is X-16's defect exactly —
   // the same shape as the 185 lb ceiling, in a different unit and with better justification, which
   // makes it harder to catch rather than easier (red-team, item 3).
   //
   // So the data half ships and the denominator waits: the figure is recorded, the week's total is
-  // rendered on History, and the gap is reported here as **his to close**. An absent budget renders
+  // rendered on History, and the gap is reported here as **their to close**. An absent budget renders
   // as TBD, and a TBD is a correct chart.
   if (runningDeficit && targets.length) {
     const budget = plan.weeklyAlcoholKcalBudget
@@ -1027,13 +1027,13 @@ export function buildFindings({
           + `blank alcohol_kcal on every automated row and the Today meter has no line to draw. `
           + `Days with a figure: ${withFigure.map((t) => t.date).join(', ')}. nutrition/plan.md `
           + 'prices a typical week at ~1,200–1,400 kcal and states the exchange rate — ~0.35 '
-          + 'lb/week of loss forgone — but that figure is an OBSERVATION of what he already '
-          + 'drinks, taken off athlete/values.md. It is not a budget he agreed to.',
-        action: 'Ask him whether he wants a line here, and if so what it is. **Do not pick one.** '
-          + 'His own words are on file — "if not for the fitness goals, I\'d open a bottle every '
-          + 'night" — so this is a value he is already spending willpower on, not a number to '
-          + 'optimise on his behalf. If he sets one, record it with his quote and its provenance; '
-          + 'if he does not want one, record that too and this stops. A per-day allocation can '
+          + 'lb/week of loss forgone — but that figure is an OBSERVATION of what they already '
+          + 'drinks, taken off athlete/values.md. It is not a budget they agreed to.',
+        action: 'Ask them whether they want a line here, and if so what it is. **Do not pick one.** '
+          + 'Their own words are on file — "if not for the fitness goals, I\'d open a bottle every '
+          + 'night" — so this is a value they are already spending willpower on, not a number to '
+          + 'optimise on their behalf. If they set one, record it with their quote and its provenance; '
+          + 'if they do not want one, record that too and this stops. A per-day allocation can '
           + 'then be written into targets.csv and the Today meter draws itself.',
         source: 'nutrition/plan.md "Alcohol"; athlete/values.md "Wine — non-negotiable"; '
           + 'data/targets.csv alcohol_kcal',
@@ -1063,7 +1063,7 @@ export function buildFindings({
 
   // --- a trigger that cannot fire ---------------------------------------------------------------
   // Reported, never filled in. Setting a threshold is a goal-setting act that belongs to the
-  // athlete and his doctor — on 2026-08-13 this check was written as a build failure and the
+  // athlete and their doctor — written once as a build failure, and the
   // coach then invented a BP number to make its own check go green. That is the tail wagging the
   // dog, and it is exactly why this layer only reports.
   if (goalsText) {
@@ -1080,7 +1080,7 @@ export function buildFindings({
         headline: 'A promotion trigger has an unfilled threshold, so it can never fire.',
         detail: `athlete/goals.md line ${i + 1}: "${line.slice(0, 100)}"`,
         action: 'Ask the athlete for the number, or route it to whoever owns it — for a clinical '
-          + 'threshold that is his doctor, not the coach. Do not invent one to close the gap.',
+          + 'threshold that is their doctor, not the coach. Do not invent one to close the gap.',
         source: 'athlete/goals.md',
         domain: HEALTH,
       })
@@ -1152,18 +1152,18 @@ export function buildFindings({
     }
   }
 
-  // --- a number the coach produced that he has never ruled on -----------------------------------
+  // --- a number the coach produced that they have never ruled on -----------------------------------
   // The same failure as the blank trigger above, one step further along: there, a decision the
-  // athlete owns was left empty and the coach filled it in; here, a decision he owns was filled in
-  // by the coach and never handed back. Both end with his goals file holding something he did not
-  // say. On 2026-08-13 that was a 185 lb weight ceiling, and his words were "I don't know what
+  // athlete owns was left empty and the coach filled it in; here, a decision they own was filled in
+  // by the coach and never handed back. Both end with their goals file holding something they did not
+  // say. In the case this was written from it was a weight ceiling nobody recognised, and the
   // that is or where it came from... if I get close to it, I will throw this whole system away and
   // call it a failure."
   //
   // THIS REPORTS AND CANNOT DO ANYTHING ELSE. It is not fixable by editing the record — the only
-  // thing that closes it is him saying something — so per INVARIANTS.md ("What each layer is for")
-  // it can never be a validator error. It also must never instruct him: the finding says whose
-  // decision it is and stops. A coach that tells the athlete what his own goal should be is the
+  // thing that closes it is them saying something — so per INVARIANTS.md ("What each layer is for")
+  // it can never be a validator error. It also must never instruct them: the finding says whose
+  // decision it is and stops. A coach that tells the athlete what their own goal should be is the
   // defect, not the fix.
   //
   // The grace period and why it is inclusive: see UNCONFIRMED_GRACE_DAYS in provenance.mjs.

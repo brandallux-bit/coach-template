@@ -18,17 +18,46 @@ import { MOVEMENT_LEVEL_KEYS } from './lib/movement.mjs'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = join(ROOT, 'data')
 
-// The template repo has no chart yet — no constants, no rows. There is nothing to
-// validate, and failing here would just teach people to ignore a red build.
-if (!existsSync(join(DATA, '..', 'athlete', 'constants.json'))) {
-  console.log('No athlete/constants.json — template repo with no chart yet. Nothing to validate.')
-  process.exit(0)
-}
-
 const errors = []
 const warnings = []
 const err = (f, msg) => errors.push(`${f}: ${msg}`)
 const warn = (f, msg) => warnings.push(`${f}: ${msg}`)
+
+/**
+ * ⚠ **THE TEMPLATE'S OWN EXAMPLE FILE IS PARSED, AND NOTHING PARSED IT.**
+ *
+ * `athlete/constants.template.json` is what every fork copies and what intake reads its shape
+ * from, and it is hand-edited more often than any other file here. Nothing loaded it: a stray
+ * comma left it invalid JSON and the whole suite stayed green, because every reader of it is
+ * either a human or a chart that does not exist yet. The first thing to hit it would have been
+ * somebody's first session.
+ *
+ * Deliberately ABOVE the no-chart gate below: this file exists on the TEMPLATE, which is exactly
+ * where that gate turns everything else off.
+ */
+{
+  const tmpl = join(DATA, '..', 'athlete', 'constants.template.json')
+  if (existsSync(tmpl)) {
+    try {
+      JSON.parse(readFileSync(tmpl, 'utf8'))
+    } catch (e) {
+      err('athlete/constants.template.json', `is not valid JSON: ${e.message}. Every fork copies `
+        + "this file; a stray comma here is a broken chart on somebody's first session.")
+    }
+  }
+}
+
+// The template repo has no chart yet — no constants, no rows. There is nothing further to
+// validate, and failing here would just teach people to ignore a red build.
+if (!existsSync(join(DATA, '..', 'athlete', 'constants.json'))) {
+  for (const e of errors) console.error(`ERROR ${e}`)
+  if (errors.length) {
+    console.error(`\n${errors.length} error(s) in the template's own files.`)
+    process.exit(1)
+  }
+  console.log('No athlete/constants.json — template repo with no chart yet. Nothing to validate.')
+  process.exit(0)
+}
 
 // Computed once, up front, so every file's date column is checked against the same instant.
 // See data/METHOD.md rule 6 — a coaching session's clock runs UTC, the athlete does not, and
@@ -701,7 +730,7 @@ try {
   // scripts/lib/aggregate.mjs `weeklyBudget`), and nutrition/plan.md is explicit that alcohol is
   // "planned into the weekly budget, not a penalty". An alcohol figure at or above the calorie
   // budget makes that subtraction zero or negative — a total that contradicts its own parts, which
-  // is what `data/` is entitled to refuse. It says nothing about whether he drinks too much; that
+  // is what `data/` is entitled to refuse. It says nothing about whether they drink too much; that
   // would be judging reality, and it belongs to the coach in conversation (INVARIANTS.md X-12).
   {
     const budget = constants?.plan?.weeklyKcalBudget
@@ -728,6 +757,25 @@ try {
     if (!def?.domain) err('athlete/constants.json', `metrics.${key} must name the goals.md domain it serves`)
     if (!['up', 'down'].includes(def?.direction)) {
       err('athlete/constants.json', `metrics.${key}.direction must be "up" or "down" (which way is progress)`)
+    }
+    // ⚠ **`feed` AND `cadence` DECIDE WHETHER THE COACH CHASES THIS METRIC**, which is why a typo
+    // in either is worth a build failure rather than a silent default: `manaul` would read as
+    // "nothing writes this" and turn an automated reading into a daily question, and a mis-typed
+    // cadence turns a daily metric into one nobody ever asks about. Both are optional and both
+    // default — an entry that names neither is a manual, episodic one, which is the pair that
+    // costs a question nobody asks rather than a nag about something already recorded.
+    if (def?.feed !== undefined && !['manual', 'automated'].includes(def.feed)) {
+      err('athlete/constants.json',
+        `metrics.${key}.feed must be "manual" or "automated", not ${JSON.stringify(def.feed)} — `
+        + 'does anything write this without the athlete saying it? Omit it for manual, which is '
+        + 'the default.')
+    }
+    if (def?.cadence !== undefined && !['daily', 'episodic', 'lab'].includes(def.cadence)) {
+      err('athlete/constants.json',
+        `metrics.${key}.cadence must be "daily", "episodic" or "lab", not `
+        + `${JSON.stringify(def.cadence)}. Daily means a gap is worth asking about; episodic means `
+        + 'it only exists when it happens; lab means somebody else produces it on their own '
+        + 'schedule. Omit it for episodic, which is the default.')
     }
   }
   for (const [i, m] of readCsv(join(DATA, 'metrics.csv')).entries()) {
@@ -827,7 +875,7 @@ if (noRir) warn('sets.csv', `${noRir} of ${sets.length} sets have no RIR — the
 // Each one is "this record contradicts itself", and each is fixable by editing the record.
 //
 // A weigh-in is not fixable by editing the record. Erroring on a fast week would have failed
-// prebuild, failed the deploy, and frozen the dashboard because he stepped on a scale — with no
+// prebuild, failed the deploy, and frozen the dashboard because they stepped on a scale — with no
 // edit available short of falsifying the measurement, which is the exact behaviour this repo
 // exists to prevent.
 //

@@ -131,7 +131,7 @@ export type WeekIntake = {
  * A week's food / alcohol / total against the weekly budget, over one day set.
  *
  * The full-week budget is the denominator — that is what the athlete asked to see — and the pace
- * figures are what stop a Tuesday reading as headroom he does not have. See the .mjs for why
+ * figures are what stop a Tuesday reading as headroom they do not have. See the .mjs for why
  * prorating the budget by days elapsed was rejected.
  */
 export const weekIntake: <T extends IntakeDay>(days: T[], budget: WeeklyBudget) => WeekIntake =

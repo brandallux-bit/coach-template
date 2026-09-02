@@ -163,7 +163,7 @@ export type BranchCheck =
  * breakfast logged to a branch was invisible on this dashboard for two hours and thirteen
  * minutes, and nothing on screen suggested anything was wrong — the panel was simply empty,
  * which is indistinguishable from not having eaten. A failing CI run is only visible to someone
- * who goes looking, and the whole point is that he should not have to.
+ * who goes looking, and the whole point is that they should not have to.
  *
  * ⚠ AND IT MUST MEAN SOMETHING WHEN IT FIRES. "Stray" is decided by `isStrayBranch`, the same
  * function the absorber uses, so this banner cannot disagree with the automation about what it is

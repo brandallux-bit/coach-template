@@ -10,8 +10,8 @@
  *      excluding the name `Daily`.
  *   2. That patch treated the instance, not the class. Any NEW session defined with today's date
  *      still hijacked the tab — the athlete opened the live dashboard on a walk day and saw the
- *      caption "Walk / optional Peloton (seated only)" above a full "Session A (knee-free)"
- *      strength table. He reported it; nothing in the repo would have.
+ *      caption "Walk / optional ride (seated only)" above a full "Session One (modified)"
+ *      strength table. They reported it; nothing in the repo would have.
  *
  * A resolver that decides what the athlete does today, and got it wrong twice in a day, needs a
  * test rather than a third careful reading. `validate-data.mjs` checks the DATA; this checks the
@@ -119,12 +119,12 @@ console.log('\nprescription resolver')
 // ---- THE BUG THE ATHLETE FOUND -------------------------------------------------------------
 {
   const rows = [
-    p('2026-08-06', 'Session A', 1, 'Goblet squat'),
-    p('2026-08-13', 'Session A (knee-free)', 1, 'Pull-ups'),
-    p('2026-08-13', 'Session A (knee-free)', 2, 'KB RDL'),
+    p('2026-08-06', 'Session One', 1, 'Goblet squat'),
+    p('2026-08-13', 'Session One (modified)', 1, 'Pull-ups'),
+    p('2026-08-13', 'Session One (modified)', 2, 'KB RDL'),
     p('2026-08-13', DAILY, 1, 'Quad set'),
   ]
-  const r = resolve(rows, 'Walk / optional Peloton (seated only)', '2026-08-13')
+  const r = resolve(rows, 'Walk / optional ride (seated only)', '2026-08-13')
   eq('a session defined today does not hijack an unrelated session', r.rx.map((x) => x.exercise), [])
   eq('...and the daily block still renders', r.daily.map((x) => x.exercise), ['Quad set'])
 }
@@ -132,10 +132,10 @@ console.log('\nprescription resolver')
 // ---- THE EARLIER BUG, kept so the Daily case cannot regress either --------------------------
 {
   const rows = [
-    p('2026-08-06', 'Session A', 1, 'Goblet squat'),
+    p('2026-08-06', 'Session One', 1, 'Goblet squat'),
     p('2026-08-13', DAILY, 1, 'Quad set'),
   ]
-  const r = resolve(rows, 'Session A', '2026-08-13')
+  const r = resolve(rows, 'Session One', '2026-08-13')
   eq('Daily rows dated today do not replace the session block', r.rx.map((x) => x.exercise), ['Goblet squat'])
   eq('Daily resolves alongside, not instead', r.daily.map((x) => x.exercise), ['Quad set'])
 }
@@ -143,36 +143,36 @@ console.log('\nprescription resolver')
 // ---- The behaviour the rule actually exists for ---------------------------------------------
 {
   const rows = [
-    p('2026-08-06', 'Session A', 1, 'Goblet squat'),
-    p('2026-08-13', 'Session A', 1, 'Box squat'),
+    p('2026-08-06', 'Session One', 1, 'Goblet squat'),
+    p('2026-08-13', 'Session One', 1, 'Box squat'),
   ]
   eq('a row dated today overrides an older set for the SAME session',
-    resolve(rows, 'Session A', '2026-08-13').rx.map((x) => x.exercise), ['Box squat'])
+    resolve(rows, 'Session One', '2026-08-13').rx.map((x) => x.exercise), ['Box squat'])
   eq('...and yesterday still sees the older set',
-    resolve(rows, 'Session A', '2026-08-12').rx.map((x) => x.exercise), ['Goblet squat'])
+    resolve(rows, 'Session One', '2026-08-12').rx.map((x) => x.exercise), ['Goblet squat'])
 }
 
 // ---- Effective dating ------------------------------------------------------------------------
 {
   const rows = [
-    p('2026-08-06', 'Session B', 1, 'Push-up'),
-    p('2026-08-08', 'Session B', 1, 'Push-up (feet elevated)'),
+    p('2026-08-06', 'Session Two', 1, 'Push-up'),
+    p('2026-08-08', 'Session Two', 1, 'Push-up (feet elevated)'),
   ]
   eq('newest set on or before today wins',
-    resolve(rows, 'Session B', '2026-08-20').rx.map((x) => x.exercise), ['Push-up (feet elevated)'])
+    resolve(rows, 'Session Two', '2026-08-20').rx.map((x) => x.exercise), ['Push-up (feet elevated)'])
   eq('a future-dated set is invisible until its date',
-    resolve(rows, 'Session B', '2026-08-07').rx.map((x) => x.exercise), ['Push-up'])
-  eq('no rows before the first set exists', resolve(rows, 'Session B', '2026-08-05').rx, [])
+    resolve(rows, 'Session Two', '2026-08-07').rx.map((x) => x.exercise), ['Push-up'])
+  eq('no rows before the first set exists', resolve(rows, 'Session Two', '2026-08-05').rx, [])
 }
 
 // ---- File order must not decide which set is in force ----------------------------------------
 {
   const rows = [
-    p('2026-08-13', 'Session B', 1, 'Newer, listed first'),
-    p('2026-08-06', 'Session B', 1, 'Older, listed last'),
+    p('2026-08-13', 'Session Two', 1, 'Newer, listed first'),
+    p('2026-08-06', 'Session Two', 1, 'Older, listed last'),
   ]
   eq('max-by-date, not last-row-in-file',
-    resolve(rows, 'Session B', '2026-08-20').rx.map((x) => x.exercise), ['Newer, listed first'])
+    resolve(rows, 'Session Two', '2026-08-20').rx.map((x) => x.exercise), ['Newer, listed first'])
 }
 
 // ---- Ordering and empty cases ----------------------------------------------------------------
@@ -184,7 +184,7 @@ console.log('\nprescription resolver')
   ]
   eq('rows render in `order`, not file order',
     resolve(rows, 'Session X', '2026-08-13').rx.map((x) => x.exercise), ['first', 'second', 'third'])
-  eq('a session with no prescription renders nothing', resolve(rows, 'Rest + back rehab', '2026-08-13').rx, [])
+  eq('a session with no prescription renders nothing', resolve(rows, 'Rest + rehab block', '2026-08-13').rx, [])
   eq('no session name renders nothing', resolve(rows, null, '2026-08-13').rx, [])
 }
 
@@ -253,15 +253,15 @@ console.log('\nprimary session — deliberate, not [0]')
   // logged against. Taking `[0]` returns the walk, which is what put the Sets form's session name
   // one row off — and that name is written into sets.csv, permanently.
   const rx = [
-    p('2026-08-08', 'Session B', 1, 'Push-up (feet elevated)'),
-    p('2026-08-08', 'Session B', 2, 'Single-arm KB overhead press'),
+    p('2026-08-08', 'Session Two', 1, 'Push-up (feet elevated)'),
+    p('2026-08-08', 'Session Two', 2, 'Single-arm KB overhead press'),
   ]
   const day = [
     t('Hilly 3-mi loop (2.66 mi actual)', 'completed', { type: 'walk' }),
-    t('Session B — Upper Push/Pull + Core', 'completed', { type: 'strength' }),
+    t('Session Two — Upper Push/Pull + Core', 'completed', { type: 'lift' }),
   ]
   eq('the prescribed session wins over the walk written above it',
-    primarySession(day, rx, '2026-08-08').session, 'Session B — Upper Push/Pull + Core')
+    primarySession(day, rx, '2026-08-08').session, 'Session Two — Upper Push/Pull + Core')
   eq('...and [0] would have returned the walk — the defect this replaces',
     day[0].session, 'Hilly 3-mi loop (2.66 mi actual)')
 
@@ -269,19 +269,19 @@ console.log('\nprimary session — deliberate, not [0]')
     primarySession([t('Planned thing', 'planned'), t('Done thing', 'completed')], [], '2026-08-14')
       .session, 'Done thing')
 
-  // A session he did not do is never the day's session, whatever else it has going for it.
+  // A session they did not do is never the day's session, whatever else it has going for it.
   eq('a skipped session never becomes primary, even holding the only prescription',
-    primarySession([t('Session B', 'skipped'), t('BJJ (6pm)', 'completed')], rx, '2026-08-08')
-      .session, 'BJJ (6pm)')
+    primarySession([t('Session Two', 'skipped'), t('Court (6pm)', 'completed')], rx, '2026-08-08')
+      .session, 'Court (6pm)')
 
   // The case that decides the order of the two middle keys: a completed morning walk beside a
   // planned evening lift. Status-first picks the walk and the evening's sets are then written
   // under it. See the rank comment in forecast.ts.
   eq('a planned session with a prescription outranks a completed one without',
-    primarySession([t('Morning walk', 'completed'), t('Session B', 'planned')], rx, '2026-08-08')
-      .session, 'Session B')
+    primarySession([t('Morning walk', 'completed'), t('Session Two', 'planned')], rx, '2026-08-08')
+      .session, 'Session Two')
 
-  eq('one row on the day is still that row', primarySession([t('Session B', 'planned')], rx, '2026-08-08').session, 'Session B')
+  eq('one row on the day is still that row', primarySession([t('Session Two', 'planned')], rx, '2026-08-08').session, 'Session Two')
   eq('no rows resolves to nothing, never to a guess', primarySession([], rx, '2026-08-08'), null)
 }
 
@@ -292,22 +292,23 @@ console.log('\nsession names across files')
 
 {
   const rx = [
-    p('2026-08-08', 'Session B', 1, 'Push-up'),
-    p('2026-08-13', 'Session A (knee-free)', 1, 'Pull-ups'),
-    p('2026-08-06', 'Session A', 1, 'Goblet squat'),
+    p('2026-08-08', 'Session Two', 1, 'Push-up'),
+    p('2026-08-13', 'Session One (modified)', 1, 'Pull-ups'),
+    p('2026-08-06', 'Session One', 1, 'Goblet squat'),
     p('2026-08-13', DAILY, 1, 'Quad set'),
   ]
-  eq('an exact name resolves to itself', rxSessionFor(rx, 'Session B', '2026-08-20'), 'Session B')
+  eq('an exact name resolves to itself', rxSessionFor(rx, 'Session Two', '2026-08-20'), 'Session Two')
   eq('training.csv\'s descriptive name finds the prescription',
-    rxSessionFor(rx, 'Session B — Upper Push/Pull + Core', '2026-08-20'), 'Session B')
-  // Both "Session A" and "Session A (knee-free)" answer to the same stem. Picking either would be
-  // a guess about which block he actually performed, and the knee is the difference between them.
+    rxSessionFor(rx, 'Session Two — Upper Push/Pull + Core', '2026-08-20'), 'Session Two')
+  // Both "Session One" and "Session One (modified)" answer to the same stem. Picking either would
+  // be a guess about which of them was actually performed, and the modification is exactly the
+  // difference that matters.
   eq('an ambiguous stem resolves to nothing rather than a guess',
-    rxSessionFor(rx, 'Session A — Lower + Pull', '2026-08-20'), null)
+    rxSessionFor(rx, 'Session One — Lower + Pull', '2026-08-20'), null)
   eq('a reserved name is never adopted as a session\'s prescription',
     rxSessionFor(rx, 'Daily left-knee rehab block (Phase 1 — Settle)', '2026-08-20'), null)
   eq('a session with nothing prescribed resolves to nothing',
-    rxSessionFor(rx, 'Walk, flat', '2026-08-20'), null)
+    rxSessionFor(rx, 'Easy walk', '2026-08-20'), null)
   eq('the parenthetical is stripped before the dash, or the dash inside it truncates the name',
     sessionKey('Daily left-knee rehab block (Phase 1 — Settle)'), 'daily left-knee rehab block')
 }
@@ -319,31 +320,31 @@ console.log('\nsets belong to a session')
 
 {
   const s = (session, exercise) => ({ session, exercise })
-  const day = [s('Session A', 'Bent-over row'), s('Session A', 'Bent-over row')]
-  const names = ['Session A — Lower + Pull', 'Session B — Upper Push/Pull + Core']
+  const day = [s('Session One', 'Bent-over row'), s('Session One', 'Bent-over row')]
+  const names = ['Session One — Lower + Pull', 'Session Two — Upper Push/Pull + Core']
 
   // THE RED FIXTURE. Both sessions prescribe a bent-over row. The morning logged two; matching on
-  // the date alone renders the evening's row "2 done" and he skips it.
+  // the date alone renders the evening's row "2 done" and they skip it.
   eq('an evening session does not inherit the morning session\'s sets',
-    setsForSession(day, 'Session B — Upper Push/Pull + Core', names).length, 0)
+    setsForSession(day, 'Session Two — Upper Push/Pull + Core', names).length, 0)
   eq('...and the session that did log them still sees them',
-    setsForSession(day, 'Session A — Lower + Pull', names).length, 2)
+    setsForSession(day, 'Session One — Lower + Pull', names).length, 2)
 
-  // The fallback that keeps every historical row visible: sets.csv says "Session B", training.csv
-  // says "Session B — Upper Push/Pull + Core", and 2026-08-08 has both a walk and that lift.
-  const real = [s('Session B', 'Push-up (feet elevated)'), s('Session B', 'Suitcase carry')]
+  // The fallback that keeps every historical row visible: sets.csv says "Session Two", training.csv
+  // names the session descriptively, and one date holds both a walk and that lift.
+  const real = [s('Session Two', 'Push-up (feet elevated)'), s('Session Two', 'Suitcase carry')]
   eq('a set written under the short name still matches the descriptive one',
-    setsForSession(real, 'Session B — Upper Push/Pull + Core',
-      ['Hilly 3-mi loop (2.66 mi actual)', 'Session B — Upper Push/Pull + Core']).length, 2)
+    setsForSession(real, 'Session Two — Upper Push/Pull + Core',
+      ['Hilly 3-mi loop (2.66 mi actual)', 'Session Two — Upper Push/Pull + Core']).length, 2)
   eq('...and the walk gets none of them',
     setsForSession(real, 'Hilly 3-mi loop (2.66 mi actual)',
-      ['Hilly 3-mi loop (2.66 mi actual)', 'Session B — Upper Push/Pull + Core']).length, 0)
+      ['Hilly 3-mi loop (2.66 mi actual)', 'Session Two — Upper Push/Pull + Core']).length, 0)
 
   // Scoping is a no-op on a one-session day, which is every day before 2026-08-08. A set whose
   // session string matches nothing must not vanish from the only day it could belong to.
   eq('one session on the day means no scoping at all',
-    setsForSession([s('Garage circuit', 'Push-up')], 'Garage circuit (Session B variant)',
-      ['Garage circuit (Session B variant)']).length, 1)
+    setsForSession([s('Garage circuit', 'Push-up')], 'Garage circuit (Session Two variant)',
+      ['Garage circuit (Session Two variant)']).length, 1)
 }
 
 // =================================================================================================
@@ -358,7 +359,7 @@ console.log('\nstrength markers vs live prescriptions')
 
 {
   const goals = [
-    '## Domain: Strength   <- currently #2',
+    '## Domain: Get stronger   <- currently #2',
     '',
     '| Marker | Baseline | Date | **Guardrail fires at** | Current |',
     '|---|---|---|---|---|',
@@ -366,13 +367,13 @@ console.log('\nstrength markers vs live prescriptions')
     '',
   ].join('\n')
   const carry = (reps, load) =>
-    [p('2026-08-13', 'Session B', 7, 'Suitcase carry', { sets: '3', reps, load })]
+    [p('2026-08-13', 'Session Two', 7, 'Suitcase carry', { sets: '3', reps, load })]
   const run = (rx) => markerAudit({
-    goalsText: goals, prescriptions: rx, templateSessions: ['Session B'], today: '2026-08-14',
+    goalsText: goals, prescriptions: rx, templateSessions: ['Session Two'], today: '2026-08-14',
   })
 
   eq('the domain comes from the athlete\'s own heading, never a hardcoded label',
-    run(carry('40-55s/side', '50 lb')).domain, 'Strength')
+    run(carry('40-55s/side', '50 lb')).domain, 'Get stronger')
 
   // THE RED FIXTURE, and it is the real historical row: the marker was re-anchored to fire below
   // 49 s while the prescription still read 30-40 s, so every compliant set was already below the
@@ -386,18 +387,18 @@ console.log('\nstrength markers vs live prescriptions')
   eq('a prescription at the wrong load is reported',
     run(carry('40-55s/side', '35 lb')).problems.map((x) => x.kind), ['load'])
   eq('a marker nothing prescribes is reported',
-    run([p('2026-08-13', 'Session B', 1, 'Plank', { sets: '2', reps: '30-45s', load: 'BW' })])
+    run([p('2026-08-13', 'Session Two', 1, 'Plank', { sets: '2', reps: '30-45s', load: 'BW' })])
       .problems.map((x) => x.kind), ['unprescribed'])
   eq('a prescription in a session the block no longer schedules is not live',
     markerAudit({
-      goalsText: goals, today: '2026-08-14', templateSessions: ['Session A (knee-free)'],
+      goalsText: goals, today: '2026-08-14', templateSessions: ['Session One (modified)'],
       prescriptions: carry('40-55s/side', '50 lb'),
     }).problems.map((x) => x.kind), ['unprescribed'])
 
   // An open-ended dose can read anywhere, so it can never be "a dose that cannot reach the line".
   // Claiming otherwise would be the check inventing a bound the prescription does not have.
   eq('an AMRAP dose is never reported as unreachable',
-    run([p('2026-08-13', 'Session B', 7, 'Suitcase carry',
+    run([p('2026-08-13', 'Session Two', 7, 'Suitcase carry',
       { sets: '3', reps: 'AMRAP-2', load: '50 lb' })]).problems, [])
 
   eq('a chart with no marker table produces nothing',

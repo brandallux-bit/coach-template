@@ -5,7 +5,7 @@ import { useState } from 'react'
 /**
  * kcal ⇄ % for the meters inside it.
  *
- * WHY IT IS SHAPED LIKE THIS. The athlete asked for the toggle in his own words — *"So I can see
+ * WHY IT IS SHAPED LIKE THIS. An athlete asked for the toggle so they could see
  * how many calories I've consumed in each category vs the weekly target or toggle to what % of the
  * target I have consumed"* — and every other thing on `/today` is server-rendered from the bundle.
  * So `Meter` renders **both** forms and this component flips one attribute; the client boundary is

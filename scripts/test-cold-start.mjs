@@ -374,7 +374,7 @@ const emptyTheChart = (repo) => {
   rmSync(join(repo, 'athlete', 'constants.json'), { force: true })
   // Prose an intake would write for THIS athlete, not the previous one. A fork carries the
   // template's stubs; the working tree carries one man's chart, and leaving it in place would make
-  // the suite assert that his files pass, which is not the question.
+  // the suite assert that their files pass, which is not the question.
   for (const dir of ['logs', 'nutrition', 'program']) {
     rmSync(join(repo, dir), { recursive: true, force: true })
     mkdirSync(join(repo, dir), { recursive: true })
@@ -750,6 +750,36 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
     })
     rejects('a described level BESIDE a declared feed is REJECTED — the feed already counts it',
       both.out, both.code, /is set AND plan\.stepFeed names/)
+
+    /**
+     * ⚠ **`feed` AND `cadence` DECIDE WHETHER THE COACH CHASES A METRIC, SO A TYPO IN EITHER IS
+     * SILENT HARM.** `manaul` reads as "no value set", which defaults to manual and is right by
+     * accident; `automatd` on a device-written metric would fall back to manual and start a daily
+     * question about a number the chart already holds. Neither is visible in any rendered page —
+     * they only change what the coach says — so the validator is the only place they can go red.
+     */
+    const badFeed = withMap((c) => {
+      c.metrics = { flare_count: { label: 'Flares', unit: 'count', direction: 'down', domain: 'Swim faster', feed: 'automatd' } }
+    })
+    rejects('a misspelt metrics feed is REJECTED — the default would silently be wrong',
+      badFeed.out, badFeed.code, /metrics\.flare_count\.feed must be "manual" or "automated"/)
+
+    const badCadence = withMap((c) => {
+      c.metrics = { flare_count: { label: 'Flares', unit: 'count', direction: 'down', domain: 'Swim faster', cadence: 'weekly' } }
+    })
+    rejects('...and a cadence outside the three the charter acts on is REJECTED, naming them',
+      badCadence.out, badCadence.code, /must be "daily", "episodic" or "lab"/)
+
+    /**
+     * ...while the pair that DOES fire the chase rule is green. Without this, the two red cases
+     * above are satisfied by a validator that rejects `feed` and `cadence` outright.
+     */
+    const chased = withMap((c) => {
+      c.metrics = { flare_count: { label: 'Flares', unit: 'count', direction: 'down', domain: 'Swim faster', feed: 'manual', cadence: 'daily' } }
+    })
+    if (chased.code === 0) ok('a manual, daily metric — the one the coach chases — validates clean')
+    else fail('a manual, daily metric — the one the coach chases — validates clean',
+      `exit ${chased.code}\n${chased.out.slice(0, 400)}`)
 
     /**
      * ⚠ **AND THE OTHER CONFIGURATION IS STILL FIRST-CLASS.** A chart WITH a wearable declares the

@@ -45,12 +45,12 @@ const FIXTURE = {
 2026-08-11,179.4,35.25,16.00,7.5,4,,4,2,4,"Third morning-protocol reading, taken fasted"
 `,
   'sets.csv': `${header('sets.csv')}
-2026-08-11,Session B,Push-up,1,,20,,2,
-2026-08-11,Session B,Push-up,2,,18,,1,
+2026-08-11,Session Two,Push-up,1,,20,,2,
+2026-08-11,Session Two,Push-up,2,,18,,1,
 `,
   'training.csv': `${header('training.csv')}
-2026-08-05,strength,Session A,completed,7,40,n,,,,,
-2026-08-11,strength,Session B,completed,7,55,n,,,,,
+2026-08-05,strength,Session One,completed,7,40,n,,,,,
+2026-08-11,strength,Session Two,completed,7,55,n,,,,,
 2026-08-12,walk,Flat walk,completed,,50,n,,,,,
 `,
   'coach-notes.csv': `${header('coach-notes.csv')}
@@ -69,7 +69,7 @@ const check = (name, cond, detail = '') => {
 {
   const before = FIXTURE['sets.csv']
   const after = insertRow(before, 'sets.csv', {
-    date: '2026-08-11', session: 'Session B', exercise: 'Plank', set_index: '1',
+    date: '2026-08-11', session: 'Session Two', exercise: 'Plank', set_index: '1',
     load_lb: '', reps: '', duration_s: '45', rir: '', note: '',
   })
   check('append leaves prior lines byte-identical', after.startsWith(before.replace(/\n$/, '') + '\n'))
@@ -163,7 +163,7 @@ const check = (name, cond, detail = '') => {
   check('missing required field rejected', missing.some((e) => e.includes('session is required')))
 
   const ok = validateRow('sets.csv', {
-    date: '2026-08-11', session: 'Session B', exercise: 'Plank', set_index: '1',
+    date: '2026-08-11', session: 'Session Two', exercise: 'Plank', set_index: '1',
     load_lb: '', reps: '', duration_s: '45', rir: '2', note: '',
   })
   check('a good row passes clean', ok.length === 0, ok.join('|'))
@@ -191,24 +191,24 @@ const check = (name, cond, detail = '') => {
   // showing a session the athlete had already ruled out. The carve-out is narrow on purpose.
   const anyType = sessionTypeEnum()[0]
   const plannedAhead = validateRow('training.csv',
-    { date: tomorrow, type: anyType, session: 'Session B', status: 'planned' })
+    { date: tomorrow, type: anyType, session: 'Session Two', status: 'planned' })
   check('future PLANNED training row is allowed',
     !plannedAhead.some((e) => e.includes('is after today')), plannedAhead.join('|'))
 
   const completedAhead = validateRow('training.csv',
-    { date: tomorrow, type: anyType, session: 'Session B', status: 'completed' })
+    { date: tomorrow, type: anyType, session: 'Session Two', status: 'completed' })
   check('future COMPLETED training row is still rejected',
     completedAhead.some((e) => e.includes('is after today')), completedAhead.join('|'))
 
   for (const field of SPEC['training.csv'].outcomeFields) {
     const dirty = validateRow('training.csv',
-      { date: tomorrow, type: anyType, session: 'Session B', status: 'planned', [field]: '7' })
+      { date: tomorrow, type: anyType, session: 'Session Two', status: 'planned', [field]: '7' })
     check(`future planned row with ${field} set is rejected`,
       dirty.some((e) => e.includes('is after today')), dirty.join('|'))
   }
 
   const futureSet = validateRow('sets.csv',
-    { date: tomorrow, session: 'Session B', exercise: 'Push-up', set_index: '1', reps: '10' })
+    { date: tomorrow, session: 'Session Two', exercise: 'Push-up', set_index: '1', reps: '10' })
   check('the carve-out does not leak to sets.csv',
     futureSet.some((e) => e.includes('is after today')), futureSet.join('|'))
 

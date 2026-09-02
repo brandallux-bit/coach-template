@@ -415,7 +415,7 @@ export const setRestSec = () => (hasChart ? n(constants.program?.setRestSec) ?? 
  * deficit and a rate of weight loss.
  *
  * It lives here rather than being typed into whichever file needs it, because data/METHOD.md
- * already uses it in the 2026-08-27 recalibration method (`Δweight_lb × 3,500 ≈ Σ deficit_kcal`)
+ * already uses it in the maintenance-recalibration method (`Δweight_lb × 3,500 ≈ Σ deficit_kcal`)
  * and `src/app/history/page.tsx` already computes a planned weekly deficit off the same idea.
  * A second literal 3500 somewhere else is X-8 (a number with two homes), which is the largest
  * defect class in this repo's own audit.

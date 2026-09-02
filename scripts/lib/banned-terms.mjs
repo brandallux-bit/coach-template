@@ -8,7 +8,7 @@
  * This chart bans a measure outright. Another athlete may have every reason to use the same
  * measure, and their doctor may insist on it. **A ban that shipped in the template would impose one
  * man's preference on every future chart** — which is X-11 pointing the other way, and it is
- * precisely the correction he made on 2026-08-13:
+ * precisely the correction one athlete made about their own chart:
  *
  *   > *"The ban came from me and should exist only for me, not as part of the system."*
  *
@@ -33,16 +33,16 @@
  *
  * The ban is on *using, citing or computing* the thing. Writing down that it is banned, or that it
  * was once cited and the citation was removed, is not a use — and a check that could not tell those
- * apart would have exactly one green path: deleting the athlete's own account of his instruction.
+ * apart would have exactly one green path: deleting the athlete's own account of their instruction.
  *
  *   IN SCOPE   the chart's live decision surfaces (`athlete/`, `nutrition/`, `program/`,
- *              `data/*.csv`), and every surface that speaks to him — the dashboard, the skills,
+ *              `data/*.csv`), and every surface that speaks to them — the dashboard, the skills,
  *              the agents. *"Never quoted or used by any agent evaluating my status or progress"*
- *              are his words, and they name the agents explicitly.
+ *              are their words, and they name the agents explicitly.
  *   OUT        the file that DECLARES the ban (a ban cannot be stated without naming the thing);
  *              `decisions.md` and `logs/` (the history of the decision); `docs/` and `scripts/`
- *              (the engineering record and its tooling, which are about the system, not about him
- *              — and where a rule of his must never become a rule of the system's).
+ *              (the engineering record and its tooling, which are about the system, not about them
+ *              — and where a rule of their must never become a rule of the system's).
  *
  * ⚠ **THIS CHECK MUST NEVER BE THE REASON A THRESHOLD CHANGES.** If it goes red on a live safety
  * floor, the answer is to take it to the athlete, not to re-justify the floor to clear a check.
@@ -60,7 +60,7 @@ export const DECLARING_FILE = 'athlete/profile.md'
  *
  * `data/METHOD.md` is deliberately excluded even though it sits under `data/`: it is the SYSTEM's
  * method document, shared with every chart, and enforcing one athlete's preference there is exactly
- * the thing this file exists not to do. A leak of his preference into a shared document is
+ * the thing this file exists not to do. A leak of their preference into a shared document is
  * `scripts/check-no-athlete-leak.mjs`'s business, not this one's.
  */
 const IN_SCOPE = [

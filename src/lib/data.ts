@@ -41,8 +41,9 @@ export type Plan = {
    */
   weeklyAlcoholKcalBudget?: number
   /**
-   * The week's calorie budget, **already divided among the seven days**. Mon–Thu 1,700, Fri 1,750,
-   * Sat 2,650, Sun 1,750 on this chart; `validate-data.mjs` asserts it sums to `weeklyKcalBudget`.
+   * The week's calorie budget, **already divided among the seven days**, and usually not evenly —
+   * the unevenness is normally the plan, with a bigger day parked where the athlete wants it.
+   * `validate-data.mjs` asserts the seven sum to `weeklyKcalBudget`.
    *
    * It is the fallback `scripts/generate-targets.mjs` writes from, and therefore the answer to
    * "what is this day's target" on any day no row has been written for yet. **A surface must never
@@ -128,9 +129,10 @@ export type Plan = {
    * Sentences about THIS athlete that a shared component would otherwise carry as a literal.
    *
    * Every key is optional and every renderer must work without it (audit F-31): a new athlete used
-   * to get a `primary`-badged "Waist at navel" tile, a card explaining a 36.5″ figure taken off
-   * prednisone, and a Today tab telling him which of *someone else's* days were fixed. Absence
-   * renders a generic sentence or nothing at all, which is a correct chart, not a gap.
+   * to get a `primary`-badged tile for a measurement they had never taken, a card explaining a
+   * baseline figure recorded under someone else's medication, and a Today tab telling them which of
+   * *someone else's* days were fixed. Absence renders a generic sentence or nothing at all, which
+   * is a correct chart, not a gap.
    */
   copy?: Record<string, string | undefined>
 }

@@ -36,7 +36,7 @@
  * a number, because the only edit that satisfies it is "make the prose say what the constant
  * already says." That boundary is not decorative: the last check written under pressure to go
  * green ended with the coach inventing a 135/85 blood-pressure threshold that belonged to the
- * athlete and his doctor (INVARIANTS.md, the commit gate).
+ * athlete and their doctor (INVARIANTS.md, the commit gate).
  *
  * ⚠ **`logs/`, `decisions.md` and `docs/audit/` ARE OUT OF SCOPE, ON PURPOSE.** They are the
  * historical record. A weekly review from 2026-08-07 quoting the protein figure in force that day
@@ -277,7 +277,7 @@ const DEFINITIONS = [
         + 'aggregate.mjs. The behavioural assertion in section 3 above is what keeps the two '
         + 'answers equal',
     },
-    why: 'W6: `Session A`\'s 2026-08-06 goblet-squat rows are still that session\'s newest set and '
+    why: 'W6: `Session One`\'s 2026-08-06 goblet-squat rows are still that session\'s newest set and '
       + 'are harmless ONLY because weeklyTemplate stopped naming it. Two definitions of "live" is '
       + 'two answers to "is that prescription in force"',
   },
@@ -438,7 +438,7 @@ const FIGURES = [
     subject: /protein/i,
     figure: /protein floor[^.\n]{0,60}?(\d{2,3})\s*g/gi,
     why: 'audit F-29: 150 on the dashboard, 165 in the graded process goal, 165–175 in the plan\'s '
-      + 'own counterargument — so a 155 g day was a hit and a miss at the same time',
+      + 'own counterargument — so a day between the two was a hit and a miss at once',
   },
   {
     name: 'plan.proteinAimG',
@@ -446,13 +446,13 @@ const FIGURES = [
     context: /\baim\s+\d{2,3}\s*g/i,
     subject: /protein/i,
     figure: /\baim\s+(\d{2,3})\s*g\b/gi,
-    why: 'audit F-29, the other half: the aim is what goals.md grades him on',
+    why: 'audit F-29, the other half: the aim is what goals.md grades them on',
   },
   // ── added 2026-08-14 (W6) ──────────────────────────────────────────────────────────────────
   // X-3's `check-prose-numbers.mjs`, built as three more rows here rather than as a second
   // scanner — see this file's header. Each is a figure `generate-targets.mjs` or the dashboard
   // emits every day from `constants.json` while prose states it independently, which is the exact
-  // shape of F-13: *he eats to a number the coach believes it changed.*
+  // shape of F-13: *they eat to a number the coach believes it changed.*
   {
     name: 'plan.weeklyKcalBudget',
     value: constants.plan.weeklyKcalBudget,
@@ -481,10 +481,10 @@ const FIGURES = [
     // the CALORIE budget sitting in the same bullet cannot be read as a statement about this one.
     figure: /(?:budget|allowance)\D{0,40}?\b(\d{1,2},\d{3})\s*kcal/gi,
     why: 'the figure is the athlete\'s own (2026-08-14) and the weekly FOOD allowance is derived '
-      + 'by subtracting it — so a prose copy that drifts moves a number he never touched, and '
+      + 'by subtracting it — so a prose copy that drifts moves a number they never touched, and '
       + 'moves it silently, in the direction of more food',
-    note: 'nutrition/plan.md carried "~1,200–1,400 kcal/week" as an OBSERVATION of his intake for '
-      + 'eight days before he ruled on it; that sentence is kept, marked historical, because the '
+    note: 'nutrition/plan.md carried "~1,200–1,400 kcal/week" as an OBSERVATION of their intake for '
+      + 'eight days before they ruled on it; that sentence is kept, marked historical, because the '
       + 'distinction between an observation and a budget is the whole reason X-16 exists.',
   },
   {
@@ -493,7 +493,7 @@ const FIGURES = [
     context: /step/i,
     subject: /\/day|per day|daily|a day/i,
     figure: /(?:≥|>=|at least\s*)([\d,]{4,6})\s*(?:steps|\/day)/gi,
-    why: 'a process goal he is graded on weekly, restated in goals.md and current-block.md while '
+    why: 'a process goal they are graded on weekly, restated in goals.md and current-block.md while '
       + 'the rollup counts against the constant',
   },
 ]
@@ -550,13 +550,13 @@ console.log('\n2b · a prescription written in prose renders data/prescriptions.
 //
 // The other half of X-3's `check-prose-numbers.mjs`. `constants.json` is not the only machine home
 // a prose figure can disagree with — `prescriptions.csv` is one too, and it is the one the athlete
-// acts on with a bell in his hand.
+// acts on with a bell in their hand.
 //
 // THE LIVE INSTANCE: `skills/daily-dashboard`'s worked example printed `Bent-over KB rows 3 x 8-12
 // @ 35 lb` and `Suitcase carry 3 x 30-40s/side @ 35 lb`. Both were re-anchored to **50 lb** on
 // 2026-08-11 at the athlete's own instruction, and the carry's 30-40 s dose sat entirely below the
 // fire line of the marker it exists to feed. A coach following that skill renders the superseded
-// figures into the chart he is shown (audit F-35, F-50, and F-37's dose half).
+// figures into the chart they are shown (audit F-35, F-50, and F-37's dose half).
 //
 // THE MATCH IS DELIBERATELY NARROW: a statement is only read as a prescription when it carries a
 // sets×reps shape AND a load. That is what a prescription line looks like and nothing else does,
@@ -714,7 +714,7 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
   yes('History renders the per-session figure', /estKcalBurned/.test(src('src/app/history/page.tsx')))
   yes('Today renders it too', /estKcalBurned/.test(src('src/app/today/page.tsx')))
 
-  // X-15, W6: alcohol was written on every meal row, priced in plan.md as his single largest
+  // X-15, W6: alcohol was written on every meal row, priced in plan.md as their single largest
   // discretionary lever, and rendered on no page at all (audit F-38, F-69). A number no page shows
   // has failed the same way as a number never written.
   yes('History renders the week\'s alcohol, with its own day count beside it',
@@ -726,13 +726,13 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
   // ⚠ REWRITTEN 2026-08-14: THE PREMISE OF THE OLD ASSERTION WAS RETIRED BY THE ATHLETE.
   //
   // It read "the Meals caption does not promise an alcohol budget nobody has set", and it was
-  // right for eight days — plan.md's ~1,200–1,400 kcal/week was an OBSERVATION of what he drinks,
-  // and drawing a meter against it would have filed a coach's inference as his instruction. Then
-  // he set one: 1,400 kcal/week, athlete-confirmed, 2026-08-14. The finding that asked for it
-  // (`alcohol-budget-unset`) closed the way it was designed to — by him answering, not by anyone
+  // right for eight days — plan.md's ~1,200–1,400 kcal/week was an OBSERVATION of what they drink,
+  // and drawing a meter against it would have filed a coach's inference as their instruction. Then
+  // they set one, athlete-confirmed. The finding that asked for it
+  // (`alcohol-budget-unset`) closed the way it was designed to — by them answering, not by anyone
   // picking a number.
   //
-  // What replaces it is the half of that rule which did NOT expire: **a budget he set weekly must
+  // What replaces it is the half of that rule which did NOT expire: **a budget they set weekly must
   // not be rendered as a daily one.** The old check would now pass against a page dividing 1,400
   // by seven, which is the defect that actually remains available.
   {
@@ -741,7 +741,7 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
     yes('the weekly alcohol allowance is rendered against the week, never split across days',
       budget == null
         || (/budget\.alcohol/.test(page) && !new RegExp(`\\b${budget / 7}\\b`).test(page)),
-      `a per-day share of ${budget} would be ${budget / 7} kcal/day — a number nobody set. His `
+      `a per-day share of ${budget} would be ${budget / 7} kcal/day — a number nobody set. Their `
       + 'drinking is uneven on purpose (the big wine night is scheduled at the weekend and away '
       + 'from BJJ), so the allowance is weekly and data/targets.csv\'s alcohol_kcal stays blank.')
   }
@@ -990,11 +990,11 @@ console.log('\n6 · the 1.5 shortcut and the decomposition never share an axis (
     `${mixed.join('\n')}\nestMaintenanceKcal is a PLAN-DESIGN input — it may be compared with the `
     + 'calorie budget, which is the same model (that is what findings.mjs does). It may not be '
     + 'plotted against decomposed burn: data/METHOD.md forbids mixing the RMR x 1.5 shortcut with '
-    + 'the decomposition in bold, and doing it put a structural +2,618 kcal/week gap on the page '
-    + 'under the label "plan" (audit F-57). A measured maintenance figure replaces it at the '
-    + '2026-08-27 recalibration; until then this series has no honest plan line.')
+    + 'the decomposition in bold, and doing it put a structural weekly gap on the page under the '
+    + 'label "plan" (audit F-57). A maintenance figure measured from the chart\'s own ledger is '
+    + 'what replaces it; until then the series has no honest plan line.')
 
-  // ...and the athlete is told, rather than a line quietly vanishing off a chart he reads weekly.
+  // ...and the athlete is told, rather than a line quietly vanishing off a chart they read weekly.
   yes('History explains the removal instead of silently dropping the line',
     /no plan line on this chart/.test(src('src/app/history/page.tsx')))
 }

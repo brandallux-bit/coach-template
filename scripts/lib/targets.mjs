@@ -50,7 +50,7 @@ export const addDays = (iso, days) =>
  * **The domain starts at the first row rather than at the baseline**, and that is a stated limit:
  * deleting the earliest rows would shrink the domain and hide a gap. `check-targets-gap.mjs`
  * closes that hole from the other side by refusing a chart whose first *meal* predates its first
- * target — a day he ate against with no target is precisely the defect — and X-4 (append-only)
+ * target — a day they ate against with no target is precisely the defect — and X-4 (append-only)
  * covers the rest. Anchoring on `baseline.date` instead was rejected: the baseline day is a
  * weigh-in taken before the plan existed, and demanding a target for it would make the check green
  * only by rewriting history.

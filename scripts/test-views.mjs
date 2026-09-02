@@ -150,7 +150,7 @@ const sumOrNull = (rows, key) => {
 }
 
 {
-  // loggedDays is the PROTEIN denominator — days he logged food — and is deliberately not the
+  // loggedDays is the PROTEIN denominator — days they logged food — and is deliberately not the
   // energy-balance denominator. That one is `balanceDays`, and it lives in
   // scripts/lib/aggregate.mjs with an exhaustive property suite over it (F-51).
   const days = [
@@ -520,7 +520,7 @@ console.log('\nforecast — a day with two sessions')
 
 {
   // THE RED FIXTURE for W2's forecast half. Both are real rows: 2026-08-08's hilly walk and
-  // Session B. `training.find(...)` returned the walk — MET 0, because walking's energy lives in
+  // Session Two. `training.find(...)` returned the walk — MET 0, because walking's energy lives in
   // steps — so the strength session was worth ZERO on the forecast and the day looked like a rest
   // day with a stroll on it. Restore `.find` in the mirror above and this goes red.
   const lb = plan.latestWeightLb ?? plan.baselineWeightLb
@@ -562,20 +562,20 @@ console.log('\nforecast — a day with two sessions')
 
 // =================================================================================================
 console.log('\nthe weekly budget card — /today, 2026-08-14')
-// His request, verbatim: "We should have a weekly target chart, just like the daily, but including
+// The request, in shape: a weekly target chart like the daily one, but including
 // alcohol. So each day, I can see where I stand for the day and for the week. Both charts should
 // show both calories and %."
 //
 // The arithmetic is asserted in scripts/test-aggregations.mjs against the real functions. What is
 // checked here is the RENDERING, because that is where the flattering pairing lives: a numerator
-// against the wrong denominator is arithmetically fine and still tells him he has room he has not
+// against the wrong denominator is arithmetically fine and still tells them they have room they have not
 // got.
 // =================================================================================================
 
 {
   const page = code('src/app/today/page.tsx')
 
-  // ⚠ THE MIS-PAIRING GUARD. Pointing Food at `budget.total` instead of `budget.food` flatters him
+  // ⚠ THE MIS-PAIRING GUARD. Pointing Food at `budget.total` instead of `budget.food` flatters them
   // by eight points and nothing else in the system notices: 8,745 of 12,950 is 68%, 8,745 of 11,550
   // is 76%. Verified red by making exactly that swap.
   //
@@ -602,7 +602,7 @@ console.log('\nthe weekly budget card — /today, 2026-08-14')
         ? ok(`${f}: the ${name} meter is measured against ${field}`)
         : fail(`${f}: a meter measured against ${field} is labelled "${name}"`,
           `expected ${Object.entries(PAIRING).find(([, v]) => v === field)?.[0]}. Food against the `
-          + 'TOTAL budget reads eight points lower and looks like room he has not got.')
+          + 'TOTAL budget reads eight points lower and looks like room they have not got.')
 
       // ⚠ **THE PACE LINE IS ASSERTED ON THE METER, NOT ON THE FILE, AND THAT DISTINCTION IS THE
       // WHOLE CHECK.** The first version of the registry in scripts/test-aggregations.mjs greps
@@ -616,8 +616,8 @@ console.log('\nthe weekly budget card — /today, 2026-08-14')
       //
       // ⚠ **AND WHICH FIGURE IT POINTS AT, not merely that it exists.** Asserting the presence of
       // `pace={` alone let two live sneaks through: pointing Total's line at `budget.total` parks
-      // it at 100% so he is permanently "under", and pointing Food's at `planToDateKcal` instead of
-      // `foodPaceKcal` hands back the 455 kcal he drank. Both render a line, both are wrong, and
+      // it at 100% so they are permanently "under", and pointing Food's at `planToDateKcal` instead of
+      // `foodPaceKcal` hands back the 455 kcal they drank. Both render a line, both are wrong, and
       // both are wrong in the same direction — more room. Found by making the substitutions.
       const PACE_SOURCE = {
         'budget.food': 'foodPaceKcal',
@@ -639,7 +639,7 @@ console.log('\nthe weekly budget card — /today, 2026-08-14')
         fail(`${f}: the ${name} meter's pace line points at the wrong figure`,
           `at: ${at} — expected the ${wants} computed by weekIntake. A line drawn from the BUDGET `
           + 'sits at 100% and reads as permanently under; Food drawn from planToDateKcal hands '
-          + 'back every calorie he drank.')
+          + 'back every calorie they drank.')
       } else {
         ok(`  ...and its pace line is drawn from ${wants}`)
       }
@@ -685,7 +685,7 @@ console.log('\nthe weekly budget card — /today, 2026-08-14')
 
 // =================================================================================================
 console.log('\nthe week\'s estimated in / out / produced — /today, 2026-08-15')
-// His words: "my goal for the week is still lose 1 lb, so the week needs an estimated cals in and
+// The framing: the goal for the week is a rate, so the week needs an estimated cals in and
 // estimated cals out to achieve that, and they need to be divided logically amongst the 7 days."
 //
 // The arithmetic is asserted in scripts/test-aggregations.mjs against the real functions. What is
@@ -713,7 +713,7 @@ console.log('\nthe week\'s estimated in / out / produced — /today, 2026-08-15'
 
   // ONE aggregation, computed once, exactly as the budget card beside it. A page that sums the
   // week itself picks its own days again, which is F-51 — and here it would do it on the surface
-  // that says how much he can eat.
+  // that says how much they can eat.
   ;(!/estimatedBurnDays\s*[+*/-]|outKcal\s*-\s*.*inKcal/.test(page))
     ? ok('the page renders the projection rather than recomputing any part of it')
     : fail('today/page.tsx is doing the weekly energy arithmetic itself',
@@ -756,7 +756,7 @@ console.log('\nthe week\'s estimated in / out / produced — /today, 2026-08-15'
   ;(/title="Today's Meals"/.test(page) && /title="This week"/.test(page))
     ? ok('the daily card says Today\'s Meals and the weekly card still says This week')
     : fail('the two cards must name their own scale',
-      'his reason: the card below the daily one is weekly, so the daily one should say so')
+      'their reason: the card below the daily one is weekly, so the daily one should say so')
 }
 
 console.log('\nthe kcal ⇄ % toggle')
@@ -805,7 +805,7 @@ console.log('\nthe kcal ⇄ % toggle')
       : fail('the fixture no longer demonstrates the defect',
         `two-call mismatches ${split}, derived mismatches ${closed}`)
     ;(twoCalls(455, 1400) === 101)
-      ? ok('...and 455 of 1,400 — the figure on his chart today — is one of them')
+      ? ok('...and 455 of 1,400 — the figure on their chart today — is one of them')
       : fail('the live case must reproduce', String(twoCalls(455, 1400)))
   }
 
@@ -859,7 +859,7 @@ console.log('\ndata — every coach note stands until it is dismissed, not until
     : fail('today/page.tsx still uses oneOf for the coach note', 'F-60')
 
   // The stamp is what stops an old note reading as today's advice — "tonight is budgeted, eat it
-  // without arithmetic" is a sentence that must never follow him into the next week undated.
+  // without arithmetic" is a sentence that must never follow them into the next week undated.
   const notesComponent = code('src/components/CoachNotes.tsx')
   ;(/n\.date !== today &&/.test(notesComponent))
     ? ok('CoachNotes stamps a note that is not today\'s with its own date')
@@ -929,39 +929,39 @@ console.log('\nfindings — the card')
   const lib = src('scripts/lib/findings.mjs')
 
   // THE assertion. The first version of this card rendered every finding to the athlete, including
-  // seven questions only he could answer, on a read-only page. He rejected it outright. A finding
-  // reaches him only if scripts/lib/findings.mjs marked it audience: 'athlete'.
+  // seven questions only they could answer, on a read-only page. They rejected it outright. A finding
+  // reaches them only if scripts/lib/findings.mjs marked it audience: 'athlete'.
   ;(/audience === 'athlete'/).test(card)
     ? ok('the card renders only athlete-audience findings')
     : fail('the card must filter on audience', 'severity is a log level; it says how loud, never who for')
 
   // Belt and braces: no severity-only grouping may come back, since that is exactly what leaked
-  // coach and maintainer findings onto his screen.
+  // coach and maintainer findings onto their screen.
   ;(/severity === 'attention'\)/).test(card) || (/severity === 'info'\)/).test(card)
-    ? fail('the card is grouping by severity again', 'that is what put a question he cannot answer next to an internal integrity note')
+    ? fail('the card is grouping by severity again', 'that is what put a question they cannot answer next to an internal integrity note')
     : ok('the card does not group by severity')
 
   // One line each. Detail, action and source are for the coach, who has the file open; on a phone
   // the headline is the whole message. If it needs a paragraph it is not an alert.
   ;(/finding-detail|finding-action|finding-meta/).test(card)
-    ? fail('the card renders detail/action/source to the athlete', 'WAY too much information — his words')
+    ? fail('the card renders detail/action/source to the athlete', 'WAY too much information — their words')
     : ok('the card renders the headline only')
 
-  // Silence is the default state. No permanent all-clear panel: a reassurance box is a thing he
+  // Silence is the default state. No permanent all-clear panel: a reassurance box is a thing they
   // learns to scroll past, which is how the one alert that matters gets missed.
   ;(/if \(!mine\.length\) return null/).test(card)
-    ? ok('the card renders nothing when nothing is for him')
-    : fail('the card must render null when empty', 'an all-clear box trains him to ignore it')
+    ? ok('the card renders nothing when nothing is for them')
+    : fail('the card must render null when empty', 'an all-clear box trains them to ignore it')
 
   // A question for the athlete is never athlete-facing — it cannot be answered here.
   ;(/A QUESTION FOR THE ATHLETE IS NEVER/).test(lib)
-    ? ok('the audience rule forbids asking him things on a read-only page')
-    : fail('the audience rule must forbid questions on the dashboard', 'ask in conversation, where he can reply')
+    ? ok('the audience rule forbids asking them things on a read-only page')
+    : fail('the audience rule must forbid questions on the dashboard', 'ask in conversation, where they can reply')
 
-  // Default-coach, so a NEW finding is invisible to him until someone decides it passes the test.
+  // Default-coach, so a NEW finding is invisible to them until someone decides it passes the test.
   ;(/return 'coach'/).test(lib)
     ? ok('unclassified findings default to the coach, not the athlete')
-    : fail('the audience default must be coach', 'defaulting onto his screen is the failure this fixes')
+    : fail('the audience default must be coach', 'defaulting onto their screen is the failure this fixes')
 }
 
 console.log('\nX-15 — every store the bundle carries has a page that reads it')

@@ -71,7 +71,7 @@ export default function CoachNotes({ notes, today }: { notes: Note[]; today: str
           <h2>From your coach</h2>
           {/* A note stands until it is dismissed, so an older one can still be showing — but it
               says so. An undated older note reads as today's advice, which is exactly how "tonight
-              is budgeted, eat it without arithmetic" would have followed him into the next week. */}
+              is budgeted, eat it without arithmetic" would have followed them into the next week. */}
           {n.date !== today && <p className="caption">Written {prettyDate(n.date)}</p>}
           <div className="note-block">
             <p><strong>{n.headline}</strong></p>

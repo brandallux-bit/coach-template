@@ -15,12 +15,12 @@ This is a real chart's model, abridged. It is one shape among many. A chart buil
 symptom control, food safety, blood markers, endurance, sleep, or pain-free movement would
 look structurally identical and share none of these domains.
 
-**Ranking:** 1. Physical appearance → 2. Strength → 3. Health (dormant, satisfied)
+**Ranking:** 1. Look better in a shirt → 2. Get stronger → 3. Health (dormant, satisfied)
 
-### Domain: Physical appearance — #1
+### Domain: Look better in a shirt — #1
 - **Why it's here (their words):** visible abdominal definition, visible chest and arm
   muscle, no love handles.
-- **Primary metric:** waist at navel (inches, down is better) — chosen by the athlete over
+- **Primary metric:** a tape measurement taken the same way each time (inches, down is better) — chosen by the athlete over
   scale weight, explicitly: *"much more important than weight."*
 - **Baseline:** 35.25″ on 2026-08-07, morning and fasted, per `photos/PROTOCOL.md`.
 - **Demotion trigger:** waist ≤ 33″. Weight figures (175 lb, −5 to −8 lb) are **review
@@ -46,7 +46,7 @@ look structurally identical and share none of these domains.
 - **What it gives up:** muscle gain is subordinated while this runs. Fat loss wins every
   tiebreak.
 
-### Domain: Strength — #2
+### Domain: Get stronger — #2
 - **Standing status:** satisfied — already strong for age and bodyweight. Ranked below
   appearance by explicit choice.
 - **Primary metric:** reps at a fixed load and fixed RIR on named markers.

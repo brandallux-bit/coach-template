@@ -77,7 +77,7 @@ End with: target bodyweight, target waist, target lean mass, a date, and the pha
 structure to get there. A photo goal that hasn't been converted to numbers can never be
 achieved, only approached indefinitely.
 
-**5. Then ask what they actually wants**
+**5. Then ask what they actually want**
 Often the reference physique is a proxy. Ask what specifically they're responding to in the
 image — the shoulders, the waist-to-shoulder ratio, the leanness, looking good in a
 particular shirt. Frequently the real goal is 60% of the reference and reachable in a

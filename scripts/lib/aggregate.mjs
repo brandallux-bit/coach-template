@@ -94,9 +94,10 @@ const MOVEMENT_COLUMNS = BURN_COMPONENTS.filter((c) => c.movement).map((c) => c.
  * missing step total means the phone automation did not fire, a missing TEF means nothing was
  * logged that day. Returning the labels rather than the boolean is what lets a surface say which.
  *
- * Scale of the harm, from F-16: with no step feed at all, burn is understated by ~420 kcal/day and
- * this chart's weekly energy balance flips from a +169 kcal deficit to a −1,702 kcal surplus. The
- * athlete would reasonably conclude he was eating over maintenance and cut further.
+ * Scale of the harm (F-16): a movement component missing for a whole week can be enough to flip a
+ * weekly energy balance from a real deficit to an apparent surplus. The athlete would reasonably
+ * conclude they were eating over maintenance and cut further. No figure is quoted because the size
+ * of it is a property of the person, not of the model.
  */
 export function missingBurnComponents(energyRow) {
   const present = (column) => energyRow != null && n(energyRow[column]) != null
@@ -208,9 +209,9 @@ export function weekBalance(days) {
 /**
  * ⚠ **THE ONE HOME FOR THE WEEKLY FOOD BUDGET, WHICH IS DERIVED AND MUST NEVER BE TYPED.**
  *
- * `nutrition/plan.md` is explicit that alcohol sits **inside** the calorie budget: *"It is planned
- * into the weekly budget, not a penalty"*, and the big-dinner day is described as *"dinner + wine
- * budgeted in"*. So the three figures are one subtraction, not three constants:
+ * A chart that budgets alcohol normally budgets it **inside** the calorie total rather than as a
+ * penalty on top, and its bigger day is usually the one the drinking is planned into. So the three
+ * figures are one subtraction, not three constants:
  *
  *     total  = plan.weeklyKcalBudget           (the chart's, already on file)
  *     alcohol= plan.weeklyAlcoholKcalBudget    (the athlete's, 2026-08-14)
@@ -241,14 +242,14 @@ export function weeklyBudget(totalKcal, alcoholKcal) {
  *
  * ⚠ **THE DEFECT THIS IS SHAPED TO AVOID: a week-to-date figure divided by a full-week budget.**
  * Three days into the week, 4,000 kcal against "12,950" reads as 31% used and looks like enormous
- * headroom, when he is roughly on pace. That is F-51's shape — a numerator and a denominator
- * covering different day sets — wearing a budget's clothes, and on the surface he opens daily.
+ * headroom, when they are roughly on pace. That is F-51's shape — a numerator and a denominator
+ * covering different day sets — wearing a budget's clothes, and on the surface they open daily.
  *
- * The fix is NOT to shrink the denominator: he asked to see the week's target, and prorating
- * 12,950 by days elapsed would invent a number nobody planned. **This chart's budget is
- * deliberately not flat** — Mon–Thu 1,700, Fri 1,750, Sat 2,650, Sun 1,750 — so `12,950 × 5/7` is
- * 9,250 against a real Mon–Fri plan of 8,550: 700 kcal of fabricated headroom, produced on the day
- * before the weekend the whole structure exists to protect.
+ * The fix is NOT to shrink the denominator by prorating the weekly total: that invents a number
+ * nobody planned. **A weekday budget is deliberately not flat** — the unevenness is the plan, with
+ * a bigger day parked where the athlete wants it — so `weekly × 5/7` does not equal the real
+ * Monday-to-Friday plan. It overstates it by whatever the weekend was holding, and it does so on
+ * the day before the weekend the whole structure exists to protect.
  *
  * So the budget stays the denominator and the week's OWN target rows supply a **pace** figure
  * beside it: `planToDateKcal` is `Σ targets.kcal` over the counted days, which is the plan's own
@@ -257,12 +258,12 @@ export function weeklyBudget(totalKcal, alcoholKcal) {
  * **`counted` is days with an intake figure, and the pace is summed over exactly those days** — the
  * same rule as `weekBalance` above and for the same reason. An unlogged Wednesday dropping out of
  * the consumed side while staying in the plan side is the flattering direction, and it is the one
- * mechanism by which this card could quietly show headroom he does not have.
+ * mechanism by which this card could quietly show headroom they do not have.
  *
- * **`foodPaceKcal` is the plan through today MINUS what he actually drank.** Alcohol has no per-day
+ * **`foodPaceKcal` is the plan through today MINUS what they actually drank.** Alcohol has no per-day
  * allocation on purpose (see `weeklyBudget` and `scripts/generate-targets.mjs`), so there is no
  * planned food line to subtract it from — but there is a measured one, and it says the true thing:
- * every glass is a calorie he does not eat. Null when nothing was drunk *and* nothing was planned.
+ * every glass is a calorie they do not eat. Null when nothing was drunk *and* nothing was planned.
  *
  * X-1 throughout: a week with nothing logged returns nulls, never zeros, and a day that recorded no
  * drink is **not** a measured zero — it simply contributes nothing to `alcoholDays`.
@@ -289,10 +290,10 @@ export function weekIntake(days, budget) {
      *
      * A day in progress contributes the calories eaten so far and its target IN FULL, because the
      * plan has no intraday schedule and prorating a calorie budget by the clock would invent one
-     * (nobody eats linearly through a day, and this chart's biggest day is a dinner). So on a
-     * Saturday morning with breakfast logged, `planToDateKcal` already contains the whole 2,650
-     * and the gap reads as ~2,350 "under" — which is not headroom banked, it is a day not yet
-     * eaten.
+     * (nobody eats linearly through a day, and a chart's biggest day is often an evening one). So
+     * on the morning of a big day with breakfast logged, `planToDateKcal` already contains that
+     * whole day's target and the gap reads as most of it "under" — which is not headroom banked,
+     * it is a day not yet eaten.
      *
      * The figure is right and the READING is what goes wrong, so this is a flag rather than an
      * adjustment: any surface rendering the pace must say the line runs through the END of today.
@@ -628,7 +629,7 @@ export function weekEnergy({ days = [], observed = null, weekdayBudget = null, k
  * week's average. Steps are an accumulation: today's count is a partial that will keep rising
  * until midnight, and averaging it in at full weight drags the mean down by however much of the
  * day is left. History read **Avg steps 5,667** against a 9,000 target for a week whose completed
- * days averaged 7,551 — he would conclude he was 3,300/day behind when he was ~1,450 behind.
+ * days averaged 7,551 — they would conclude they were 3,300/day behind when they were ~1,450 behind.
  *
  * Note the asymmetry that made it invisible: a day with NO steps row is already excluded, because
  * `meanOrNull` skips nulls. A day with a PARTIAL count looked like data and was included whole.
@@ -735,7 +736,7 @@ export const costDependsOnDuration = (row) =>
  * **774** for the same session and built the day's 1,361 deficit from it; on 08-12, 1,185 against
  * 784. **1,328 is the exact number `decisions.md` records as corrected away on 2026-08-12** — the
  * intensity-split fix landed in one of the two files and the other kept the pre-fix answer. If the
- * athlete ate back what the screen said he had earned he was 554 kcal over, on a plan whose whole
+ * athlete ate back what the screen said they had earned they were 554 kcal over, on a plan whose whole
  * daily deficit is ~600.
  *
  * The precedence, highest first — `data/METHOD.md`, `training.csv`:

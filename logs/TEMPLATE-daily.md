@@ -15,7 +15,8 @@
   cannot be evaluated without it. Band-assisted work: record band weight in the note, never
   as load — a heavier band is an easier set.)*
 - Session RPE (1-10):
-- Anything hurt:
+- Anything hurt: *(anything in `athlete/injury-history.md` or an active rehab document that this
+  session touched, and how it went)*
 
 ## Nutrition
 - Target today: *(→ `data/targets.csv`)*
@@ -25,10 +26,15 @@
 
 ## Body
 - Weight (fasted, post-void):
-- Waist at navel (morning, fasted — `photos/PROTOCOL.md`) / Neck:
-- Steps: *(from `data/steps.csv` — the automated feed is the source of truth; never hand-enter)*
-- Digestion (bowel movements; Miralax taken y/n): *(supports `nutrition/supplements.md` flag 6 —
-  track whether Miralax frequency falls as fibre becomes consistent)*
+- Tape measurements (morning, fasted — take each one the same way every time; `photos/PROTOCOL.md`
+  holds the protocol): `<site>` / `<site>`
+- Steps: *(where this chart declares `plan.stepFeed` — the automated feed is the source of truth,
+  never hand-enter. On a chart without one, delete this line: its movement term comes from
+  `plan.movementOutsideExerciseLevel` and there is no step count to record.)*
+- Registered metrics: *(one line per entry in `athlete/constants.json` → `metrics` whose `feed` is
+  `manual`. **This template names none of them on purpose** — they are this chart's, and a shipped
+  list of somebody else's would be the first thing a new athlete was asked to record. Add the ones
+  this chart actually tracks, and delete this note.)*
 - Sleep (hours / subjective quality 1-5):
 - Energy (1-5):
 - Hunger (1-5):

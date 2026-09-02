@@ -143,13 +143,23 @@
   },
 
   "metrics": {
-    "_comment": "Registry for anything tracked in data/metrics.csv — the long-format file for measures the fixed columns of body.csv don't cover. This is where a symptom count, a medication, a lab value or a device reading goes, in the athlete's own vocabulary, so a new chart never needs code edited to record a new thing. Every entry must name its unit, its direction (up|down = which way is progress), and the goals.md domain it serves. The validator rejects an entry with no domain, because a metric no domain needs is a chore the coach invented.",
+    "_comment": "Registry for anything tracked in data/metrics.csv — the long-format file for measures the fixed columns of body.csv don't cover. This is where a symptom count, a medication, a lab value or a device reading goes, in the athlete's own vocabulary, so a new chart never needs code edited to record a new thing. Every entry must name its unit, its direction (up|down = which way is progress), and the goals.md domain it serves. The validator rejects an entry with no domain, because a metric no domain needs is a chore the coach invented. Two more per entry decide how the coach TREATS it, and both have defaults so an existing registry keeps working: `feed` is `manual` or `automated` \u2014 whether anything writes this without the athlete saying it \u2014 and `cadence` is `daily`, `episodic` or `lab`. They exist because a metric that only exists when somebody reports it has to be asked for, and one a device writes must never be asked for: CLAUDE.md \u00a70.2 states that rule once, over this registry, so it names no metric and needs no edit when a chart tracks a different thing. The defaults are `manual` and `episodic` \u2014 the safe pair, because an episodic metric is never chased, so a wrong default costs a question nobody asks rather than a daily nag about something a device already recorded.",
     "_example": {
       "reaction_severity": {
         "label": "Reaction severity",
         "unit": "0-3 scale",
         "direction": "down",
-        "domain": "Eating without a reaction"
+        "domain": "Eating without a reaction",
+        "feed": "manual",
+        "cadence": "episodic"
+      },
+      "morning_stiffness_min": {
+        "label": "Morning stiffness",
+        "unit": "minutes",
+        "direction": "down",
+        "domain": "Moving without pain",
+        "feed": "manual",
+        "cadence": "daily"
       }
     }
   }

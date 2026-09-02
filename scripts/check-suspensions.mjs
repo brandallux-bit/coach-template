@@ -15,7 +15,7 @@
  *
  * WHY IT MAY FAIL A BUILD, where most of this repo's checks may not. Every collision it reports is
  * fixable **by editing the record**: correct the template, correct the row, or mark the offer with
- * `⛔` in the document that offers it. None of them can only be closed by the athlete or his doctor
+ * `⛔` in the document that offers it. None of them can only be closed by the athlete or their doctor
  * deciding something — the test `INVARIANTS.md` sets for whether a check is entitled to block. It
  * never proposes a load, a dose or a phase.
  *
@@ -106,7 +106,7 @@ if (collisions.length) {
   console.log(`FIX IT ON THE PRESCRIBING SIDE. Change the template entry or the prescription row, `
     + `or — where the movement is genuinely coming back at a later phase and the line should stay `
     + `— mark that offer with ${mark} in the document that makes it, so the athlete reads the `
-    + `suspension in the file he opens to substitute rather than in a second file he has to `
+    + `suspension in the file they open to substitute rather than in a second file they have to `
     + `remember to open (audit F-19).\n`)
 }
 

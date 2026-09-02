@@ -260,7 +260,7 @@ const bundle = {
   energy: readCsv(join(DATA, 'energy.csv')),
   // Things the coach needs to know, computed rather than remembered. Derived here so the
   // dashboard has one too — the athlete should not have to wait for a coaching session to be told
-  // his loss rate is above the ceiling. See scripts/lib/findings.mjs for why this reports rather
+  // their loss rate is above the ceiling. See scripts/lib/findings.mjs for why this reports rather
   // than blocks.
   // Empty before intake: every finding is a comparison against a threshold in `constants.json`,
   // so with no chart there is nothing to compare and nothing to report. Not an error state — a

@@ -164,8 +164,8 @@ export function effectiveRx(session: string, date: string): Row[] {
  * The prescriptions.csv session name that serves a training.csv session name, or null.
  *
  * Exact match first. Failing that, one — and only one — session whose `sessionKey` matches: so
- * "Session B — Upper Push/Pull + Core" finds "Session B", while "Session A — Lower + Pull" finds
- * NOTHING, because both "Session A" and "Session A (knee-free)" answer to it and picking either
+ * "Session Two — Upper Push/Pull + Core" finds "Session Two", while "Session One — Lower + Pull" finds
+ * NOTHING, because both "Session One" and "Session One (modified)" answer to it and picking either
  * would be a guess about which block the athlete performed. An ambiguous name resolves to no
  * prescription, which renders as "no set-by-set prescription" — true, and better than a confident
  * wrong table.
@@ -198,7 +198,7 @@ export function rxFor(session: string | null | undefined, date: string): Row[] {
  *
  * The rank, in order, and why each key is where it is:
  *
- *   1. **Not skipped.** A session he did not do is never the day's session, whatever else it has.
+ *   1. **Not skipped.** A session they did not do is never the day's session, whatever else it has.
  *   2. **Has a live prescription.** This is the key that decides the athlete-visible cases. A set
  *      is logged against a prescribed exercise, so the prescribed session is the one the Sets form
  *      must pre-fill and the one Today must render the table for. It sits above status because of
@@ -238,7 +238,7 @@ export const primarySession = (rows: Row[], date: string): Row | null =>
  * The sets belonging to one session, out of a day's sets.
  *
  * WHY THIS EXISTS. `logged = allOf(sets, date)` matched on the date alone, so an evening session
- * rendered exercises "done" that a morning session had logged — and he would skip them. `sets.csv`
+ * rendered exercises "done" that a morning session had logged — and they would skip them. `sets.csv`
  * has a `session` column and the filter ignored it.
  *
  * The ladder, and the reason it is a ladder rather than an equality test:
@@ -248,7 +248,7 @@ export const primarySession = (rows: Row[], date: string): Row | null =>
  *      This is what keeps 2026-08-06 through 2026-08-12 rendering exactly as they did.
  *   1. **Exact session match.**
  *   2. **`sessionKey` match**, for the real and common case where `training.csv` says
- *      "Session B — Upper Push/Pull + Core" and every set on that day says "Session B".
+ *      "Session Two — Upper Push/Pull + Core" and every set on that day says "Session Two".
  *   3. **Nothing.** A set on a two-session day whose name matches neither is genuinely
  *      unattributable, and guessing is what this function exists to stop. It stays visible in the
  *      unscoped "every set logged today" tables, which are deliberately not filtered — hiding
