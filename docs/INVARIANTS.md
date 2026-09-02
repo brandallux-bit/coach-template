@@ -126,6 +126,7 @@ name, which is why it keeps being fixed one instance at a time.**
 | X-15 | **Every prescribed number has a rendering surface.** | `ENFORCED` ✓ | 6 |
 | X-16 | **Every number records who it came from.** | `ENFORCED` ✓ | *(new)* |
 | X-17 | **A machine-readable default always answers. Prose may refine it, never suppress it.** | `ENFORCED` ✓ | *(new)* |
+| X-18 | **A proposal is checked against the record before it is presented.** | `ENFORCED` ✓ | *(new)* |
 
 Twelve of the sixteen are enforced. The audit found no violations of X-4 or X-5, which is worth
 knowing — they are prose and they are holding, so they stay prose for now.
@@ -1238,6 +1239,63 @@ subject is written by an automation outside this repo and which can therefore on
 `daily-rollover.yml` applying `--fill-gaps` *before* it runs the suite, so the job that guarantees
 a target is the job that closes every gap — at worst one cron cycle, and the rollover job can never
 block itself.
+
+## X-18 · A proposal is checked against the record before it is presented *(new)*
+
+**Statement.** Anything the system proposes to the athlete — a session, a target, a figure on a
+forward-looking card — is derived from what the record says happened, not from a structure that
+describes what was supposed to happen. A schedule, a plan document and a default are all
+*proposals*. The ledger is the only account of what occurred, and a proposal that never opened it
+is a guess wearing the costume of a recommendation.
+
+**Status:** `ENFORCED` ✓ — `scripts/lib/recent-work.mjs` (the overlap rule),
+`skills/library/session-recommendation/SKILL.md` (the procedure, and the confirm / adapt / replace
+it forces a coach to declare), `session-repeats-recent-work` in `scripts/lib/findings.mjs` (the
+backstop for a session that skips the procedure), `scripts/lib/aggregate.mjs`'s `anchoredTrend` and
+`observedDailyBurn` (the ledger-first forms of two figures that used to be plan lookups),
+`scripts/test-recent-work.mjs` and `scripts/test-session-table.mjs` (fixtures).
+
+**Why it needed naming, and why it is not any of the seventeen above.** Three defects of one shape,
+found in three unrelated parts of the system:
+
+- **The session proposal was a weekday lookup.** `planDay()` read the weekly template and nothing
+  else. Nothing in its path opened `training.csv`, so it could propose a circuit sharing five of
+  six working movements with a hard session finished the previous afternoon, and no check noticed
+  — because no check compared a proposal to the record.
+- **The forward burn was a target lookup.** The movement term read the athlete's *step target*
+  rather than their observed step count, so the forward view priced a day at what they intended to
+  do. On a chart where intention and behaviour diverge, that is the one number that must not come
+  from the plan.
+- **The Today card's "done" column was a prescription lookup.** It counted what was prescribed and
+  rendered a session as untouched for as long as the block ran, because it never joined the
+  prescription to the sets actually written under it.
+
+X-13 is the nearest neighbour and it is not the same rule: X-13 is about a lookup selecting on
+every dimension of its key — a correct read of the wrong table is still X-18's defect and passes
+X-13 cleanly. X-15 governs a number that was written and never rendered; here the number renders
+perfectly and is derived from the wrong source. X-17's default that must fire is the *complement*:
+X-17 says a structure may not be silenced by prose, X-18 says a structure may not stand in for the
+record when the record exists.
+
+**The generalisation, which is what makes it an invariant rather than three incidents.** Every one
+of these read a source that answers *instantly and always* — a weekday map, a target, a
+prescription — in place of one that answers *slowly and sometimes*: a ledger that may be sparse,
+stale, or empty on a chart in its first week. The substitution is never made on purpose. It is what
+happens when the harder source is allowed to return nothing and no one decides what that means, so
+the easy source becomes the answer by default and the code reads as though it were the intended
+one.
+
+**The test for a new instance:** *does this value describe something that already happened?* If yes,
+the ledger is its source, and a plan structure may only supply what the ledger cannot — never
+replace what it can. Where the ledger is genuinely empty, the correct output is a declared absence
+(X-1: a blank means "not measured") or a proposal that says out loud which source it fell back to,
+never a plan figure presented as an observation.
+
+**What this costs, and why it is worth it.** A ledger-first read is slower to write, has more
+branches, and is the only kind that can return nothing — so every consumer needs a story for the
+empty case, and a chart in its first week exercises all of them at once. That is the price of the
+rule, and it is the same price `hasChart` already pays everywhere else in `scripts/`: a system that
+is honest on day one is more work than one that is confident on day one.
 
 ---
 

@@ -131,7 +131,7 @@
         "Mon": { "session": "<session name>", "focus": "<what it is for>" }
       },
       "dailyBlockType": "<a registry key from sessionTypes, or omit>",
-      "setRestSec": 70,
+      "setRestSec": "<their answer in seconds — OMIT this key entirely if they did not give one; never paste the shipped 70 here, it is the coach's number>",
       "conditioningMenu": ["<a session name, exactly as data/prescriptions.csv writes it>"]
     }
   },

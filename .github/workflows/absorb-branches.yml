@@ -5,11 +5,10 @@
 # `main`, and when they do, the data is *in git and invisible*: `main` never gets it, the build
 # never sees it, and the dashboard shows a blank panel for a meal that was logged hours ago.
 #
-# That happened on 2026-08-11: a breakfast was logged to
-# `claude/breakfast-nutrition-log-pw347w` at 09:56 local and was still missing from the dashboard
-# at 12:09. CLAUDE.md §0.1 already required a coaching session to find and merge stray branches at
-# session start — but that is a manual cleanup that only runs when a session happens to run. The
-# athlete had been staring at a wrong dashboard for two hours by then.
+# It has happened: a meal logged to an auto-created branch mid-morning, still missing from the
+# dashboard two hours later. CLAUDE.md §0.1 already required a coaching session to find and merge
+# stray branches at session start — but that is a manual cleanup that only runs when a session
+# happens to run, and in the meantime the athlete is reading a dashboard that is quietly wrong.
 #
 # So: absorb them on push, within seconds, with no human and no agent involved.
 name: Absorb stray branches
@@ -60,7 +59,7 @@ jobs:
 
       # The body of this job is scripts/absorb-branches.mjs, NOT this file.
       #
-      # It lived here, inline, until 2026-08-14 — and that is precisely why a race that silently
+      # It lived here, inline, for a long time — and that is precisely why a race that silently
       # destroyed the athlete's logged data survived in it: logic inside a `run:` block cannot be
       # tested. `scripts/test-git-sync.mjs` now replays the real race against real repositories,
       # which is only possible because the code is somewhere a test can call it.

@@ -168,6 +168,30 @@ the design.
 > `program.dailyBlockType` names which of those types the `Daily` prescription block is, so the
 > forward view prices it from the same figure the ledger uses.
 
+> **`program.conditioningMenu` — the non-lifting-day options, names only.** A list of the session
+> names their `data/prescriptions.csv` rows use, and nothing else: the contents, the selection
+> rules and the hatch for building a session from scratch live in the menu document (copy
+> `library/optional/program/conditioning-menu.md` into `program/` and fill it in). Two things read
+> it — `skills/library/session-recommendation`, to know what it may choose from, and
+> `scripts/check-suspensions.mjs`, which holds **every** name on it to the active block's
+> suspension list rather than only the one today's template happens to name, so an option built on
+> a movement that has since come out fails the build instead of being proposed.
+>
+> **Omit it entirely on a chart with no menu.** That is a normal chart, not an incomplete one:
+> building a session from the last three days is a complete answer.
+
+> **`metrics.<key>.feed` and `.cadence` — whether the coach chases a number, and both optional.**
+> `feed` is `manual` or `automated`: does anything write this without the athlete saying it?
+> `cadence` is `daily`, `episodic` or `lab`: is a gap in it a real gap, does it only exist when it
+> happens, or does somebody else produce it on their own schedule?
+>
+> An entry that names neither is read as `manual` + `episodic`, which together mean **never
+> chased** — the safe default, because getting it wrong that way costs a question nobody asks,
+> while the other way nags the athlete daily about a number a device already recorded. `manual` +
+> `daily` is the pair that makes `CLAUDE.md` §0.2's standing check fire, so **write the pair on
+> anything they are supposed to report every day**; intake asks. `npm run validate` rejects a
+> value outside either enum.
+
 ## 3. Run intake
 
 > ### ⚠ Use Claude Code, not Cowork
@@ -326,6 +350,33 @@ The template holds system files only — charter, skills, agents, scripts, dashb
 athlete's own files (`athlete/*.md`, `data/*.csv`, `logs/`, `decisions.md`) were renamed
 or written after the fork, so upstream never touches them. Conflicts should be rare and
 confined to system files you've deliberately customised.
+
+> ⚠ **THIS WORKS ONLY FOR A CHART CREATED THE WAY §1 CREATES ONE — by cloning the template and
+> renaming the remote, so the two share a git history.** A chart made any other way (downloaded as
+> a zip, copied file by file, `rm -rf .git` and `git init`) has **no common ancestor with the
+> template**, and this command fails outright:
+>
+> ```
+> fatal: refusing to merge unrelated histories
+> ```
+>
+> That is not a reason to pass `--allow-unrelated-histories`. It would "succeed" by treating every
+> file in the chart as a conflict against a file it has never seen, including files upstream is
+> supposed to leave alone — the athlete's own — and the result needs resolving by hand anyway.
+>
+> **Pull the files across individually instead.** Check what actually moved, then take the paths
+> you want:
+>
+> ```bash
+> git fetch upstream
+> git diff --stat HEAD upstream/main -- scripts src skills .claude CLAUDE.md data/METHOD.md
+> git checkout upstream/main -- scripts/lib/aggregate.mjs     # one path at a time
+> ```
+>
+> `scripts/lib/system-paths.mjs` lists exactly which paths are shared and therefore safe to take
+> this way — anything not on that list is the chart's own and must never be overwritten from
+> upstream. A chart in this position is not broken and does not need recreating; it just does this
+> instead, every time, forever.
 
 Run `npm run validate` after any merge.
 
