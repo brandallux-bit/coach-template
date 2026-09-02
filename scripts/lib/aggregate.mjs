@@ -913,3 +913,130 @@ export const dayFraction = (hour, minute) =>
 /** Every value `dayFraction` can actually produce over a real day, ascending. */
 export const dayFractionDomain = () =>
   Array.from({ length: MINUTES_PER_DAY }, (_, m) => dayFraction(Math.floor(m / 60), m % 60))
+
+/**
+ * YYYY-MM-DD shifted by whole days, in UTC arithmetic on a date-only string.
+ *
+ * Deliberately not `new Date()` on a local clock: every date in a chart is the athlete's local
+ * calendar date (data/METHOD.md rule 6) and the caller has already derived `today` correctly via
+ * `localToday()`. This only ever moves an already-correct date.
+ *
+ * ⚠ **IT LIVES HERE, IN THE MODULE THAT IMPORTS NOTHING**, rather than beside its first caller.
+ * `anchoredTrend` below needs it too, and a second copy of date arithmetic is the defect class this
+ * repo has hit most often. `scripts/lib/recent-work.mjs` re-exports it under the name its own
+ * callers already use.
+ */
+export function shiftDate(iso, deltaDays) {
+  const [y, m, d] = String(iso).split('-').map(Number)
+  const t = Date.UTC(y, m - 1, d) + deltaDays * 86400000
+  const out = new Date(t)
+  return `${out.getUTCFullYear()}-${String(out.getUTCMonth() + 1).padStart(2, '0')}-${String(out.getUTCDate()).padStart(2, '0')}`
+}
+
+/**
+ * How many readings a window needs before the figure it produces is FIRM rather than indicative.
+ *
+ * ⚠ **A WINDOW WITH ONE READING IS STILL A WINDOW.** The earlier rule was that a window needed
+ * three readings or it returned nothing at all, which reads as caution and is not: the checks
+ * downstream of it include a §5.2 safety ceiling, so a chart whose athlete weighs twice a week
+ * had that ceiling silently disabled — the sparser the record, the quieter the safety check, which
+ * is exactly backwards. A single reading is a real measurement and is reported; what changes is
+ * that the surface says which it is. See `MIN_WINDOW_READINGS` beside it.
+ */
+export const FIRM_WINDOW_READINGS = 3
+
+/** The floor for a window to exist at all. One: below that there is nothing to average. */
+export const MIN_WINDOW_READINGS = 1
+
+/**
+ * ⚠ **A TREND AS TWO SMOOTHED LEVELS, NOT A LINE THROUGH EVERY POINT.**
+ *
+ * Take the mean of the last `windowSize` readings, and the mean of the last `windowSize` readings
+ * ending `lagDays` earlier; the rate is the difference over the real gap between them. It answers
+ * both halves of a projection with one estimator: `current` is the LEVEL to project from and
+ * `perWeek` is the RATE to project at.
+ *
+ * **WHY THAT MATTERS MORE THAN IT SOUNDS.** The alternative in this repo is `trend()` — a
+ * least-squares slope over every reading ever taken — and a page that divides a single latest
+ * reading by that slope is using two different estimators for the two halves of one division. A
+ * day's water swing then moves the numerator without touching the denominator, and the projected
+ * date jumps by weeks on a morning nothing actually changed. This is one estimator and it answers
+ * both.
+ *
+ * ⚠ **UNIT-NEUTRAL ON PURPOSE — IT RETURNS `current` AND `prior`, NOT `currentLb`.** The thing
+ * being trended is whatever the caller passed: bodyweight on one chart, a waist measurement, a
+ * symptom score, hours of sleep. A field named for pounds is a shared function asserting one
+ * athlete's units (INVARIANTS.md X-11), and the caller already knows the label because it chose
+ * the series.
+ *
+ * ⚠ **THE TWO WINDOWS ARE KEPT DISJOINT, AND THAT IS NOT A DETAIL.** With a reading every morning
+ * they cannot overlap — days 0–2 and 10–12 are ten apart. With a gap in the record they can: given
+ * readings on the 1st, 2nd, 3rd, 12th and 13th, "the last three" reaches back to the 3rd, and a
+ * comparison window anchored at the 3rd would share that reading with it. A reading counted on
+ * both sides drags the two means toward each other and understates the rate — in a deficit, the
+ * flattering direction. So the prior window stops strictly before the current one begins, and the
+ * result reports how few readings that left it with.
+ *
+ * `points` are `{ date, value }`, in any order. Returns null when there is nothing to compare.
+ */
+export function anchoredTrend(points = [], { asOf = null, windowSize = 3, lagDays = 10 } = {}) {
+  const clean = (points ?? [])
+    .filter((p) => p?.date && n(p.value) != null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  if (!clean.length) return null
+
+  const end = asOf ?? clean[clean.length - 1].date
+  const priorEnd = shiftDate(end, -lagDays)
+
+  // "The next date prior" is exactly `<=` on a sorted list: a window anchors at the newest reading
+  // that is not after its own date and walks backwards from there.
+  const windowEndingAt = (date, before = null) => {
+    const upTo = clean.filter((p) => p.date <= date && (before == null || p.date < before))
+    return upTo.slice(Math.max(0, upTo.length - windowSize))
+  }
+
+  /**
+   * ⚠ **THE CURRENT WINDOW CANNOT REACH BACK PAST THE COMPARISON ITSELF.** "The last `windowSize`
+   * readings" is unbounded in TIME, so on a sparse record it happily averaged a reading from two
+   * weeks ago into "now" — and then had nothing left before it to compare against, so the whole
+   * trend returned null and the chart said it could not tell. Both halves were wrong: the mean was
+   * of two things a fortnight apart, and the answer was silence on a record that plainly showed
+   * movement. The current window is the last `lagDays`, at most `windowSize` readings deep.
+   */
+  const current = windowEndingAt(end).filter((p) => p.date > priorEnd)
+  if (current.length < MIN_WINDOW_READINGS) return null
+  const prior = windowEndingAt(priorEnd, current[0].date)
+  if (prior.length < MIN_WINDOW_READINGS) return null
+
+  const meanValue = (w) => meanOrNull(w.map((p) => n(p.value)))
+  // The centroid of each window's DATES, so the gap is the distance between the two things
+  // actually being compared rather than between their newest members.
+  const centroid = (w) => meanOrNull(w.map((p) => Date.parse(`${p.date}T12:00:00Z`)))
+
+  const currentValue = meanValue(current)
+  const priorValue = meanValue(prior)
+  const gapDays = (centroid(current) - centroid(prior)) / 86_400_000
+  if (!(gapDays > 0)) return null
+
+  const perDay = (currentValue - priorValue) / gapDays
+  return {
+    /** The smoothed level — what a projection starts from, never a single morning's reading. */
+    current: currentValue,
+    prior: priorValue,
+    perDay,
+    perWeek: perDay * 7,
+    /** The REAL gap between the window centroids, not `lagDays`: a sparse record drifts. */
+    gapDays,
+    /** How many readings each window found. Below `FIRM_WINDOW_READINGS` is legal and renderable. */
+    currentReadings: current.length,
+    priorReadings: prior.length,
+    /** False when either window is thin. The figure still stands; the surface must say which. */
+    firm: current.length >= FIRM_WINDOW_READINGS && prior.length >= FIRM_WINDOW_READINGS,
+    currentFrom: current[0].date,
+    currentTo: current[current.length - 1].date,
+    priorFrom: prior[0].date,
+    priorTo: prior[prior.length - 1].date,
+    windowSize,
+    lagDays,
+  }
+}

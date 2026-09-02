@@ -36,7 +36,9 @@
  */
 
 import { KCAL_PER_LB_FAT, nonLoadingTypesIn, rmrFloorKcal } from './athlete.mjs'
-import { MIN_DAYS_FOR_OBSERVED_BURN, observedDailyBurn } from './aggregate.mjs'
+import {
+  FIRM_WINDOW_READINGS, MIN_DAYS_FOR_OBSERVED_BURN, MIN_WINDOW_READINGS, observedDailyBurn,
+} from './aggregate.mjs'
 import { describeValue, markerFor, unconfirmedValues, UNCONFIRMED_GRACE_DAYS } from './provenance.mjs'
 import { DEFAULT_MOVEMENT_LEVEL, movementLevel } from './movement.mjs'
 import { livePrescriptions } from './suspensions.mjs'
@@ -52,7 +54,18 @@ const daysBetween = (a, b) => Math.round((parseDay(b) - parseDay(a)) / DAY_MS)
 
 const MAX_DEFICIT_WEEKS = 16
 const DEFICIT_WARN_WEEKS = 14
-const MIN_READINGS_PER_WINDOW = 3
+/**
+ * ⚠ **A WINDOW EXISTS AT ONE READING; IT IS FIRM AT THREE. THOSE ARE TWO QUESTIONS AND WERE ONE.**
+ *
+ * A single `3` decided both "is there a mean here" and "is that mean solid", so a window with two
+ * readings returned NOTHING — and the checks downstream include the §5.2 loss-rate ceiling. A
+ * chart whose athlete weighs twice a week had a safety ceiling that could never fire: the sparser
+ * the record, the quieter the safety check, which is exactly backwards. Both figures now come
+ * back, with how many readings each rests on, and the surface says which kind it is.
+ *
+ * The two constants live in `scripts/lib/aggregate.mjs` beside `anchoredTrend`, which needs the
+ * same distinction for the same reason.
+ */
 
 /**
  * Below this, a COMPLETED day's step total is more likely a partial reading than a real day.
@@ -223,14 +236,26 @@ function weightAsOf(body, date, fallbackLb) {
   return best ? best.lb : fallbackLb
 }
 
+/**
+ * The mean of the week ending `end`, with the count it rests on.
+ *
+ * Returns `{ mean, readings, firm }` or null — never a bare number, because every caller has to be
+ * able to say whether it is reporting a week or a morning. Before this it returned a number and
+ * refused to return anything at all below three readings, which silenced the callers rather than
+ * qualifying them.
+ */
 function trailingMean(body, end) {
   const start = addDays(end, -6)
   const vals = body
     .filter((b) => b.date >= start && b.date <= end && b.weight_lb !== '')
     .map((b) => Number(b.weight_lb))
     .filter(Number.isFinite)
-  if (vals.length < MIN_READINGS_PER_WINDOW) return null
-  return vals.reduce((a, x) => a + x, 0) / vals.length
+  if (vals.length < MIN_WINDOW_READINGS) return null
+  return {
+    mean: vals.reduce((a, x) => a + x, 0) / vals.length,
+    readings: vals.length,
+    firm: vals.length >= FIRM_WINDOW_READINGS,
+  }
 }
 
 /** Newest `date` in a set of rows, or null when nothing has ever been written. */
@@ -564,15 +589,25 @@ export function buildFindings({
     if (latest) {
       const recent = trailingMean(body, latest)
       const prior = trailingMean(body, addDays(latest, -7))
-      if (recent != null && prior != null && prior > 0) {
-        const pctPerWk = ((prior - recent) / prior) * 100
+      if (recent != null && prior != null && prior.mean > 0) {
+        const pctPerWk = ((prior.mean - recent.mean) / prior.mean) * 100
         if (pctPerWk > maxRate) {
+          // ⚠ **THIS IS A §5.2 SAFETY CEILING AND IT FIRES ON THIN WINDOWS TOO.** It used to need
+          // three readings a side or it said nothing, so a chart weighed twice a week had it
+          // silently off. It reports how thin the evidence is instead of withholding it: the
+          // athlete can discount a two-reading figure, and cannot discount one nobody showed them.
+          const thin = !recent.firm || !prior.firm
           add({
             id: 'loss-rate-above-ceiling',
             severity: 'critical',
             headline: `Weight is falling at ${pctPerWk.toFixed(2)}%/wk, above the ${maxRate}%/wk ceiling.`,
-            detail: `7-day mean ${prior.toFixed(1)} lb -> ${recent.toFixed(1)} lb. Measured, not `
-              + `predicted. Fast loss in a deficit costs lean mass.`,
+            detail: `7-day mean ${prior.mean.toFixed(1)} lb -> ${recent.mean.toFixed(1)} lb `
+              + `(${prior.readings} and ${recent.readings} reading(s)). Measured, not predicted. `
+              + `Fast loss in a deficit costs lean mass.`
+              + (thin
+                ? ' Both windows are thin, so read it as a direction rather than a precise rate — '
+                  + 'and the ceiling is a floor under the plan either way.'
+                : ''),
             action: 'Raise the calorie target. Do not wait for it to self-correct.',
             source: 'CLAUDE.md §5.2',
             domain: APPEARANCE,
@@ -863,8 +898,18 @@ export function buildFindings({
   if (latestDate) {
     const mean = trailingMean(body, latestDate)
     const latest = Number(weighed.find((b) => b.date === latestDate)?.weight_lb)
+    // ⚠ **`firm` IS THE READING COUNT, NOT "A MEAN EXISTS".** Now that a window exists at one
+    // reading, a mean of one is still a single morning wearing the word "mean" — and §6 is
+    // explicit that a crossing reported off one weigh-in must be softer than one off a week.
+    // Reading `mean != null` as firm would have quietly promoted every thin window to hard news.
     const basis = mean != null
-      ? { value: mean, label: `7-day mean ${mean.toFixed(1)} lb`, firm: true }
+      ? {
+        value: mean.mean,
+        label: mean.firm
+          ? `7-day mean ${mean.mean.toFixed(1)} lb`
+          : `${mean.readings}-reading mean ${mean.mean.toFixed(1)} lb`,
+        firm: mean.firm,
+      }
       : { value: latest, label: `latest reading ${latest} lb`, firm: false }
 
     const crossings = [
@@ -912,14 +957,20 @@ export function buildFindings({
       // is not. Measurement confidence is a separate axis: a single reading across the line is
       // reported one step softer than the same crossing confirmed on a 7-day mean.
       const soften = (sev) => (sev === 'critical' ? 'attention' : 'info')
+      // ⚠ **`-thin-window`, NOT `-single-reading`.** A window exists at one reading now and is firm
+      // at three, so "not firm" covers TWO readings as well — and an id and a sentence that both
+      // said "single" would have been describing a case the code no longer means. The count is in
+      // the text either way, because "a single reading" and "two readings" are different news.
+      const readings = mean?.readings ?? 1
       add({
-        id: basis.firm ? c.key : `${c.key}-single-reading`,
+        id: basis.firm ? c.key : `${c.key}-thin-window`,
         severity: basis.firm ? c.severity : soften(c.severity),
         headline: c.headline(basis),
         detail: basis.firm
           ? c.detail
-          : `${c.detail} Based on a single reading — there are not yet enough weigh-ins for a `
-            + `7-day mean, so treat this as early warning, not a fired trigger (§6: trend over point).`,
+          : `${c.detail} Based on ${readings} reading${readings === 1 ? '' : 's'} — not yet a full `
+            + '7-day mean, so treat this as early warning rather than a fired trigger '
+            + '(§6: trend over point).',
         action: c.action,
         source: 'athlete/goals.md',
         domain: c.domain,

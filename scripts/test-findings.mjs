@@ -139,7 +139,7 @@ const singleReading = buildFindings({
   today: '2026-08-14', constants: withTriggers, targets: [],
   body: [{ date: '2026-08-13', weight_lb: '168' }],
 }).find((f) => f.id.startsWith('weight-below-floor'))
-if (singleReading?.id.endsWith('-single-reading') && singleReading.severity === 'attention') {
+if (singleReading?.id.endsWith('-thin-window') && singleReading.severity === 'attention') {
   console.log('ok    one reading below the floor is early warning, not a fired trigger (§6)')
 } else {
   failed++
@@ -223,6 +223,87 @@ check('  ...while an undeclared one is silent — that chart simply has no weara
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: [] }, null)
 check('  ...and an undeclared feed is not called STALE either, whatever the dates say',
   { body: steadyBody, targets: [target('2026-08-13', FLOOR + 600)], steps: dated('2026-08-07', 4) }, null)
+
+console.log('\na thin window is reported, not withheld — the sparser the record, the louder this got')
+/**
+ * ⚠ **BOTH OF THESE FAIL AGAINST THE PRE-PORT CODE, which is the point of writing them.** A window
+ * needed three readings or it returned nothing, and one constant answered two different questions:
+ * "is there a mean here" and "is that mean solid". The consequences ran in opposite directions and
+ * both were wrong.
+ */
+{
+  const w = (date, lb) => ({ date, weight_lb: String(lb) })
+  const ceilingChart = {
+    baseline: { date: '2026-08-05', weightLb: 200 },
+    plan: { maxRatePctBwPerWk: 1.0, proteinFloorG: 150, targetRateLbPerWk: [0.5, 1.0], ...answered },
+  }
+
+  /**
+   * ⚠ **A §5.2 SAFETY CEILING THAT A SPARSE RECORD SWITCHED OFF.** Two readings a week apart, four
+   * pounds down on a 200 lb athlete — 2%/wk against a 1%/wk ceiling. Before, each window held one
+   * reading, `trailingMean` returned null for both, and the critical finding could not fire. The
+   * quieter the chart, the quieter the safety check.
+   */
+  check('  a one-reading window still fires the loss-rate ceiling',
+    {
+      constants: ceilingChart,
+      body: [w('2026-08-07', 200), w('2026-08-14', 196)],
+      targets: [target('2026-08-13', FLOOR + 600)],
+    },
+    'loss-rate-above-ceiling')
+
+  const thin = buildFindings({
+    today: '2026-08-14',
+    constants: ceilingChart,
+    body: [w('2026-08-07', 200), w('2026-08-14', 196)],
+    targets: [target('2026-08-13', FLOOR + 600)],
+  }).find((f) => f.id === 'loss-rate-above-ceiling')
+  if (thin && /1 and 1 reading\(s\)/.test(thin.detail) && /thin/i.test(thin.detail)) {
+    console.log('ok      ...and says how thin the evidence is, rather than presenting it as a week')
+  } else {
+    failed++
+    console.error(`FAIL    a thin ceiling finding must declare itself\n      ${thin?.detail}`)
+  }
+
+  /**
+   * ⚠ **AND THE SAME CHANGE MUST NOT PROMOTE A SINGLE MORNING TO HARD NEWS.** §6: "never react to
+   * a single weigh-in." The crossing check already split firm from soft — but it decided firmness
+   * by asking whether a mean EXISTED, which was only ever true at three readings. Now that a mean
+   * exists at one, that test would silently call one morning a 7-day mean. It asks the count.
+   */
+  const crossingChart = {
+    baseline: { date: '2026-08-05', weightLb: 181 },
+    plan: { proteinFloorG: 150, ...answered },
+    triggers: { weightFloorLb: 175 },
+  }
+  const oneReading = buildFindings({
+    today: '2026-08-14',
+    constants: crossingChart,
+    body: [w('2026-08-14', 174)],
+    targets: [target('2026-08-13', FLOOR + 600)],
+  }).find((f) => f.id.startsWith('weight-below-floor'))
+  if (oneReading && /1-reading mean/.test(oneReading.headline + oneReading.detail)
+    && /Based on 1 reading\b/.test(oneReading.detail)) {
+    console.log('ok      a one-reading crossing reports SOFT, naming the count rather than "7-day mean"')
+  } else {
+    failed++
+    console.error('FAIL    a crossing off one weigh-in must not be labelled a week\n      '
+      + `${oneReading ? oneReading.headline + ' / ' + oneReading.detail : 'no finding'}`)
+  }
+  const threeReadings = buildFindings({
+    today: '2026-08-14',
+    constants: crossingChart,
+    body: [w('2026-08-12', 174.4), w('2026-08-13', 174.2), w('2026-08-14', 174)],
+    targets: [target('2026-08-13', FLOOR + 600)],
+  }).find((f) => f.id === 'weight-below-floor')
+  if (threeReadings && /7-day mean/.test(threeReadings.detail + threeReadings.headline)) {
+    console.log('ok      ...while three readings is still reported as the week it is')
+  } else {
+    failed++
+    console.error('FAIL    a full window must still read as a 7-day mean\n      '
+      + `${threeReadings ? threeReadings.headline + ' / ' + threeReadings.detail : 'no finding'}`)
+  }
+}
 
 console.log('\ntoday\'s proposal against the last three days — the backstop, not the mechanism')
 /**

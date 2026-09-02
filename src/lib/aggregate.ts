@@ -218,6 +218,41 @@ export const meanOfAccumulating: <T extends { inProgress: boolean }>(
   days: T[], pick: (d: T) => number | null,
 ) => number | null = agg.meanOfAccumulating
 
+export type AnchoredTrend = {
+  /** The smoothed level — what a projection starts from, never one morning's reading. */
+  current: number
+  prior: number
+  perDay: number
+  perWeek: number
+  /** The REAL gap between the window centroids, not `lagDays`: a sparse record drifts. */
+  gapDays: number
+  currentReadings: number
+  priorReadings: number
+  /** False when either window is thin. The figure stands; the surface must say which. */
+  firm: boolean
+  currentFrom: string
+  currentTo: string
+  priorFrom: string
+  priorTo: string
+  windowSize: number
+  lagDays: number
+}
+
+/**
+ * A trend as two smoothed levels — the LEVEL and the RATE from one estimator.
+ *
+ * Unit-neutral: it returns `current`/`prior`, and the caller supplies the label, because the series
+ * may be weight, a tape measure, a symptom score or hours of sleep.
+ */
+// `as`, not an annotation: the .mjs default parameters infer `asOf` as `null` and the arrays as
+// `any[]`, so an annotation makes every real call an error. Same cast `weekEnergy` uses above.
+export const anchoredTrend = agg.anchoredTrend as (
+  points: { date: string; value: number | string }[],
+  opts?: { asOf?: string | null; windowSize?: number; lagDays?: number },
+) => AnchoredTrend | null
+
+export const FIRM_WINDOW_READINGS: number = agg.FIRM_WINDOW_READINGS
+
 export const meanOfPointReadings: <T>(
   days: T[], pick: (d: T) => number | null,
 ) => number | null = agg.meanOfPointReadings

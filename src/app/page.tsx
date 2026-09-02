@@ -3,19 +3,20 @@ import { LineChart } from '@/components/charts'
 import FindingsCard from '@/components/FindingsCard'
 import MetricsCard from '@/components/metrics-card'
 import {
-  MIN_READINGS_FOR_PROJECTION, body, confoundedDates, daysBetween, fmt, plan, prettyDate,
-  series, today, trend,
+  body, confoundedDates, daysBetween, fmt, plan, prettyDate,
+  series, today,
 } from '@/lib/data'
+import { anchoredTrend } from '@/lib/aggregate'
 import { viewFindings } from '@/lib/findings'
 import { hasStepFeed } from '@/lib/movement'
 import { allWeeks, missingBurnLabels } from '@/lib/rollup'
 
 export const dynamic = 'force-dynamic'
 
-// A projection needs a trend, and a trend needs readings. The threshold is `trend()`'s own default
-// in src/lib/data.ts, imported rather than restated here — this page and that default were two
-// separate `7`s, so lowering one would have left the page saying "needs 7 weigh-ins" while every
-// other caller projected from fewer (audit F-71).
+// A projection needs a trend, and a trend needs two windows to compare. What "enough" means is
+// `anchoredTrend`'s own rule (scripts/lib/aggregate.mjs) — one reading a side, marked not-firm —
+// so this page states no threshold of its own. It used to carry a literal 7 beside a separate 7 in
+// src/lib/data.ts, and lowering either left the page describing the other (audit F-71).
 
 export default function GoalsPage() {
   const now = today()
@@ -28,13 +29,33 @@ export default function GoalsPage() {
 
   const latestWeight = weightPoints.at(-1) ?? null
   const latestWaist = waistPoints.at(-1) ?? null
-  const weightTrend = trend(weightPoints, MIN_READINGS_FOR_PROJECTION)
+  /**
+   * ⚠ **ONE ESTIMATOR FOR BOTH HALVES OF THE DIVISION.**
+   *
+   * This page used to divide a SINGLE latest reading by a least-squares slope over every reading
+   * ever taken — two different estimators, one per half. A morning's water swing moved the
+   * numerator and left the denominator untouched, so the projected date jumped by weeks on a day
+   * nothing had actually changed. `anchoredTrend` answers both: `current` is the smoothed level to
+   * project FROM, `perWeek` the rate to project AT, and they are computed from the same two
+   * windows.
+   *
+   * `trend()` is still exported and still right for drawing a line through a series; it is the
+   * wrong thing to divide a level by.
+   */
+  const weightTrend = anchoredTrend(weightPoints, {
+    windowSize: plan.trendWindowSize,
+    lagDays: plan.trendLagDays,
+  })
 
   const lostLb = latestWeight ? plan.baselineWeightLb - latestWeight.value : null
   // These triggers exist only if a domain defines them. A chart measuring something else
   // has no waist trigger, and this page renders without one rather than assuming it.
+  // From the SMOOTHED level, not the latest morning — see the note on `weightTrend`. Falls back to
+  // the latest reading only where there is no trend yet, which is honest: on day three there is
+  // nothing to smooth, and a distance from the one reading there is beats no distance at all.
+  const levelWeight = weightTrend?.current ?? latestWeight?.value ?? null
   const toWeightCheckpoint =
-    latestWeight && plan.weightCheckpointLb != null ? latestWeight.value - plan.weightCheckpointLb : null
+    levelWeight != null && plan.weightCheckpointLb != null ? levelWeight - plan.weightCheckpointLb : null
   const toWaistTrigger =
     latestWaist && plan.waistTriggerIn != null ? latestWaist.value - plan.waistTriggerIn : null
   // A chart with neither a waist trigger nor a waist reading has no waist domain, and this page
@@ -125,7 +146,7 @@ export default function GoalsPage() {
             foot={
               weeksToWeightCheckpoint
                 ? `~${weeksToWeightCheckpoint.toFixed(1)} weeks at the current trend — review, not phase end`
-                : `TBD — needs ${MIN_READINGS_FOR_PROJECTION} weigh-ins, have ${weightPoints.length}`
+                : `TBD — ${weightPoints.length} reading(s), and no two windows far enough apart to compare yet`
             }
           />
         )}
@@ -146,7 +167,8 @@ export default function GoalsPage() {
         {weightTrend ? (
           <div className="note-block">
             <p>
-              Weight trend over the last {weightTrend.n} readings:{' '}
+              Weight trend, {fmt(weightTrend.current, 1)} lb now against{' '}
+              {fmt(weightTrend.prior, 1)} lb {Math.round(weightTrend.gapDays)} days earlier:{' '}
               <strong>{weightTrend.perWeek >= 0 ? '+' : '−'}{fmt(Math.abs(weightTrend.perWeek), 2)} lb/week</strong>
               {holdingWeight
                 ? <> — and the plan wants that at <strong>zero</strong>. Weight holding steady is
@@ -154,6 +176,15 @@ export default function GoalsPage() {
                 : plan.targetRateLbPerWk
                   ? <> (plan targets {plan.targetRateLbPerWk[0]}–{plan.targetRateLbPerWk[1]} lb/week).</>
                   : '.'}
+              {/* ⚠ A thin window still produces a figure — that is deliberate, see anchoredTrend —
+                  and the page has to say so rather than presenting it at the same weight as a
+                  full one. Silent below three readings was the old behaviour, and it made the
+                  sparsest charts the most confident-looking. */}
+              {!weightTrend.firm && (
+                <> <span className="tbd">Thin:</span> {weightTrend.currentReadings} reading(s) now
+                  against {weightTrend.priorReadings} then, so read it as a direction rather than a
+                  rate.</>
+              )}
             </p>
             <p>
               {weeksToWeightCheckpoint
@@ -165,17 +196,21 @@ export default function GoalsPage() {
             </p>
             {plan.waistTriggerIn != null && (
               <p className="footnote">
-                Waist is the primary metric and the only thing that ends Phase 1 — and it is not yet
-                projectable. It needs repeated morning-protocol readings, not scale weight. The weight
-                lines below are checkpoints to stop and re-decide at, not end conditions.
+                {/* The SHAPE crosses; the phase structure does not. This named one chart's Phase 1
+                    and called its waist trigger "the primary metric" on every chart that forks
+                    this — including charts with no waist domain at all. What is true generally is
+                    the relationship between a trigger and a checkpoint. */}
+                This chart has a waist trigger, and a tape measure is not scale weight: it needs
+                repeated readings taken the same way before it projects. The weight lines are
+                checkpoints to stop and re-decide at, not end conditions.
               </p>
             )}
           </div>
         ) : (
           <Empty>
             <strong>TBD.</strong> {weightPoints.length} weigh-in{weightPoints.length === 1 ? '' : 's'} on
-            record, {MIN_READINGS_FOR_PROJECTION} needed. Waist: {waistPoints.length} morning-protocol
-            reading{waistPoints.length === 1 ? '' : 's'}.
+            record — not yet two windows far enough apart to compare. Waist:{' '}
+            {waistPoints.length} morning-protocol reading{waistPoints.length === 1 ? '' : 's'}.
           </Empty>
         )}
       </Card>
@@ -251,7 +286,7 @@ export default function GoalsPage() {
                   ? [{ value: plan.waistWorkingBaselineIn, label: `baseline ${plan.waistWorkingBaselineIn}″` }]
                   : []),
                 ...(plan.waistTriggerIn != null
-                  ? [{ value: plan.waistTriggerIn, label: `Phase 1 goal ${plan.waistTriggerIn}″`, tone: 'good' as const }]
+                  ? [{ value: plan.waistTriggerIn, label: `trigger ${plan.waistTriggerIn}″`, tone: 'good' as const }]
                   : []),
               ]}
               decimals={2}
@@ -397,9 +432,9 @@ export default function GoalsPage() {
         <p className="footnote">
           Sessions this week: <strong>{thisWeek.sessions}</strong> against a floor of {plan.sessionsPerWeekFloor}.
           {/* Floor AND aim, never one merged "protein days hit" (audit F-29). This line used to
-              report only the floor while goals.md graded him on the aim, so a 155 g day was a hit
-              here and a miss there and neither surface named its line. Both figures render from
-              athlete/constants.json; nothing here decides which one counts. */}
+              report only the floor while goals.md graded the athlete on the aim, so a day between
+              the two was a hit here and a miss there and neither surface named its line. Both
+              figures render from athlete/constants.json; nothing here decides which counts. */}
           {' '}Protein: floor ({plan.proteinFloorG} g) cleared on {thisWeek.proteinFloorDays} of{' '}
           {thisWeek.proteinDaysLogged} logged days
           {plan.proteinAimG != null && <>, aim ({plan.proteinAimG} g) on {thisWeek.proteinAimDays}</>}.

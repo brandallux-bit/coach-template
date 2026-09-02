@@ -50,6 +50,10 @@ export type Plan = {
    */
   kcalByWeekday?: Record<string, number>
   targetRateLbPerWk?: number[]
+  /** How many readings each end of the anchored trend averages. Default 3. */
+  trendWindowSize?: number
+  /** How far apart the two ends of the anchored trend sit, in days. Default 10. */
+  trendLagDays?: number
   maxRatePctBwPerWk?: number
   /**
    * ⚠ **WHICH AUTOMATION COUNTS THIS CHART'S MOVEMENT, OR ABSENT.** A name rather than a boolean,

@@ -29,6 +29,8 @@
  * Pure: takes parsed rows and text, returns data. No file IO, no exits.
  */
 
+import { shiftDate } from './aggregate.mjs'
+
 
 /**
  * A movement name reduced to the tokens it can be matched on.
@@ -330,15 +332,7 @@ export function sessionOverlap({
 }
 
 /**
- * YYYY-MM-DD shifted by whole days, in UTC arithmetic on a date-only string.
- *
- * Deliberately not `new Date()` on a local clock: every date in this chart is the athlete's local
- * calendar date (data/METHOD.md rule 6) and the caller has already derived `today` correctly via
- * `localToday()`. This only ever moves an already-correct date backwards.
+ * YYYY-MM-DD shifted by whole days. Re-exported, not reimplemented — see `scripts/lib/aggregate.mjs`,
+ * which needs the same arithmetic for `anchoredTrend` and imports nothing, so it is the one home.
  */
-export function shiftDate(iso, deltaDays) {
-  const [y, m, d] = String(iso).split('-').map(Number)
-  const t = Date.UTC(y, m - 1, d) + deltaDays * 86400000
-  const out = new Date(t)
-  return `${out.getUTCFullYear()}-${String(out.getUTCMonth() + 1).padStart(2, '0')}-${String(out.getUTCDate()).padStart(2, '0')}`
-}
+export { shiftDate }

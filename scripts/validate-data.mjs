@@ -348,6 +348,28 @@ try {
   }
 
   /**
+   * ⚠ **THE TREND WINDOW KNOBS — a wrong one here changes every projected date silently.**
+   *
+   * `trendWindowSize` and `trendLagDays` decide what "the current level" and "the rate" mean, and
+   * nothing on any page shows them. A zero or a negative makes the estimator return null, so the
+   * chart would simply stop projecting with no error and no page saying why; a string is worse,
+   * because `slice` and date arithmetic both coerce it into something plausible.
+   */
+  {
+    for (const key of ['trendWindowSize', 'trendLagDays']) {
+      const v = constants?.plan?.[key]
+      if (v === undefined) continue
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) {
+        err('athlete/constants.json',
+          `plan.${key} must be a whole number of ${key === 'trendLagDays' ? 'days' : 'readings'} `
+          + `and at least 1, not ${JSON.stringify(v)}. Omit it to take the shipped default. `
+          + 'Below 1 the trend returns nothing and every projection on the chart quietly reads TBD '
+          + 'with no error anywhere saying why.')
+      }
+    }
+  }
+
+  /**
    * ⚠ **`plan.targetRateLbPerWk` IS A RANGE, AND A SCALAR THERE 500s THE DASHBOARD.**
    *
    * `Plan` types it `number[]` and `src/app/today/page.tsx` calls `.filter` on it unguarded, so a
