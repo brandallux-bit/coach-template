@@ -863,10 +863,23 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       const sections = Object.entries(tmpl).filter(([, v]) => v && typeof v === 'object' && v._example)
       if (!sections.length) fail('constants.template.json still carries worked examples', 'none found')
       for (const [section, node] of sections) {
-        const concrete = values(node._example).filter((t) => !HOLE.test(t))
+        const all = values(node._example)
+        const concrete = all.filter((t) => !HOLE.test(t))
         if (!concrete.length) ok(`${section}._example carries no value that is one athlete's`)
-        else if (section === 'metrics') ok(`${section}._example is concrete on purpose — it validates below`)
-        else {
+        else if (concrete.length === all.length) {
+          // A wholly concrete example is a deliberate one — `metrics` is written to be pasted, and
+          // the validator run below is what checks it. The mixed case is the suspicious one.
+          //
+          // ⚠ **AND THIS CLAUSE CANNOT SEE A LEAK, WHICH IS A LIMIT AND NOT A PASS.** A sport, a
+          // place or a session name sitting in a fully-concrete example reads exactly like the
+          // legitimate values around it, and nothing here has a chart to compare against. Two other
+          // screens overlap it and neither closes it: `port-overlay.mjs`'s de-athleting count reads
+          // `.json` as prose, so a pronoun, a first-person quote or a dated incident in this file is
+          // caught — a bare proper noun is not; and its vocabulary screen catches one only if the
+          // source chart happens to register that word. **Read a concrete `_example` by eye when you
+          // change it.**
+          ok(`${section}._example is concrete throughout — deliberate, and validated below`)
+        } else {
           fail(`${section}._example carries no value that is one athlete's`,
             `these are real values sitting among placeholders: ${concrete.join(' | ')}`)
         }

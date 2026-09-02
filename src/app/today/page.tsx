@@ -346,8 +346,7 @@ export default function TodayPage() {
           title="This week"
           caption={
             `${prettyDate(wk.start)} – ${prettyDate(addDays(wk.start, 6))} · day ${wi.daysElapsed} of 7. `
-            + 'Wine is inside the calorie budget, not on top of it — every glass is a calorie you '
-            + 'do not eat.'
+            + 'Any drink allowance sits INSIDE the calorie budget, never on top of it.'
           }
         >
           <UnitToggle>

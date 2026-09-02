@@ -94,13 +94,14 @@ function writeDay(date) {
     //
     // ⚠ **WHERE `plan.weeklyAlcoholKcalBudget` IS ON FILE it is the athlete's
     // number, athlete-confirmed. THIS FIELD IS STILL BLANK, and that is the whole design.** The
-    // budget is weekly *because the unevenness is deliberate*: nutrition/plan.md schedules the big
-    // wine night at the weekend and away from the BJJ evenings, so 1,400 / 7 = 200 kcal/day is a
-    // figure nobody set and one that would mark an ordinary glass as an overage and the planned
-    // Saturday bottle as a blow-out. Empty means "no allowance for this day"; a number here would be
-    // a target they are measured against, which is X-16's defect wearing arithmetic.
+    // budget is weekly *because the unevenness is deliberate*: a plan that schedules the heavy
+    // evening at the weekend, away from the training nights, is not describing seven equal days, so
+    // dividing the weekly figure by seven invents a daily number nobody set — one that would mark an
+    // ordinary evening as an overage and the planned one as a blow-out. Empty means "no allowance
+    // for this day"; a number here would be a target they are measured against, which is X-16's
+    // defect wearing arithmetic.
     //
-    // A coaching session may still write a real allowance into a day's row — 2026-08-07 has one — and
+    // A coaching session may still write a real allowance into a day's row, and
     // Today's daily meter renders it where it exists. Where it does not, the daily row shows what was
     // drunk with no denominator and the DENOMINATOR LIVES ON THE WEEKLY CARD, where the budget is.
     // (audit F-38, F-69; INVARIANTS.md X-15 item 3.)

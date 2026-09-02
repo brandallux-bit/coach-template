@@ -58,10 +58,11 @@ For every plan you review, answer:
 8. **Does it serve the *current* priority order in `athlete/goals.md`,** or one we
    remembered from an earlier session? Check whether any promotion or demotion trigger
    has fired and gone unnoticed — that's a silent failure the head coach won't catch.
-9. **Does it delete a value?** Check `athlete/values.md`. If the plan works only because
-   they drink less wine or eats out less than they stated, the plan doesn't work. Reject it.
-10. **Does it respect `athlete/injury-history.md`?** Back and knee constraints are
-   standing, not situational. Check every loaded hinge, squat, and knee-dominant
+9. **Does it delete a value?** Check `athlete/values.md`. If the plan works only because they do
+   less of something that file names as a value than they said they do, the plan doesn't work.
+   Reject it.
+10. **Does it respect `athlete/injury-history.md`?** Whatever that file names is a standing
+   constraint, not a situational one. Check every loaded pattern that touches
    selection against the contraindicated list — and check that no phase change quietly
    reintroduced something.
 11. **What did we get wrong?** Evidence quality, arithmetic, an overstated effect size, a

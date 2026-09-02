@@ -47,15 +47,17 @@ water, and glycogen — not fat.
 # Neck Tape Protocol
 
 > **Why the neck at all.** It is the missing input to the Navy tape method — the best body-fat
-> estimator available off tape alone. Without it, the estimate is a range about eight points wide,
-> which is not a number anybody can act on. With it, it becomes one defensible figure. Ten seconds,
-> tape already in hand.
+> estimator available off tape alone. Without it, the estimate is a **range**, and a wide one:
+> across a plausible neck band it spans several body-fat points, which is not a number anybody can
+> act on. (How many depends on the formula and the tape: roughly seven or eight points on the men's
+> form, roughly four on the women's, for the reason the sensitivity section gives.) With a measured
+> neck it becomes one defensible figure. Ten seconds, tape already in hand.
 
 - **When:** the same morning session as the waist. Fasted, post-toilet, before training or drinking.
   Both numbers feed one formula — taking them days apart mixes states.
-- **Where on the body:** **just below the Adam's apple**, at the **narrowest point of the neck.**
-  The neck tapers — narrowest high, up under the jaw; it widens all the way down to the shoulders.
-  Go *under* the larynx, not over it.
+- **Where on the body:** at the **narrowest point of the neck** — high, up under the jaw, and
+  **below the larynx** (the Adam's apple, where it is prominent). The neck tapers: narrowest at the
+  top, widening all the way down to the shoulders. Go under the larynx, not over it.
 - **Tape angle:** as close to **level all the way around** as the anatomy allows. **Check the back
   in a mirror.** The commonest error by far is the tape sliding down at the back onto the
   **trapezius** — that measures shoulder muscle, not neck.
@@ -92,9 +94,10 @@ tape, same morning, same rules as above. A chart that uses the women's formula a
 only waist and neck has standardized two of its three inputs.
 
 **Compute the athlete's own table once, from their own height, and put it in their chart.** Vary
-the neck across the plausible half-inch either side of their reading, hold waist and height at
-their measured values, and read off how much the answer moves. Do not copy a table from another
-chart — height is in the formula, so somebody else's table is somebody else's answer.
+the neck across the plausible half-inch either side of their reading; hold **every other input**
+at their measured value — waist and height on the men's form, waist, hip **and** height on the
+women's. Read off how much the answer moves. Do not copy a table from another chart: height is in
+both formulas, so somebody else's table is somebody else's answer.
 
 ## What this does and does not resolve — read before over-reading the result
 
@@ -138,7 +141,8 @@ reasonable. Over 15 points it is not.
 
 ## The sensitivity rule — compute it, and note that the two formulas do not share one
 
-⚠ **THE SLOPE IS SEX-SPECIFIC AND THE DIFFERENCE IS ABOUT A FACTOR OF TWO.** Do not carry a figure
+⚠ **THE SLOPE IS SEX-SPECIFIC, AND AT COMPARABLE LEANNESS THE WOMEN'S IS ROUGHLY TWO-THIRDS OF
+THE MEN'S** — 1.23 against 1.87 in the table below, and the gap widens at larger tapes. Do not carry a figure
 from one chart to another, and do not carry the men's rule of thumb into a chart using the women's
 formula. Differentiating each formula with respect to the waist gives:
 

@@ -659,8 +659,9 @@ console.log('\nthe weekly budget card — /today')
     : fail('today/page.tsx must not compute the week\'s totals', 'one day set, computed once')
 
   // NO PER-DAY ALCOHOL ALLOWANCE MAY BE MANUFACTURED, anywhere. The budget is weekly because the
-  // unevenness is deliberate — the big wine night is scheduled at the weekend and away from the BJJ
-  // evenings — so `weeklyAlcoholKcalBudget / 7` is a target nobody set. Watched red by writing
+  // unevenness is deliberate — a plan that puts the heavy evening at the weekend, away from the
+  // training nights, is not describing seven equal days — so `weeklyAlcoholKcalBudget / 7` is a
+  // target nobody set. Watched red by writing
   // exactly that expression into the Meals card.
   const divided = []
   for (const f of [...files, 'src/lib/rollup.ts', 'src/lib/data.ts', 'src/components/ui.tsx',

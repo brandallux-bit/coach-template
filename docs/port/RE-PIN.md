@@ -14,7 +14,7 @@ mechanism working. It also means a port of this size expires the lot at once.
 
 Counted from `92898e3` (the merge-base this port started from) to the current head:
 
-- **79 shared system paths changed.** That is the number the next parity run will report, not the
+- **80 shared system paths changed.** That is the number the next parity run will report, not the
   ~31 the port plan estimated — the estimate predated three phases of de-athleting and two rounds
   of review fixes, which touched files the plan had not listed.
 - **7 more files changed that are NOT shared**, so they need no entry at all: `SETUP.md`,
@@ -26,15 +26,20 @@ mistake `docs/INVARIANTS.md` made with its own table, where "fifteen invariants"
 rows for as long as nobody added them up:
 
 ```bash
-# in the TEMPLATE, against the port baseline
-node -e '
-  const { execFileSync } = require("node:child_process"), { existsSync } = require("node:fs")
-  const { SYSTEM_PATHS: SP } = await import("./scripts/lib/system-paths.mjs")
+# in the TEMPLATE, against the port baseline. --input-type=module is required: the script uses
+# `import`, and node -e cannot mix that with require().
+node --input-type=module -e '
+  import { execFileSync } from "node:child_process"
+  import { existsSync } from "node:fs"
+  import { SYSTEM_PATHS as SP } from "./scripts/lib/system-paths.mjs"
+  const CHART = process.env.COACH_CHART            // path to the chart clone
   const shared = (p) => SP.some((s) => p === s || p.startsWith(s + "/"))
-  const c = execFileSync("git", ["diff", "--name-only", "92898e3"], { encoding: "utf8" }).split("\n").filter(Boolean)
+  const c = execFileSync("git", ["diff", "--name-only", "92898e3"], { encoding: "utf8" })
+    .split("\n").filter(Boolean)
   const sys = c.filter(shared)
-  const only = sys.filter((p) => !existsSync(`/path/to/chart/${p}`))
+  const only = sys.filter((p) => !existsSync(`${CHART}/${p}`))
   console.log(`shared=${sys.length} both=${sys.length - only.length} templateOnly=${only.length} other=${c.length - sys.length}`)
+  for (const p of only) console.log("  templateOnly:", p)
 '
 ```
 
@@ -55,12 +60,13 @@ has crossed.
 
 ### Bucket 2 · Template-only — nothing to mirror, nothing to acknowledge
 
-11 paths do not exist in the chart at all. ⚠ **The parity report has no category for this and no
+12 paths do not exist in the chart at all. ⚠ **The parity report has no category for this and no
 word for it** — `check-template-parity.mjs` prints `added+ removed-  path` for every divergence
 alike, so these read as a large pure-addition count and nothing labels them. That is what you are
 inferring, not something the tool tells you. Correct and permanent for some of them, a genuine
 missing feature for others. Decide per file:
 
+- `scripts/lib/deathlete.mjs`
 - `scripts/lib/movement.mjs`
 - `scripts/lib/session-table.mjs`
 - `scripts/lib/system-paths.mjs`

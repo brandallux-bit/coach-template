@@ -61,8 +61,10 @@ action.
   invisible unless RIR is being logged.
 - Sleep, resting HR, energy, hunger. Two or more degrading together means back off —
   and check whether that combination has tripped a health promotion trigger.
-- **Back and knees.** Any niggle, any next-day knee response, any early-warning sign
-  from `athlete/injury-history.md`. Ask specifically; don't wait for it to be reported.
+- **Whatever `athlete/injury-history.md` names.** Any niggle at a listed site, any next-day
+  response to yesterday's session, any early-warning sign that file records. Ask about those sites
+  by name; don't wait for it to be reported. Where the file is empty, ask the general question once
+  rather than inventing a site to worry about.
 - **Social eating and drinking.** Whatever `athlete/values.md` says is a standing part of their
   week, for the week just gone. Not to police — to make the arithmetic honest when the numbers
   do not match the logged intake.

@@ -425,7 +425,7 @@ const FIGURES = [
     subject: /adherence/i,
     figure: /(\d{2,3})\s?%/g,
     why: 'audit F-28: 80% in four files and 85% in two, so the system gave two defensible and '
-      + 'contradictory answers to "do I route to the adherence specialist?"',
+      + 'contradictory answers to the routing question it exists to settle',
     note: 'NOT the same threshold as the stall-diagnosis gate in skills/weekly-review and '
       + 'skills/nutrition-targets, which answers "does a plateau indict the plan?" and is '
       + 'deliberately left at its own figure. Merging two real thresholds is the same damage as '
@@ -742,8 +742,8 @@ console.log('\n3 · the two consumers of a shared computation actually agree (F-
       budget == null
         || (/budget\.alcohol/.test(page) && !new RegExp(`\\b${budget / 7}\\b`).test(page)),
       `a per-day share of ${budget} would be ${budget / 7} kcal/day — a number nobody set. Their `
-      + 'drinking is uneven on purpose (the big wine night is scheduled at the weekend and away '
-      + 'from BJJ), so the allowance is weekly and data/targets.csv\'s alcohol_kcal stays blank.')
+      + 'drinking is uneven on purpose — a plan puts the heavy evening away from the training '
+      + 'nights — so the allowance is weekly and data/targets.csv\'s alcohol_kcal stays blank.')
   }
 }
 

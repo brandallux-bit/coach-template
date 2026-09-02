@@ -14,6 +14,9 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { denylistFrom, pinDigest, scanForLeaks, verdict, stripComments } from './lib/athlete-leak.mjs'
 import { bannedTermsFrom, scanForBannedTerms } from './lib/banned-terms.mjs'
+import {
+  DATE_RE, PRONOUN_RE, PROSE_SHAPED, QUOTE_CODE_RE, QUOTE_PROSE_RE, deathleteHit,
+} from './lib/deathlete.mjs'
 
 let failed = 0
 const ok = (name) => console.log(`  ok   ${name}`)
@@ -368,6 +371,69 @@ console.log('\nthe banned-term check is the ATHLETE\'s, and it is inert without 
     eq('an agent instructed to use the banned term is reported',
       scanForBannedTerms(root).map((h) => h.path), ['.claude/agents/nutrition.md'])
   })
+}
+
+// =================================================================================================
+// THE DE-ATHLETING SCREEN'S OWN RULES
+//
+// ⚠ **WHY THIS SECTION EXISTS: A RULE IN THAT SCREEN SHIPPED DEAD AND THE RUN IT GATES SAID ZERO.**
+// `PROSE_SHAPED` was written as a template literal, so its `\b` compiled to a BACKSPACE BYTE rather
+// than a word boundary. The regex could not match text at all. The de-athleting count printed `0`,
+// that `0` was reported as evidence the prose was clean, and the leak it had been written to catch
+// — a verbatim athlete quote inside a rendered finding string — sat there untouched.
+//
+// A regex assembled from strings fails silently in exactly this way: a broken one and a satisfied
+// one are indistinguishable from outside. So every rule gets a fixture that MUST match and a
+// fixture that MUST NOT, and the rules live in `scripts/lib/deathlete.mjs` where a test can reach
+// them. INVARIANTS.md X-10: a check that cannot go red certifies nothing.
+// =================================================================================================
+console.log('\nthe de-athleting screen, on its own fixtures')
+
+{
+  const hits = (path, text) => deathleteHit(path, text)
+  const y = (name, path, text) => (hits(path, text) ? ok(name) : fail(name, `missed: ${text}`))
+  const n = (name, path, text) => (hits(path, text) ? fail(name, `false positive: ${text}`) : ok(name))
+
+  // ⚠ **THE REGEXES ARE PROVED LIVE BEFORE ANYTHING IS ASSERTED ABOUT THEM.** This is the check
+  // that would have caught the dead rule on its own: a source string carrying a control character
+  // is a regex built wrong, whatever it appears to do.
+  for (const [name, re] of [['QUOTE_PROSE_RE', QUOTE_PROSE_RE], ['QUOTE_CODE_RE', QUOTE_CODE_RE],
+    ['PROSE_SHAPED', PROSE_SHAPED], ['PRONOUN_RE', PRONOUN_RE], ['DATE_RE', DATE_RE]]) {
+    // eslint-disable-next-line no-control-regex
+    const control = /[\u0000-\u001f]/.test(re.source)
+    if (control) fail(`${name} compiled to a real pattern, not an escape that collapsed`, re.source)
+    else ok(`${name} compiled to a real pattern, not an escape that collapsed`)
+  }
+
+  y('a third-person pronoun in a comment', 'scripts/x.mjs', '// his target for the week')
+  y('...and in markdown', 'docs/x.md', 'Where she is by now.')
+  n('a pronoun inside a longer word is not one', 'scripts/x.mjs', '// the shepherd counts sheep')
+
+  y('a first-person quote in prose', 'docs/x.md', 'The note reads "I would rather not, my knee".')
+  y('a first-person quote in a MARKDOWN-EMPHASISED code comment', 'scripts/x.mjs',
+    ' * *"I would like my figure whole"* — so the thing is not divided up')
+
+  // THE RED FIXTURE THIS SECTION IS NAMED FOR. Not a comment: a line of a string literal that a
+  // finding renders. It is the class that reaches a reader rather than a maintainer.
+  y('a first-person quote inside a STRING LITERAL, which is the class that renders',
+    'scripts/lib/findings.mjs',
+    `          + 'The note on file reads "I would sooner keep my evenings", so this. '`)
+  y('...and inside a JSX comment continuation line, which starts with no marker',
+    'src/app/today/page.tsx', '        the note beside it reads "I would sooner see my own total"')
+
+  // ...and the shape filter, which is the whole reason the rule above is usable. Without it the
+  // CLOSING attribute quote opens a span that runs into a JSX loop variable.
+  n('JSX page code is not a quote', 'src/app/x.tsx', '<td className="text">{i.label}</td>')
+  n('a regex literal is not a quote', 'scripts/x.mjs',
+    'const cells = line.match(/("([^"]|"")*"|[^,]*)/g).filter((_, i) => i % 2 === 0)')
+  n('a CSV parser is not a quote', 'scripts/lib/csv.mjs',
+    `if (text[i + 1] === '"') { field += '"'; i++ } else { quoted = false }`)
+
+  y('a date in prose', 'docs/x.md', 'Added 2026-08-13, after three numbers were invented.')
+  y('a date in RENDERED page copy, which is the worst place for one', 'src/app/x.tsx',
+    '        <p>Recalibration due 2027-01-04.</p>')
+  n('a date in a fixture row is not a dated incident', 'scripts/test-x.mjs',
+    "  day('2026-08-13', 'lifting'),")
 }
 
 console.log(failed ? `\nathlete-leak: ${failed} FAILED.` : '\nathlete-leak: all checks passed.')

@@ -304,7 +304,7 @@ export function weekIntake(days, budget) {
     /**
      * Calories that were not alcohol. `alcohol_kcal` is a COMPONENT of `kcal` on a meals row, never
      * an addition to it (`validate-data.mjs` refuses a row where it exceeds the row's kcal), so
-     * this is a subtraction and not a second sum. Robust to an unlogged drink: a missing wine row
+     * this is a subtraction and not a second sum. Robust to an unlogged drink: a missing row
      * removes the same number from both sides.
      */
     foodKcal: totalKcal == null ? null : totalKcal - (alcoholKcal ?? 0),

@@ -31,9 +31,10 @@
  *     2026-08-13"*) while keeping **every** real leak, because real leaks are string literals,
  *     keys and enum members by construction. A comment is a record; a literal is behaviour.
  *
- * 3 · **In MARKDOWN, prose counts.** A skill's or an agent's prose IS its instruction — *"this
- *     athlete is a foodie with formal wine credentials"* is executed, not narrated. There is no
- *     comment/data distinction to lean on, so those need acknowledgements instead (below).
+ * 3 · **In MARKDOWN, prose counts.** A skill's or an agent's prose IS its instruction: a sentence
+ *     describing one athlete's tastes, credentials or sport is EXECUTED by the next agent that
+ *     reads it, not narrated. There is no comment/data distinction to lean on, so those need
+ *     acknowledgements instead (below).
  *
  * 4 · **`docs/` is REPORTED, never failed, and the reason is not convenience.** `docs/audit/`,
  *     `INVARIANTS.md` and `BUILD-PLAN.md` are the engineering record *of these very findings*;

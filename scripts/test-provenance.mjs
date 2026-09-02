@@ -95,7 +95,7 @@ red('athlete-stated with no quote and no measurement — an authorship claim pro
 red('athlete-confirmed with no quote — the upgrade the 185 lb ceiling would have needed',
   (c) => { delete c.triggers._provenance.weightFloorLb.quote }, 'weightFloorLb')
 
-red('derived with no inputs — "trust me, it is arithmetic"',
+red('derived with no inputs — an assertion that it is arithmetic, with nothing to recompute',
   (c) => { delete c.baseline._provenance.weightLb.inputs }, 'weightLb')
 
 red('a missing asOf, so nothing can tell how long a proposal has gone unanswered',

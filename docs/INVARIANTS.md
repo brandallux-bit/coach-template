@@ -620,7 +620,9 @@ check. Data corrections are exempt.
 
 ## X-10 · Decision logic is covered by tests shown to fail against their defect
 
-**Status:** `BROKEN`. The suites are good; the wiring is not.
+**Status:** `PARTIAL`, matching the table — **and it said `BROKEN` here for as long as nobody
+compared the two.** Four of the five defects below are closed; one is not. The suites are good and
+the wiring is nearly right.
 
 - ~~`test-views.mjs` has **never executed in CI** (F-11).~~ ✅ W1.
 - ~~`test-prescriptions.mjs` has a case named *"max-by-date, not last-row-in-file"* that exercises
@@ -789,12 +791,13 @@ order to protect a test about a chart with no meals in it. It runs in `validate-
 
 ## X-12 · Every safety floor is computed and surfaced — never enforced against reality *(new)*
 
+**Status:** `ENFORCED` ✓, matching the table.
+
 > **This invariant was stated wrongly first, and the wrong version shipped.** It originally read
 > *"Every safety floor has a mechanical backstop… a check in `validate-data.mjs` that fails the
-> build."* That is a category error, and the athlete named it:
->
-> > *"There is no such thing as 'never let the calorie target drop below your RMR'. Nothing in
-> > this system can stop that. It can't make me eat. It should inform and recommend. That's it."*
+> build."* That is a category error, and an athlete named it: there is no such thing as never
+> letting a calorie target fall below RMR. Nothing in this system can stop that — **it cannot make
+> anyone eat.** It informs and it recommends, and that is the whole of what a floor can do here.
 >
 > The consequence was concrete: a 2 lb week would have failed `validate-data`, failed `prebuild`,
 > failed the deploy, and **frozen the dashboard because the athlete stepped on a scale** — with no edit
@@ -1156,14 +1159,21 @@ the athlete said it, the athlete confirmed it, the coach proposed it, it was der
 from outside. A number the coach produced is **never** recorded in a form that reads as the
 athlete's instruction — and a number nobody has ruled on is surfaced until someone does.
 
+**Status:** `ENFORCED` ✓ — `scripts/lib/provenance.mjs` (the classes and the required fields),
+`scripts/test-provenance.mjs` (a red fixture per rule, and it runs in `check-all` wherever a chart
+exists), and the `provenance-unconfirmed-*` findings, which surface a number nobody has ruled on
+rather than blocking on it.
+
 **Why it needed naming.** Three violations in one day, and they are one defect:
 
 - A **weight ceiling** the coach invented days earlier and wrote into `goals.md` beside a floor the
-  athlete did own. An athlete who reads a goal they never set does not read it as a typo. They read it as the system inventing things about them — and one of them said exactly that, in terms that included abandoning the chart if the number were ever approached.
+  athlete did own. An athlete who reads a goal they never set does not read it as a typo — they
+  read it as the system inventing things about them, and one of them said exactly that, in terms
+  that included abandoning the chart if the number were ever approached.
 - A **clinical threshold** invented to make the coach's own failing check go green (X-7's failure
   mode wearing X-16's clothes).
-- A **BMI justification** for the 170 lb floor, in a chart whose `profile.md` bans BMI outright
-  and simultaneously claimed no threshold anywhere referenced it.
+- A **BMI justification** for a weight floor, in a chart whose `profile.md` bans BMI outright and
+  simultaneously claimed no threshold anywhere referenced it.
 
 **This is the most dangerous class in the system**, and it is the only one where the damage is
 irreversible: every other number can be recomputed from data, and there is no data from which to
