@@ -244,6 +244,21 @@ console.log('\na thin window is reported, not withheld — the sparser the recor
    * reading, `trailingMean` returned null for both, and the critical finding could not fire. The
    * quieter the chart, the quieter the safety check.
    */
+  /**
+   * ⚠ **AND THE FIGURE IS A RATE, which it was not.** The old check took two fixed 7-day-WIDE
+   * means and divided by a nominal week — but the readings inside those windows are not a week
+   * apart. Three pounds over thirteen days (0.81 %/wk, comfortably under a 1 %/wk ceiling) was
+   * reported as 1.50 %/wk and raised as a CRITICAL telling the athlete to eat more. The rate now
+   * comes from `anchoredTrend`, over the real gap.
+   */
+  check('  a fall that is UNDER the ceiling once measured over its real span is silent',
+    {
+      constants: ceilingChart,
+      body: [w('2026-08-01', 200), w('2026-08-14', 197)],
+      targets: [target('2026-08-13', FLOOR + 600)],
+    },
+    null)
+
   check('  a one-reading window still fires the loss-rate ceiling',
     {
       constants: ceilingChart,
@@ -258,8 +273,9 @@ console.log('\na thin window is reported, not withheld — the sparser the recor
     body: [w('2026-08-07', 200), w('2026-08-14', 196)],
     targets: [target('2026-08-13', FLOOR + 600)],
   }).find((f) => f.id === 'loss-rate-above-ceiling')
-  if (thin && /1 and 1 reading\(s\)/.test(thin.detail) && /thin/i.test(thin.detail)) {
-    console.log('ok      ...and says how thin the evidence is, rather than presenting it as a week')
+  if (thin && /1 reading then, 1 reading now/.test(thin.detail) && /thin/i.test(thin.detail)
+    && /over 7 days/.test(thin.detail)) {
+    console.log('ok      ...naming the readings AND the days it actually measured over')
   } else {
     failed++
     console.error(`FAIL    a thin ceiling finding must declare itself\n      ${thin?.detail}`)

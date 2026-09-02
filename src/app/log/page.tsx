@@ -187,7 +187,7 @@ export default async function LogPage({
         title="Sets"
         caption={
           (rx.length
-            ? `${setsDefault} — one set at a time. RIR is the column that makes the rest of the row mean anything: goals.md's strength guardrail is ">10% loss of reps at fixed load AND fixed RIR", and it is now what stands between Phase 1 and an early exit on muscle loss.`
+            ? `${setsDefault} — one set at a time. RIR is the column that makes the rest of the row mean anything: goals.md's strength guardrail is ">10% loss of reps at fixed load AND fixed RIR", and it is what stands between this phase and an early exit on muscle loss.`
             : `No prescription for ${setsDefault || 'today'} — you can still log any exercise by name.`)
           + (candidates.length > 1
             ? ` Two sessions on today, so check the Session field before saving — it is what the set is filed under.`

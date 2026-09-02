@@ -639,6 +639,39 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
       strayCounted.out, strayCounted.code, /energyCountedIn is "steps", but this chart declares no/)
 
     /**
+     * ⚠ **THE TREND WINDOW KNOBS — a wrong one changes every projected date and shows nowhere.**
+     * Below 1 the estimator returns null and the whole chart quietly reads TBD with no error
+     * anywhere saying why; under a week the two windows sit close enough that day-to-day noise
+     * dominates the rate, which is legal for a chart measuring several times a day and is worth
+     * saying out loud on any other.
+     */
+    const zeroLag = withMap((c) => { c.plan = { ...c.plan, trendLagDays: 0 } })
+    rejects('a trend lag below 1 is REJECTED — it silently stops every projection',
+      zeroLag.out, zeroLag.code, /must be a whole number of days and at least 1/)
+
+    const fractionalWindow = withMap((c) => { c.plan = { ...c.plan, trendWindowSize: 2.5 } })
+    rejects('...as is a fractional window size', fractionalWindow.out, fractionalWindow.code,
+      /must be a whole number of readings/)
+
+    const shortLag = withMap((c) => { c.plan = { ...c.plan, trendLagDays: 3 } })
+    shortLag.code === 0 && /trendLagDays is 3/.test(shortLag.out)
+      ? ok('...while a short lag WARNS rather than blocking — legal, and worth knowing')
+      : fail('a short trend lag is legal on some charts and must not be an error',
+        `exit ${shortLag.code}\n${shortLag.out.slice(0, 300)}`)
+
+    // ⚠ AND THE DOCUMENTED ANSWER MUST BE THE TRUE ONE. constants.template.json says neither key
+    // needs a provenance marker; `plan` is a covered section, so without the exemption a chart
+    // that followed its own template failed test-provenance with an error arguing the opposite.
+    const knobs = JSON.parse(JSON.stringify(FRESH_CHART))
+    knobs.plan = { ...knobs.plan, trendWindowSize: 3, trendLagDays: 10 }
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(knobs, null, 2)}\n`)
+    const knobCheck = runCheckAll(repo)
+    knobCheck.code === 0
+      ? ok('the trend knobs need no provenance marker, exactly as the template says they do not')
+      : fail('a chart following its own template must not go red', knobCheck.out.slice(-700))
+    writeFileSync(join(repo, 'athlete', 'constants.json'), `${JSON.stringify(FRESH_CHART, null, 2)}\n`)
+
+    /**
      * ⚠ **A CONDITIONING MENU NAMING A SESSION NOBODY PRESCRIBED.**
      *
      * `check-suspensions.mjs` holds every name on the menu to the active block's suspension list —

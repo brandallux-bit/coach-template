@@ -47,7 +47,7 @@ import {
   pctOfTarget,
   plannedTotal, sessionKcal, sumOrNull, weekBalance, weekEnergy, weekIntake, weeklyBudget,
   costDependsOnDuration, impliedSetWorkSec, minutesFromSets,
-  observedDailySteps,
+  observedDailySteps, anchoredTrend, bestAvailableTrend,
 } from './lib/aggregate.mjs'
 import {
   DEFAULT_MOVEMENT_LEVEL, MOVEMENT_LEVELS, MOVEMENT_LEVEL_KEYS, movementBasis, movementKcal,
@@ -89,6 +89,7 @@ const bad = (name, detail) => { failed++; console.log(`  FAIL ${name}\n       ${
  */
 const show = (v) => JSON.stringify(v, (_k, x) =>
   (typeof x === 'number' && !Number.isFinite(x) ? `<${String(x)}>` : x))
+const round2 = (v) => Math.round(v * 100) / 100
 const is = (name, actual, expected) =>
   show(actual) === show(expected)
     ? ok(name)
@@ -1681,6 +1682,90 @@ console.log('\nthe movement term — two configurations, and neither is the fall
   yes('...and it prices from the declaration rather than from whichever figure is non-null',
     /if \(feed\) \{/.test(forecast),
     'branching on the non-null figure would price BOTH on a chart that somehow carried both')
+}
+
+// =================================================================================================
+console.log('\nthe anchored trend — one estimator for the level and the rate')
+// ⚠ **NET-NEW CODE THAT SHIPPED WITH NO TEST OF ANY KIND.** Every rule below could be deleted, and
+// the whole function replaced with `return null`, and the entire suite stayed green — every
+// projection on the Goals page silently becoming TBD with nothing anywhere failing.
+// =================================================================================================
+
+{
+  const d = (day) => `2026-03-${String(day).padStart(2, '0')}`
+  const pt = (day, value) => ({ date: d(day), value: String(value) })
+  const at = (day) => ({ asOf: d(day) })
+
+  {
+    // Three a side, ten days apart. The rate is over the gap between the window CENTROIDS (12
+    // days here, not the nominal 10), which is the whole reason the gap is returned.
+    const t = anchoredTrend([pt(1, 181), pt(2, 180.8), pt(3, 181.1), pt(13, 179.6), pt(14, 179.4), pt(15, 179.2)], at(15))
+    // Guarded so a broken estimator FAILS here rather than throwing a TypeError on the next line:
+    // a crash is a red run, but it is not a named one, and the name is what a reader gets.
+    yes('a full record produces a comparison at all', t !== null, 'anchoredTrend returned null')
+    is('the level is the mean of the current window, never the last morning', round2(t?.current), 179.4)
+    is('...and the comparison is the mean of the earlier one', round2(t?.prior), 180.97)
+    is('...over the real gap between the window centroids, not the nominal lag', t?.gapDays, 12)
+    is('...which is what makes the rate a rate', round2(t?.perWeek), -0.91)
+    is('...and three a side is firm', [t?.firm, t?.currentReadings, t?.priorReadings], [true, 3, 3])
+  }
+
+  {
+    // ⚠ THE SPAN CAP. Without it "the last three readings" reaches back across the whole record:
+    // the 1st would be averaged into "now" beside the 15th, and then nothing would be left before
+    // it to compare against, so the answer would be null on a record that plainly moved.
+    const t = anchoredTrend([pt(1, 180), pt(15, 178)], at(15))
+    yes('a sparse record still produces a comparison rather than null', t !== null)
+    is('...with one reading a side, and it says so', [t?.currentReadings, t?.priorReadings, t?.firm], [1, 1, false])
+    is('...and the old reading is NOT averaged into "now"', t?.current, 178)
+    is('...the gap is the real 14 days', t?.gapDays, 14)
+  }
+
+  {
+    // The disjointness the cap buys for free: a reading counted on both sides drags the means
+    // together and understates the rate — in a deficit, the flattering direction.
+    const t = anchoredTrend([pt(1, 190), pt(2, 189), pt(3, 188), pt(12, 181), pt(13, 180)], at(13))
+    yes('no reading appears in both windows', !!t && t.priorTo < t.currentFrom, `${t?.priorTo} vs ${t?.currentFrom}`)
+    is('...so the current window holds only what is inside the lag', [t?.currentFrom, t?.currentTo], [d(12), d(13)])
+  }
+
+  {
+    is('one reading is not a trend', anchoredTrend([pt(15, 178)], at(15)), null)
+    is('two readings on the same day have no gap, so no rate', anchoredTrend([pt(15, 178), pt(15, 177)], at(15)), null)
+    is('an asOf before every reading has no current window', anchoredTrend([pt(15, 178)], at(1)), null)
+    is('nothing at all is null, never zero', anchoredTrend([], at(15)), null)
+    is('unsorted input is sorted, not trusted',
+      round2(anchoredTrend([pt(15, 178), pt(1, 180)], at(15)).perWeek),
+      round2(anchoredTrend([pt(1, 180), pt(15, 178)], at(15)).perWeek))
+    // ⚠ `n('y')` is NaN and `NaN != null` is TRUE, so a non-numeric value used to survive the
+    // filter: dropped from the mean by `meanOrNull`, but still counted in `currentReadings` and
+    // still moving the date centroid. A window of three flags and one number reported three
+    // readings and a mean of one.
+    const mixed = anchoredTrend([pt(1, 'y'), pt(2, 'n'), pt(3, 2), pt(15, 1)], at(15))
+    is('a non-numeric reading is not counted as a reading', [mixed?.priorReadings, mixed?.prior], [1, 2])
+  }
+
+  {
+    // ⚠ **UNIT-NEUTRAL.** The series may be weight, a tape measure, a symptom score or hours of
+    // sleep, so the fields are `current`/`prior` and the caller supplies the label. A field named
+    // for pounds would be a shared function asserting one athlete's units (INVARIANTS.md X-11).
+    const t = anchoredTrend([pt(1, 36.5), pt(2, 36.4), pt(13, 35.9), pt(14, 35.8)], at(14))
+    yes('nothing in the result names a unit',
+      !!t && Object.keys(t).every((k) => !/lb|kg|kcal|in$/i.test(k)), Object.keys(t ?? {}).join(', '))
+    yes('...and it trends a series that is not weight at all', !!t && t.perWeek < 0)
+  }
+
+  {
+    // `bestAvailableTrend` walks the lag down so a sparse record cannot silence a safety check —
+    // and stops before two adjacent mornings become a "weekly rate".
+    const week = [pt(8, 200), pt(15, 197)]
+    is('the configured 10-day comparison does not exist here', anchoredTrend(week, at(15)), null)
+    const b = bestAvailableTrend(week, { asOf: d(15) })
+    yes('...but the widest one the record supports does', b !== null)
+    is('...and it reports the gap it actually measured over', b.gapDays, 7)
+    is('two readings a day apart are not a trend at any lag',
+      bestAvailableTrend([pt(14, 200), pt(15, 196)], { asOf: d(15) }), null)
+  }
 }
 
 console.log(failed ? `\naggregations: ${failed} FAILED.` : '\naggregations: all checks passed.')

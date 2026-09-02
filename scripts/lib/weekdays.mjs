@@ -32,10 +32,14 @@ export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
  * The weekday key for a `YYYY-MM-DD`.
  *
  * ⚠ **NOON UTC, NOT MIDNIGHT.** Parsing at `T00:00:00Z` and reading `getUTCDay()` is stable, but
- * every other date helper in this repo anchors at noon so that a caller who later adds or
- * subtracts hours cannot fall over a DST boundary into the previous day. Keeping the anchor the
- * same everywhere is the point; see `addDays` in `src/lib/data.ts` and `shiftDays` in
- * `scripts/lib/aggregate.mjs`, which both do the same for the same reason.
+ * every other date helper in this repo that PARSES a date anchors at noon, so a caller who later
+ * adds or subtracts hours cannot fall over a DST boundary into the previous day. Keeping that
+ * anchor the same everywhere is the point; see `addDays` in `src/lib/data.ts`.
+ *
+ * `shiftDate` in `scripts/lib/aggregate.mjs` is deliberately not in that list: it does integer
+ * arithmetic on `Date.UTC(y, m - 1, d)` and never parses or formats a time, so an anchor would be
+ * a value it has no use for. The distinction is worth stating because this note used to claim it
+ * too, under a name (`shiftDays`) that does not exist in this repo.
  */
 export const weekdayKey = (iso) => WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()]
 

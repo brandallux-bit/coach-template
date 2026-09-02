@@ -43,17 +43,28 @@ export default function GoalsPage() {
    * wrong thing to divide a level by.
    */
   const weightTrend = anchoredTrend(weightPoints, {
+    // ⚠ **`asOf: now`, NOT THE LAST READING.** Without it the current window anchors on whenever
+    // the athlete last weighed, so a record that stops in August still renders "179.8 lb now"
+    // in September with a rate and a projected date and nothing saying the data is old. Anchoring
+    // on today makes the span cap bite: once the newest reading falls out of the window, there is
+    // no current window and the page reads TBD, which is the truth.
+    asOf: now,
     windowSize: plan.trendWindowSize,
     lagDays: plan.trendLagDays,
   })
 
-  const lostLb = latestWeight ? plan.baselineWeightLb - latestWeight.value : null
-  // These triggers exist only if a domain defines them. A chart measuring something else
-  // has no waist trigger, and this page renders without one rather than assuming it.
   // From the SMOOTHED level, not the latest morning — see the note on `weightTrend`. Falls back to
   // the latest reading only where there is no trend yet, which is honest: on day three there is
   // nothing to smooth, and a distance from the one reading there is beats no distance at all.
   const levelWeight = weightTrend?.current ?? latestWeight?.value ?? null
+  // ⚠ **BOTH DISTANCES COME FROM THE SAME LEVEL, or the two tiles do not subtract.** This read the
+  // raw latest morning while the checkpoint distance below read the smoothed level, so "3.6 lb
+  // below baseline" sat beside "2.9 lb to the checkpoint" on a 6 lb span and a reader who added
+  // them got 6.5. `levelWeight` is defined just below; the Weight tile still SHOWS the latest
+  // reading, because that is what the scale said — it is the DISTANCES that must agree.
+  const lostLb = levelWeight != null ? plan.baselineWeightLb - levelWeight : null
+  // These triggers exist only if a domain defines them. A chart measuring something else
+  // has no waist trigger, and this page renders without one rather than assuming it.
   const toWeightCheckpoint =
     levelWeight != null && plan.weightCheckpointLb != null ? levelWeight - plan.weightCheckpointLb : null
   const toWaistTrigger =
@@ -145,8 +156,15 @@ export default function GoalsPage() {
             unit="lb"
             foot={
               weeksToWeightCheckpoint
-                ? `~${weeksToWeightCheckpoint.toFixed(1)} weeks at the current trend — review, not phase end`
-                : `TBD — ${weightPoints.length} reading(s), and no two windows far enough apart to compare yet`
+                ? `~${weeksToWeightCheckpoint.toFixed(1)} weeks from the ${fmt(levelWeight, 1)} lb `
+                  + 'smoothed level — a checkpoint to stop and decide at, not an end condition'
+                // ⚠ THREE CASES, NOT TWO. Collapsing them made this say "no two windows far enough
+                // apart" while the card below rendered a trend from two windows — the tile
+                // contradicting the paragraph two inches under it.
+                : weightTrend
+                  ? 'TBD — the trend is not moving toward it, so no date is projected'
+                  : `TBD — ${weightPoints.length} reading(s), and no two windows far enough apart `
+                    + 'to compare yet'
             }
           />
         )}
@@ -162,13 +180,16 @@ export default function GoalsPage() {
 
       <Card
         title="Most likely timeline"
-        caption="Projections are gated on having enough readings to draw a line through. Until then they read TBD — a date extrapolated from three points is a guess wearing a decimal point."
+        caption="One estimator answers both halves: the level to project from and the rate to project at come from the same two windows. A projection needs a recent reading and an earlier one far enough back to compare against — until there are both, this reads TBD. Where either window is thin the figure still appears and says so, because a direction nobody was shown is worth less than one they can discount."
       >
         {weightTrend ? (
           <div className="note-block">
             <p>
-              Weight trend, {fmt(weightTrend.current, 1)} lb now against{' '}
-              {fmt(weightTrend.prior, 1)} lb {Math.round(weightTrend.gapDays)} days earlier:{' '}
+              Weight trend, {fmt(weightTrend.current, 1)} lb ({weightTrend.currentFrom}
+              {weightTrend.currentTo !== weightTrend.currentFrom && <>–{weightTrend.currentTo}</>})
+              against {fmt(weightTrend.prior, 1)} lb ({weightTrend.priorFrom}
+              {weightTrend.priorTo !== weightTrend.priorFrom && <>–{weightTrend.priorTo}</>}),{' '}
+              {Math.round(weightTrend.gapDays)} days apart:{' '}
               <strong>{weightTrend.perWeek >= 0 ? '+' : '−'}{fmt(Math.abs(weightTrend.perWeek), 2)} lb/week</strong>
               {holdingWeight
                 ? <> — and the plan wants that at <strong>zero</strong>. Weight holding steady is
@@ -201,8 +222,9 @@ export default function GoalsPage() {
                     this — including charts with no waist domain at all. What is true generally is
                     the relationship between a trigger and a checkpoint. */}
                 This chart has a waist trigger, and a tape measure is not scale weight: it needs
-                repeated readings taken the same way before it projects. The weight lines are
-                checkpoints to stop and re-decide at, not end conditions.
+                repeated readings taken the same way before a change in it means anything. Nothing
+                here projects a date for it. The weight lines are checkpoints to stop and re-decide
+                at.
               </p>
             )}
           </div>

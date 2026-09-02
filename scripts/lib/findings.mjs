@@ -37,7 +37,8 @@
 
 import { KCAL_PER_LB_FAT, nonLoadingTypesIn, rmrFloorKcal } from './athlete.mjs'
 import {
-  FIRM_WINDOW_READINGS, MIN_DAYS_FOR_OBSERVED_BURN, MIN_WINDOW_READINGS, observedDailyBurn,
+  FIRM_WINDOW_READINGS, MIN_DAYS_FOR_OBSERVED_BURN, MIN_WINDOW_READINGS, bestAvailableTrend,
+  observedDailyBurn,
 } from './aggregate.mjs'
 import { describeValue, markerFor, unconfirmedValues, UNCONFIRMED_GRACE_DAYS } from './provenance.mjs'
 import { DEFAULT_MOVEMENT_LEVEL, movementLevel } from './movement.mjs'
@@ -54,18 +55,6 @@ const daysBetween = (a, b) => Math.round((parseDay(b) - parseDay(a)) / DAY_MS)
 
 const MAX_DEFICIT_WEEKS = 16
 const DEFICIT_WARN_WEEKS = 14
-/**
- * ⚠ **A WINDOW EXISTS AT ONE READING; IT IS FIRM AT THREE. THOSE ARE TWO QUESTIONS AND WERE ONE.**
- *
- * A single `3` decided both "is there a mean here" and "is that mean solid", so a window with two
- * readings returned NOTHING — and the checks downstream include the §5.2 loss-rate ceiling. A
- * chart whose athlete weighs twice a week had a safety ceiling that could never fire: the sparser
- * the record, the quieter the safety check, which is exactly backwards. Both figures now come
- * back, with how many readings each rests on, and the surface says which kind it is.
- *
- * The two constants live in `scripts/lib/aggregate.mjs` beside `anchoredTrend`, which needs the
- * same distinction for the same reason.
- */
 
 /**
  * Below this, a COMPLETED day's step total is more likely a partial reading than a real day.
@@ -237,12 +226,19 @@ function weightAsOf(body, date, fallbackLb) {
 }
 
 /**
- * The mean of the week ending `end`, with the count it rests on.
+ * ⚠ **A WINDOW EXISTS AT ONE READING; IT IS FIRM AT THREE. THOSE ARE TWO QUESTIONS AND WERE ONE.**
  *
- * Returns `{ mean, readings, firm }` or null — never a bare number, because every caller has to be
- * able to say whether it is reporting a week or a morning. Before this it returned a number and
- * refused to return anything at all below three readings, which silenced the callers rather than
- * qualifying them.
+ * A single `3` decided both "is there a mean here" and "is that mean solid", so a window with two
+ * readings returned NOTHING — and the checks downstream include the §5.2 loss-rate ceiling. A
+ * chart whose athlete weighs twice a week had a safety ceiling that could never fire: the sparser
+ * the record, the quieter the safety check, which is exactly backwards. Both figures now come
+ * back, with how many readings each rests on, and the surface says which kind it is.
+ *
+ * The two constants live in `scripts/lib/aggregate.mjs` beside `anchoredTrend`, which needs the
+ * same distinction for the same reason.
+ *
+ * Returns `{ mean, readings, firm }` or null — never a bare number, because every caller has to
+ * be able to say whether it is reporting a week or a morning.
  */
 function trailingMean(body, end) {
   const start = addDays(end, -6)
@@ -581,42 +577,58 @@ export function buildFindings({
   }
 
   // --- §5.2 · sustained loss rate ---------------------------------------------------------------
-  // An OBSERVATION. He weighed what he weighed. This can only ever inform — which is why it moved
-  // out of the validator: erroring here meant a fast week froze the dashboard.
+  //
+  // An OBSERVATION. The athlete weighed what they weighed. This can only ever inform — which is
+  // why it moved out of the validator: erroring here meant a fast week froze the dashboard.
+  //
+  // ⚠ **THE RATE COMES FROM `anchoredTrend`, NOT FROM TWO FIXED-WIDTH MEANS DIVIDED BY "A WEEK".**
+  // It used to take the mean of the last 7 calendar days against the mean of the 7 before, and
+  // call the difference a weekly rate. Those windows are 7 days WIDE; the readings inside them are
+  // not 7 days APART. Once a window could hold a single reading, one weigh-in on the 1st and one
+  // on the 14th — thirteen days — were divided by a nominal week and reported as 1.50%/wk against
+  // a true 0.81%/wk, over the ceiling instead of comfortably under it. The same shape understates
+  // in the other direction, which is the flattering one. `anchoredTrend` divides by the real gap
+  // between the two windows and reports it.
+  //
+  // It also reads `plan.trendWindowSize` / `plan.trendLagDays`, so the rate a safety check fires
+  // on and the rate the athlete reads on the page are the same number computed the same way. They
+  // were two, and a chart that widened its window because it weighs weekly moved one of them.
   const maxRate = Number(plan.maxRatePctBwPerWk)
   if (runningDeficit && Number.isFinite(maxRate) && maxRate > 0 && body.length) {
-    const latest = body.filter((b) => b.weight_lb !== '').map((b) => b.date).sort().pop()
-    if (latest) {
-      const recent = trailingMean(body, latest)
-      const prior = trailingMean(body, addDays(latest, -7))
-      if (recent != null && prior != null && prior.mean > 0) {
-        const pctPerWk = ((prior.mean - recent.mean) / prior.mean) * 100
-        if (pctPerWk > maxRate) {
-          // ⚠ **THIS IS A §5.2 SAFETY CEILING AND IT FIRES ON THIN WINDOWS TOO.** It used to need
-          // three readings a side or it said nothing, so a chart weighed twice a week had it
-          // silently off. It reports how thin the evidence is instead of withholding it: the
-          // athlete can discount a two-reading figure, and cannot discount one nobody showed them.
-          const thin = !recent.firm || !prior.firm
-          add({
-            id: 'loss-rate-above-ceiling',
-            severity: 'critical',
-            headline: `Weight is falling at ${pctPerWk.toFixed(2)}%/wk, above the ${maxRate}%/wk ceiling.`,
-            detail: `7-day mean ${prior.mean.toFixed(1)} lb -> ${recent.mean.toFixed(1)} lb `
-              + `(${prior.readings} and ${recent.readings} reading(s)). Measured, not predicted. `
-              + `Fast loss in a deficit costs lean mass.`
-              + (thin
-                ? ' Both windows are thin, so read it as a direction rather than a precise rate — '
-                  + 'and the ceiling is a floor under the plan either way.'
-                : ''),
-            action: 'Raise the calorie target. Do not wait for it to self-correct.',
-            source: 'CLAUDE.md §5.2',
-            domain: APPEARANCE,
-          })
-        }
+    // `bestAvailableTrend`, not `anchoredTrend`: a record too sparse for the configured lag must
+    // not silence a safety ceiling. See its docstring for why the page uses the other one.
+    const t = bestAvailableTrend(
+      body.filter((b) => b.weight_lb !== '').map((b) => ({ date: b.date, value: b.weight_lb })),
+      { windowSize: plan.trendWindowSize, lagDays: plan.trendLagDays, asOf: today },
+    )
+    if (t && t.prior > 0 && t.perWeek < 0) {
+      const pctPerWk = (-t.perWeek / t.prior) * 100
+      if (pctPerWk > maxRate) {
+        // ⚠ **A §5.2 SAFETY CEILING, AND IT FIRES ON THIN WINDOWS TOO.** It used to need three
+        // readings a side or say nothing, so a chart weighed twice a week had it silently off —
+        // the sparser the record, the quieter the safety check. It reports how thin the evidence
+        // is instead of withholding it: the athlete can discount a two-reading figure and cannot
+        // discount one nobody showed them.
+        const window = (n) => `${n} reading${n === 1 ? '' : 's'}`
+        add({
+          id: 'loss-rate-above-ceiling',
+          severity: 'critical',
+          headline: `Weight is falling at ${pctPerWk.toFixed(2)}%/wk, above the ${maxRate}%/wk ceiling.`,
+          detail: `${t.prior.toFixed(1)} lb to ${t.current.toFixed(1)} lb over `
+            + `${t.gapDays.toFixed(0)} days (${window(t.priorReadings)} then, `
+            + `${window(t.currentReadings)} now). Measured, not predicted. Fast loss in a deficit `
+            + 'costs lean mass.'
+            + (t.firm
+              ? ''
+              : ' Both windows are thin, so read it as a direction rather than a precise rate — '
+                + 'and the ceiling is a floor under the plan either way.'),
+          action: 'Raise the calorie target. Do not wait for it to self-correct.',
+          source: 'CLAUDE.md §5.2',
+          domain: APPEARANCE,
+        })
       }
     }
   }
-
   // --- §5.2 · deficit phase length --------------------------------------------------------------
   // Elapsed time. Nothing can be edited to "fix" this; it is a prompt for a decision.
   if (runningDeficit && baseline.date && today) {
@@ -943,8 +955,9 @@ export function buildFindings({
           && !(Number.isFinite(trig.weightFloorLb) && v < trig.weightFloorLb),
         line: trig.weightCheckpointLb,
         headline: (b) => `${b.label} is at or past the ${trig.weightCheckpointLb} lb review checkpoint.`,
-        detail: 'Demoted from an end condition to a REVIEW CHECKPOINT on 2026-08-11. It does not '
-          + 'end Phase 1 on its own.',
+        // The shape crosses; one chart's dated decision about its own block does not.
+        detail: 'A REVIEW CHECKPOINT, not an end condition: reaching it means stop and decide, '
+          + 'not stop.',
         action: 'Stop, put the numbers on the table, and decide explicitly. Do not let it pass '
           + 'unremarked, and do not treat it as the phase ending.',
         domain: APPEARANCE,
@@ -1029,8 +1042,8 @@ export function buildFindings({
     }
   }
 
-  // The Phase 1 goal being MET is a trigger too, and the pleasant ones go unnoticed just as
-  // easily as the alarming ones.
+  // A trigger being MET is a trigger too, and the pleasant ones go unnoticed just as easily as
+  // the alarming ones.
   const waisted = body.filter((b) => b.waist_in !== '')
   const latestWaist = Number(waisted.map((b) => b.waist_in).at(-1))
   if (Number.isFinite(trig.waistTriggerIn) && Number.isFinite(latestWaist)
@@ -1038,7 +1051,7 @@ export function buildFindings({
     add({
       id: 'waist-goal-met',
       severity: 'attention',
-      headline: `Waist is ${latestWaist}" — at or past the ${trig.waistTriggerIn}" Phase 1 goal.`,
+      headline: `Waist is ${latestWaist}" — at or past the ${trig.waistTriggerIn}" trigger.`,
       detail: `This is the demotion trigger for the ${APPEARANCE ?? 'domain this phase serves'}`
         + ' — the goal the athlete actually named, in their own words.',
       action: 'Say it plainly, confirm it against a second morning-protocol reading, then propose '

@@ -969,19 +969,30 @@ export const MIN_WINDOW_READINGS = 1
  * athlete's units (INVARIANTS.md X-11), and the caller already knows the label because it chose
  * the series.
  *
- * ⚠ **THE TWO WINDOWS ARE KEPT DISJOINT, AND THAT IS NOT A DETAIL.** With a reading every morning
- * they cannot overlap — days 0–2 and 10–12 are ten apart. With a gap in the record they can: given
- * readings on the 1st, 2nd, 3rd, 12th and 13th, "the last three" reaches back to the 3rd, and a
- * comparison window anchored at the 3rd would share that reading with it. A reading counted on
- * both sides drags the two means toward each other and understates the rate — in a deficit, the
- * flattering direction. So the prior window stops strictly before the current one begins, and the
- * result reports how few readings that left it with.
+ * ⚠ **THE CURRENT WINDOW CANNOT REACH BACK PAST THE COMPARISON POINT, AND THAT ONE RULE DOES TWO
+ * JOBS.** "The last `windowSize` readings" is unbounded in TIME, so on a sparse record it happily
+ * averaged a reading from a fortnight ago into "now" — a mean of two things a fortnight apart —
+ * and then had nothing left before it to compare against, so the whole trend returned null and the
+ * chart said it could not tell. Capping the current window at `priorEnd` fixes both, and it also
+ * makes the two windows DISJOINT for free: everything in `current` is strictly after `priorEnd`
+ * and everything in `prior` is at or before it, so no reading can be counted on both sides
+ * dragging the means toward each other and understating the rate.
+ *
+ * An earlier version carried a separate `before` argument for that second job. It was dead —
+ * verified over ~158,000 generated cases, zero differences with it removed — and a rule that can
+ * never fire is a rule a reader has to disprove before they can trust the one that does.
  *
  * `points` are `{ date, value }`, in any order. Returns null when there is nothing to compare.
  */
 export function anchoredTrend(points = [], { asOf = null, windowSize = 3, lagDays = 10 } = {}) {
+  // ⚠ **`Number.isFinite`, NOT `!= null`.** `n('y')` is `NaN`, and `NaN != null` is true — so a
+  // non-numeric reading survived this filter, was dropped later by `meanOrNull`, and still counted
+  // toward `currentReadings`/`priorReadings` and toward the date centroid. A window of three flags
+  // and one number reported three readings and a mean of one. Unreachable through `weight_lb`,
+  // which the validator keeps numeric — and directly reachable through the metric series this
+  // function's own docstring advertises, where `y`/`n` is a legitimate value.
   const clean = (points ?? [])
-    .filter((p) => p?.date && n(p.value) != null)
+    .filter((p) => p?.date && Number.isFinite(n(p.value)))
     .sort((a, b) => a.date.localeCompare(b.date))
   if (!clean.length) return null
 
@@ -990,8 +1001,8 @@ export function anchoredTrend(points = [], { asOf = null, windowSize = 3, lagDay
 
   // "The next date prior" is exactly `<=` on a sorted list: a window anchors at the newest reading
   // that is not after its own date and walks backwards from there.
-  const windowEndingAt = (date, before = null) => {
-    const upTo = clean.filter((p) => p.date <= date && (before == null || p.date < before))
+  const windowEndingAt = (date) => {
+    const upTo = clean.filter((p) => p.date <= date)
     return upTo.slice(Math.max(0, upTo.length - windowSize))
   }
 
@@ -1005,7 +1016,7 @@ export function anchoredTrend(points = [], { asOf = null, windowSize = 3, lagDay
    */
   const current = windowEndingAt(end).filter((p) => p.date > priorEnd)
   if (current.length < MIN_WINDOW_READINGS) return null
-  const prior = windowEndingAt(priorEnd, current[0].date)
+  const prior = windowEndingAt(priorEnd)
   if (prior.length < MIN_WINDOW_READINGS) return null
 
   const meanValue = (w) => meanOrNull(w.map((p) => n(p.value)))
@@ -1039,4 +1050,32 @@ export function anchoredTrend(points = [], { asOf = null, windowSize = 3, lagDay
     windowSize,
     lagDays,
   }
+}
+
+/**
+ * The anchored comparison this record can actually support — the configured one where it exists,
+ * otherwise the widest shorter one that does.
+ *
+ * ⚠ **FOR A SAFETY CHECK, "THE RECORD IS TOO SPARSE FOR THE CONFIGURED LAG" MUST NOT MEAN SILENCE.**
+ * `anchoredTrend` returns null when nothing predates the comparison point, which is right for a
+ * PAGE: a chart that asked for a 10-day comparison and cannot make one should say TBD rather than
+ * quietly answer a different question. It is wrong for the §5.2 ceiling, where silence on a sparse
+ * record is the same defect as the three-reading minimum that came before it — the quieter the
+ * chart, the quieter the safety check.
+ *
+ * So the caller that cannot afford silence walks the lag down and takes the first comparison the
+ * readings support. Every result carries its own `gapDays`, so nothing is hidden by doing this:
+ * the figure says what it was measured over, and a caller that wanted exactly `lagDays` uses
+ * `anchoredTrend` directly.
+ *
+ * `minGapDays` is the floor below which a difference stops being a trend and becomes two adjacent
+ * mornings. Three days, because two readings a day apart produce a %/week with a 7× multiplier on
+ * whatever the scale happened to say.
+ */
+export function bestAvailableTrend(points = [], { windowSize = 3, lagDays = 10, minGapDays = 3, asOf = null } = {}) {
+  for (let lag = lagDays; lag >= minGapDays; lag -= 1) {
+    const t = anchoredTrend(points, { windowSize, lagDays: lag, asOf })
+    if (t && t.gapDays >= minGapDays) return t
+  }
+  return null
 }

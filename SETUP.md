@@ -142,6 +142,23 @@ the design.
 > `plan._dailyKcalTargetPolicy_note`. And every `sessionTypes` entry carries `loading` — see
 > `skills/intake/SKILL.md`, which says how to default it and which single entry to check by hand.
 > `validate-data.mjs` reports both.
+
+> **Two more that decide how the chart READS its record, and both are safe to leave out.**
+> `plan.trendWindowSize` (default 3) is how many readings each end of a comparison averages;
+> `plan.trendLagDays` (default 10) is how far apart the two ends sit. Together they produce the
+> level a projection starts from AND the rate it projects at — one estimator for both halves — and
+> the same pair decides the rate the §5.2 loss-rate ceiling fires on, so they are not a display
+> setting.
+>
+> The defaults suit a chart weighed most mornings. **Widen the lag if this chart measures weekly**:
+> with a 10-day gap a weekly record holds one reading each side, which still produces a figure and
+> marks it thin, but a 21-day lag gives it something to average. Shortening the lag below about a
+> week is where they start to mislead — the shorter the span, the more of the "rate" is whatever
+> the scale happened to say that morning — and `npm run validate` warns about it rather than
+> refusing, because a chart that measures twice a day may genuinely want it.
+>
+> Neither takes a `_provenance` marker: they say how a figure is read, not what anybody said or is
+> asked to hit (`scripts/lib/provenance.mjs`, `PROVENANCE_EXEMPT`).
 >
 > **Three optional keys the burn model reads, all safe to leave out.** `program.setRestSec`
 > overrides the 70-second default used to reconstruct the duration of a session that was performed

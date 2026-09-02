@@ -199,7 +199,7 @@ export default function HistoryPage() {
                 ...(neckPoints.length ? [{ name: 'Neck', color: 'var(--series-2)', points: neckPoints }] : []),
               ]}
               refLines={plan.waistTriggerIn != null
-                ? [{ value: plan.waistTriggerIn, label: `Phase 1 goal ${plan.waistTriggerIn}″`, tone: 'good' as const }]
+                ? [{ value: plan.waistTriggerIn, label: `trigger ${plan.waistTriggerIn}″`, tone: 'good' as const }]
                 : []}
               decimals={2}
               unit="″"

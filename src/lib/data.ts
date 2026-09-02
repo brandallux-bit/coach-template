@@ -216,11 +216,16 @@ const bundle = raw as Bundle
 export const COUNTS_TOWARD_FLOOR = new Set(bundle.plan.countsTowardFloor ?? [])
 
 /**
- * Readings needed before a least-squares projection means anything.
+ * How many readings `trend()` needs before it will fit a line.
  *
- * `trend()` below defaults to this and the Goals page states it — one constant, two readers. They
- * used to be two `7`s (audit F-71): lowering the default would have left the page still saying
- * "needs 7 weigh-ins" while every other caller projected from fewer.
+ * ⚠ **NO LONGER THE GOALS PAGE'S THRESHOLD, AND THIS DOCSTRING USED TO SAY IT WAS.** That page
+ * projects from `anchoredTrend` now — two smoothed windows that answer the level and the rate
+ * together — and states no reading threshold of its own. This is `trend()`'s own default and
+ * `trend()`'s only reader.
+ *
+ * Both stay for a chart that wants a regression through a whole series, which is a different and
+ * legitimate question from "where is this now, and how fast is it moving". Nothing in `src/` calls
+ * it today: a shipped tool with no current caller, not a stale one.
  */
 export const MIN_READINGS_FOR_PROJECTION = 7
 

@@ -367,6 +367,18 @@ try {
           + 'with no error anywhere saying why.')
       }
     }
+    // ⚠ **A SHORT LAG IS LEGAL AND IS WHERE THIS KNOB STARTS TO MISLEAD.** The shorter the span
+    // between the two windows, the more of the "rate" is whatever the scale happened to say that
+    // morning — and the resulting figure is marked firm, because firmness counts READINGS, not
+    // days. A warning rather than an error: a chart measuring twice a day may genuinely want it.
+    const lag = constants?.plan?.trendLagDays
+    if (typeof lag === 'number' && lag >= 1 && lag < 7) {
+      warn('athlete/constants.json',
+        `plan.trendLagDays is ${lag}. Under a week, the two windows sit close enough together that `
+        + 'day-to-day noise dominates the rate — and the figure is still marked firm, because that '
+        + 'counts readings rather than days. Every projected date on the chart moves with this. '
+        + 'Deliberate on a chart that measures several times a day; check it on any other.')
+    }
   }
 
   /**

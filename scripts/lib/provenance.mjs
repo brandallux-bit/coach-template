@@ -59,6 +59,26 @@ export const PROVENANCE_SECTIONS = ['baseline', 'plan', 'triggers']
 export const PROVENANCE_KEYS = ['program.setRestSec']
 
 /**
+ * Keys INSIDE a covered section that are exempt, by dotted path.
+ *
+ * ⚠ **A READING WINDOW IS NOT A CLAIM ABOUT THE ATHLETE.** `plan.trendWindowSize` and
+ * `plan.trendLagDays` say how many readings each end of a comparison averages and how far apart
+ * the two ends sit — how this chart READS its own record, not anything anybody asserted about the
+ * person. A marker on them would have to answer "who said 3?", and the only honest answer is
+ * "the software's default", which is not one of the classes and is not worth inventing a sixth for.
+ *
+ * ⚠ **AND THE ALTERNATIVE WAS A DOCUMENTED KEY THAT REDDENS A FRESH FORK.**
+ * `athlete/constants.template.json` says in as many words that neither needs a marker; `plan` is a
+ * covered section, so a chart that followed its own template's instructions failed this check with
+ * an error arguing the opposite. Two statements of one rule, one of them shipped to every fork.
+ *
+ * The bar for adding to this list: the value must change how a figure is READ, never what is
+ * measured or what anybody is asked to hit. A threshold, a target, a floor or a rate belongs
+ * nowhere near it.
+ */
+export const PROVENANCE_EXEMPT = ['plan.trendWindowSize', 'plan.trendLagDays']
+
+/**
  * How long a coach-produced number gets to be a live proposal before it becomes a finding.
  *
  * A number proposed this morning belongs in the conversation, not in a list — surfacing it
@@ -133,6 +153,7 @@ export function auditProvenance(constants) {
     }
 
     for (const key of realKeys(block)) {
+      if (PROVENANCE_EXEMPT.includes(`${section}.${key}`)) continue
       const m = marks[key]
       if (!m || typeof m !== 'object') {
         flag(section, key, 'has no provenance marker: nothing records whether the athlete said this or the coach did')
