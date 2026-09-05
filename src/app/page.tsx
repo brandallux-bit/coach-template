@@ -62,7 +62,10 @@ export default function GoalsPage() {
   // below baseline" sat beside "2.9 lb to the checkpoint" on a 6 lb span and a reader who added
   // them got 6.5. `levelWeight` is defined just below; the Weight tile still SHOWS the latest
   // reading, because that is what the scale said — it is the DISTANCES that must agree.
-  const lostLb = levelWeight != null ? plan.baselineWeightLb - levelWeight : null
+  const lostLb = levelWeight != null && plan.baselineWeightLb != null ? plan.baselineWeightLb - levelWeight : null
+  // A chart with no baseline weight and no weigh-in has no weight domain, and this page renders
+  // without the tile and the card rather than a TBD pair asserting one.
+  const showWeight = plan.baselineWeightLb != null || weightPoints.length > 0
   // These triggers exist only if a domain defines them. A chart measuring something else
   // has no waist trigger, and this page renders without one rather than assuming it.
   const toWeightCheckpoint =
@@ -134,13 +137,13 @@ export default function GoalsPage() {
             }
           />
         )}
-        <Tile
+        {showWeight && <Tile
           label="Weight"
           value={fmt(latestWeight?.value, 1)}
           unit="lb"
           foot={
             lostLb == null
-              ? 'no weigh-in recorded'
+              ? (latestWeight == null ? 'no weigh-in recorded' : 'no baseline weight on file')
               : holdingWeight
                 ? <>{Math.abs(lostLb) < 0.05
                     ? <>level with the {plan.baselineWeightLb} lb baseline — holding is the goal</>
@@ -148,7 +151,7 @@ export default function GoalsPage() {
                         {plan.baselineWeightLb} lb baseline — holding is the goal, not dropping</>}</>
                 : <>{fmt(Math.abs(lostLb), 1)} lb {lostLb >= 0 ? 'below' : 'above'} the {plan.baselineWeightLb} lb baseline</>
           }
-        />
+        />}
         {plan.weightCheckpointLb != null && (
           <Tile
             label={`To ${plan.weightCheckpointLb} lb checkpoint`}
@@ -237,9 +240,9 @@ export default function GoalsPage() {
         )}
       </Card>
 
-      <Card
+      {showWeight && <Card
         title="Weight"
-        caption={`Baseline ${plan.baselineWeightLb} lb locked ${plan.baselineDate}.${
+        caption={`${plan.baselineWeightLb != null ? `Baseline ${plan.baselineWeightLb} lb locked ${plan.baselineDate}.` : 'No baseline weight on file — this chart has no energy plan.'}${
           plan.weightCheckpointLb ? ` The ${plan.weightCheckpointLb} lb line is a review checkpoint, not a goal and not a phase end.` : ''
         }${
           plan.weightFloorLb ? ` The ${plan.weightFloorLb} lb line is the floor: the deficit stops there regardless of waist.` : ''
@@ -250,7 +253,9 @@ export default function GoalsPage() {
             <LineChart
               series={[{ name: 'Weight', color: 'var(--series-1)', points: weightPoints }]}
               refLines={[
-                { value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` },
+                ...(plan.baselineWeightLb != null
+                  ? [{ value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` }]
+                  : []),
                 ...(plan.weightCheckpointLb != null
                   ? [{ value: plan.weightCheckpointLb, label: `checkpoint ${plan.weightCheckpointLb}` }]
                   : []),
@@ -268,7 +273,7 @@ export default function GoalsPage() {
                     <tr key={p.date}>
                       <td className="text">{p.date}</td>
                       <td>{p.value.toFixed(1)}</td>
-                      <td>{(p.value - plan.baselineWeightLb >= 0 ? '+' : '−') + Math.abs(p.value - plan.baselineWeightLb).toFixed(1)}</td>
+                      <td>{plan.baselineWeightLb == null ? '—' : (p.value - plan.baselineWeightLb >= 0 ? '+' : '−') + Math.abs(p.value - plan.baselineWeightLb).toFixed(1)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -276,7 +281,7 @@ export default function GoalsPage() {
             </TableView>
           </>
         ) : <Empty>No weigh-ins recorded.</Empty>}
-      </Card>
+      </Card>}
 
       {/* Title and caption come from `athlete/constants.json`'s `copy`, not from here: a
           measurement protocol and the reason a historical reading is excluded are facts about one
@@ -457,9 +462,11 @@ export default function GoalsPage() {
               report only the floor while goals.md graded the athlete on the aim, so a day between
               the two was a hit here and a miss there and neither surface named its line. Both
               figures render from athlete/constants.json; nothing here decides which counts. */}
-          {' '}Protein: floor ({plan.proteinFloorG} g) cleared on {thisWeek.proteinFloorDays} of{' '}
-          {thisWeek.proteinDaysLogged} logged days
-          {plan.proteinAimG != null && <>, aim ({plan.proteinAimG} g) on {thisWeek.proteinAimDays}</>}.
+          {plan.proteinFloorG != null && <>
+            {' '}Protein: floor ({plan.proteinFloorG} g) cleared on {thisWeek.proteinFloorDays} of{' '}
+            {thisWeek.proteinDaysLogged} logged days
+            {plan.proteinAimG != null && <>, aim ({plan.proteinAimG} g) on {thisWeek.proteinAimDays}</>}.
+          </>}
           {' '}Burn and deficit marked <span className="tbd">*</span> are accrued so far today, not
           the whole day — resting and non-step burn are prorated to the part of the day that has
           actually happened. Targets stay whole-day, so the gap is what remains, not a shortfall.

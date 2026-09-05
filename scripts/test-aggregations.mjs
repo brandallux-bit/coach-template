@@ -706,6 +706,13 @@ console.log('\n7 · numeric-string truthiness, and columns that do not exist (F-
 
   // Not CSV columns, and each exempt for a stated reason.
   const NOT_COLUMNS = {
+  // The metric Log tab's FORM fields. They are unit-specific on purpose — `weight_kg` never holds
+  // pounds — and src/lib/units.ts renames them to the ledger's columns before validation, so
+  // none of them is ever read off a row. See src/app/api/log/route.ts.
+  weight_kg: 'a form field, converted to weight_lb on the way in',
+  waist_cm: 'a form field, converted to waist_in on the way in',
+  neck_cm: 'a form field, converted to neck_in on the way in',
+  load_kg: 'a form field, converted to load_lb on the way in',
     ahead_by: 'GitHub compare API response field (src/lib/github.ts)',
     coach_session: 'the session cookie name (src/lib/auth.ts)',
     kcal_absence: 'reserved: derived field, camelCase in TS',

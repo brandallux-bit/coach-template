@@ -193,9 +193,9 @@ export type WeekRoll = {
    *
    * Rendered with the day count beside it because the two are not separable: a 600 kcal week over
    * two logged days is not a low-drinking week, it is a mostly-unlogged one, and stating the total
-   * alone would read as the first. `nutrition/plan.md` calls this their single largest discretionary
-   * lever and prices a week of it at ~0.35 lb of loss forgone; until W6 the figure it describes was
-   * written on every meal row and rendered on no page at all (audit F-38, F-69).
+   * alone would read as the first. On the chart this was built for, the plan called it the single
+   * largest discretionary lever; until W6 the figure was written on every meal row and rendered on
+   * no page at all (audit F-38, F-69).
    *
    * **Both fields are read off `intake` below rather than summed again here** — until 2026-08-14
    * they had their own day set (every day in the window), and `intake`'s is days with a meal
@@ -277,7 +277,9 @@ export function rollWeek(start: string, through: string): WeekRoll {
     lastWaistIn: waists.length ? waists[waists.length - 1] : null,
     avgSteps: meanOfAccumulating(days, (d) => d.steps),
     sessions: days.reduce((a, d) => a + d.countedSessions, 0),
-    proteinFloorDays: logged.filter((d) => (d.proteinG ?? 0) >= plan.proteinFloorG).length,
+    // `?? Infinity` for the same reason as the aim below: a chart with no floor counts zero floor
+    // days, not every logged day.
+    proteinFloorDays: logged.filter((d) => (d.proteinG ?? 0) >= (plan.proteinFloorG ?? Infinity)).length,
     // `?? Infinity`, not `?? 0`: a chart with no aim on file must count ZERO aim days, not every
     // day. Defaulting the target down is how "hit" quietly becomes "logged".
     proteinAimDays: logged.filter((d) => (d.proteinG ?? 0) >= (plan.proteinAimG ?? Infinity)).length,

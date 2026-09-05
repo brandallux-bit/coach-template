@@ -23,11 +23,20 @@ export type Plan = {
   heightIn: number
   age: number | null
   baselineDate: string
-  baselineWeightLb: number
+  /** Null on a chart with no energy plan — see `plan.dailyKcalTargetPolicy`. */
+  baselineWeightLb: number | null
   rmrFloorKcal: number | null
-  estMaintenanceKcal: number
-  proteinFloorG: number
+  estMaintenanceKcal: number | null
+  proteinFloorG: number | null
   events: Record<string, string>
+  /**
+   * What the Log tab asks for and labels with. The ledger stores pounds and inches on every chart;
+   * a metric chart converts on the way in (src/app/api/log/route.ts) and on the Log tab's own
+   * table. Absent means imperial.
+   */
+  units?: 'imperial' | 'metric'
+  /** `"none"` is the one way a chart says it runs without daily calorie targets. */
+  dailyKcalTargetPolicy?: 'none'
   proteinAimG?: number
   weeklyKcalBudget?: number
   /**
@@ -109,7 +118,7 @@ export type Plan = {
    */
   kcalPerLbFat?: number
   /** Most recent weight on file, for projecting a session that has not happened. */
-  latestWeightLb?: number
+  latestWeightLb?: number | null
   /**
    * Which registry type the `Daily` prescription block is, if the chart prescribes one. Its
    * duration and its MET both come from `sessionTypeDetail` / `metByType` — see
@@ -144,9 +153,9 @@ export type TemplateDay = {
   durationMin?: number | null
   /**
    * Intended intensity for this planned day, overriding the type's default MET.
-   * A session type covers a range — `peloton` defaults to 8.5, a hard ride, which overstates the
-   * seated low-resistance ride currently prescribed. Pinning it here keeps the forecast honest
-   * without redefining the type for every future hard ride.
+   * A session type covers a range — a cycling type registered at a hard-ride MET overstates a
+   * seated low-resistance ride a rehab block might prescribe. Pinning it here keeps the forecast
+   * honest without redefining the type for every future hard session.
    */
   met?: number
 }

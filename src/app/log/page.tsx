@@ -7,6 +7,7 @@ import {
 } from '@/lib/forecast'
 import { rollDay } from '@/lib/rollup'
 import { writesConfigured } from '@/lib/github'
+import { cmFromIn, isMetric, kgFromLb, showLoad } from '@/lib/units'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,10 @@ export default async function LogPage({
   const now = today()
   const d = rollDay(now)
   const configured = writesConfigured()
+  // The chart's unit for the three fields that have one. The ledger is pounds and inches; the
+  // route converts on the way in (src/lib/units.ts). Field NAMES change with the unit on purpose.
+  const metric = isMetric(plan.units)
+  const r1 = (v: number | null) => (v == null ? '' : Math.round(v * 10) / 10)
 
   // Names the chart already uses, from the registry it declared plus anything actually written.
   // Offered as suggestions, never as a fixed list: a chart may start tracking something new on any
@@ -110,9 +115,19 @@ export default async function LogPage({
           <input type="hidden" name="kind" value="body" />
           <div className="fields">
             <Field name="date" label="Date" type="date" defaultValue={now} required />
-            <Field name="weight_lb" label="Weight (lb)" type="number" step="0.1" defaultValue={d.weightLb ?? ''} />
-            <Field name="waist_in" label="Waist (in)" type="number" step="0.125" defaultValue={d.waistIn ?? ''} />
-            <Field name="neck_in" label="Neck (in)" type="number" step="0.125" defaultValue={d.neckIn ?? ''} />
+            {metric ? (
+              <>
+                <Field name="weight_kg" label="Weight (kg)" type="number" step="0.1" defaultValue={r1(kgFromLb(d.weightLb ?? null))} />
+                <Field name="waist_cm" label="Waist (cm)" type="number" step="0.5" defaultValue={d.waistIn != null ? r1(cmFromIn(d.waistIn)) : ''} />
+                <Field name="neck_cm" label="Neck (cm)" type="number" step="0.5" defaultValue={d.neckIn != null ? r1(cmFromIn(d.neckIn)) : ''} />
+              </>
+            ) : (
+              <>
+                <Field name="weight_lb" label="Weight (lb)" type="number" step="0.1" defaultValue={d.weightLb ?? ''} />
+                <Field name="waist_in" label="Waist (in)" type="number" step="0.125" defaultValue={d.waistIn ?? ''} />
+                <Field name="neck_in" label="Neck (in)" type="number" step="0.125" defaultValue={d.neckIn ?? ''} />
+              </>
+            )}
             <Field name="sleep_h" label="Sleep (h)" type="number" step="0.25" />
             <Field name="sleep_quality" label="Sleep quality (1–5)" type="number" min="1" max="5" />
             <Field name="resting_hr_overnight" label="Overnight resting HR (bpm)" type="number" min="30" max="120" />
@@ -233,7 +248,9 @@ export default async function LogPage({
               <Field name="exercise" label="Exercise" type="text" required />
             )}
             <Field name="set_index" label="Set #" type="number" min="1" max="30" required />
-            <Field name="load_lb" label="Load (lb)" type="number" step="0.5" min="0" />
+            {metric
+              ? <Field name="load_kg" label="Load (kg)" type="number" step="0.25" min="0" />
+              : <Field name="load_lb" label="Load (lb)" type="number" step="0.5" min="0" />}
             <Field name="reps" label="Reps" type="number" min="0" />
             <Field name="duration_s" label="Or duration (s)" type="number" min="0" />
             <Field name="rir" label="RIR" type="number" min="0" max="10" />
@@ -253,7 +270,7 @@ export default async function LogPage({
                   <tr key={i}>
                     <td className="text">{s.exercise}</td>
                     <td>{s.set_index}</td>
-                    <td>{s.load_lb ? `${s.load_lb} lb` : 'BW'}</td>
+                    <td>{showLoad(s.load_lb ? Number(s.load_lb) : null, plan.units)}</td>
                     <td>{s.reps || (s.duration_s ? `${s.duration_s}s` : '—')}</td>
                     <td>{s.rir || <span className="tbd">—</span>}</td>
                   </tr>

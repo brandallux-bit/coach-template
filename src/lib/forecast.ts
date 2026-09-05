@@ -275,11 +275,11 @@ export function planDay(date: string, todayIso: string): PlannedDay {
   // existed for `met` (a strength session landing on a pinned ride day was costed as a ride,
   // 2026-08-13) and was missing on `focus` and `durationMin`, which is the same scope leak one
   // field over:
-  //   - `focus` is how Thursday's card came to read "Walk, flat + Peloton TEST RIDE — Steps. No
-  //     Peloton while the knee is out."
-  //   - `durationMin` is worse, because it invents a number: today's rehab row has a deliberately
-  //     blank duration ("not measured"), and unguarded it would borrow the template's 35 minutes
-  //     and cost a session that reported none.
+  //   - `focus` is how a day's card came to carry the template's note about a different
+  //     activity — a cycling day's caveat rendered onto the walk that actually happened.
+  //   - `durationMin` is worse, because it invents a number: a rehab row with a deliberately
+  //     blank duration ("not measured"), unguarded, would borrow the template's minutes and
+  //     cost a session that reported none.
   const fromTemplate = (type: string | null | undefined) =>
     templated && type === templated.type ? templated : null
 
@@ -304,7 +304,8 @@ export function planDay(date: string, todayIso: string): PlannedDay {
       : []
 
   const dailyRx = effectiveRx(DAILY, date)
-  const weightLb = plan.latestWeightLb ?? plan.baselineWeightLb
+  // Null on a chart with no weigh-in and no baseline: every cost below then reads null, not NaN.
+  const weightLb: number | null = plan.latestWeightLb ?? plan.baselineWeightLb ?? null
   const items: PlannedItem[] = []
 
   // One item per session, not one per day. A day with a walk and a lift on it costs both — before
@@ -349,7 +350,7 @@ export function planDay(date: string, todayIso: string): PlannedDay {
  *
  * **The forecast's resolver differs from the ledger's in exactly one respect, and it is
  * deliberate: the weekly template can PIN a MET for its own day.** A session type covers a range —
- * `peloton` defaults to 8.5, a hard ride, which overstates the seated low-resistance spin the knee
+ * a cycling type registered at a hard-ride MET overstates the seated low-resistance spin a rehab
  * block prescribes. Pinning it on the template day keeps the forecast honest without redefining
  * the type for every future hard ride. The pin applies only when the written row's type still
  * matches the template's, which is the `met` guard `planDay` already documents.
@@ -359,7 +360,7 @@ export function planDay(date: string, todayIso: string): PlannedDay {
  * has, and the forward window's first day is a day that may already have happened.
  */
 function addSessionItem(
-  items: PlannedItem[], s: PlannedSession, row: Row | null, date: string, weightLb: number,
+  items: PlannedItem[], s: PlannedSession, row: Row | null, date: string, weightLb: number | null,
 ) {
   const { type, durationMin } = s
   if (!type || type === 'rest') return
@@ -421,7 +422,7 @@ function addSessionItem(
  * forecast-versus-ledger disagreement the duration resolver's rung 4 exists to end. A chart says
  * which type its daily block is, once, and both sides price it the same way.
  */
-function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
+function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number | null) {
   const type = plan.dailyBlockType ?? null
   const minutes = type ? plan.sessionTypeDetail?.[type]?.standingDurationMin ?? null : null
   if (!dailyRx.length || !type || !minutes) return
@@ -468,7 +469,7 @@ function addDailyBlock(items: PlannedItem[], dailyRx: Row[], weightLb: number) {
  * function still branches on the feed rather than on which figure happens to be non-null, so a
  * chart that somehow carried both prices the counted one and not the described one.
  */
-function addMovement(items: PlannedItem[], weightLb: number) {
+function addMovement(items: PlannedItem[], weightLb: number | null) {
   const perStep = plan.kcalPerStepPerLb ?? null
   const feed = hasStepFeed(plan.stepFeed)
 
@@ -476,7 +477,7 @@ function addMovement(items: PlannedItem[], weightLb: number) {
     const target = plan.stepsPerDayTarget ?? null
     const observed = plan.observedSteps ?? null
     const steps = observed?.meanSteps ?? target ?? null
-    if (!steps || !perStep) return
+    if (!steps || !perStep || weightLb == null) return
     const rounded = Math.round(steps)
     items.push({
       label: 'Steps',

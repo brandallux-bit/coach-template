@@ -95,7 +95,11 @@ export const REQUIRED_PLAN_FIELDS = [
   'rmrFloorKcal', 'estMaintenanceKcal', 'proteinFloorG', 'events',
 ]
 
-const NULLABLE_PLAN_FIELDS = new Set(['age', 'rmrFloorKcal'])
+// `baselineWeightLb`, `estMaintenanceKcal` and `proteinFloorG` are nullable because a chart with
+// no energy plan (`plan.dailyKcalTargetPolicy: "none"`) legitimately has none of them — see
+// validate-data.mjs. They must still be PRESENT as null: a key that is simply absent from the
+// bundle is the silent-undefined defect this list exists to catch.
+const NULLABLE_PLAN_FIELDS = new Set(['age', 'rmrFloorKcal', 'baselineWeightLb', 'estMaintenanceKcal', 'proteinFloorG'])
 
 /** Which required fields a built `plan` would ship without. Empty means the contract holds. */
 export function missingPlanFields(plan) {
@@ -114,7 +118,7 @@ export const SPEC = {
     uniqueDate: true,
     numeric: ['weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
       'resting_hr_overnight', 'energy', 'hunger', 'mood'],
-    ranges: { weight_lb: [100, 400], waist_in: [20, 60], neck_in: [10, 25], sleep_h: [0, 16],
+    ranges: { weight_lb: [60, 500], waist_in: [20, 60], neck_in: [10, 25], sleep_h: [0, 16],
       sleep_quality: [1, 5], resting_hr_overnight: [30, 120], energy: [1, 5], hunger: [1, 5],
       mood: [1, 5] },
   },

@@ -21,8 +21,8 @@ will read as failure unless you name it in advance.
 
 Read, in this order:
 1. `athlete/goals.md` — current phase and ranking
-2. **`athlete/injury-history.md` — mandatory gate. Back and knee rules are standing
-   constraints at every phase.** Pull the contraindicated list into the block before
+2. **`athlete/injury-history.md` — mandatory gate. Whatever it names is a standing
+   constraint at every phase.** Pull the contraindicated list into the block before
    selecting a single exercise, not after.
 3. `athlete/profile.md` — training age, equipment, what they'll actually do
 4. `athlete/constraints.md` — real available days, and any scheduled big meals or travel
@@ -41,7 +41,8 @@ programming error is prescribing the frequency they aspire to.
 - **Intensity:** keep it high in every phase. Heavy loads at low-to-moderate volume are
   the strongest signal for retaining lean mass in a deficit. Compounds at 3–6 reps,
   RIR 1–3. A deficit is the wrong time for high-rep "fat burning" circuits.
-  **Exception: RIR 0 is not programmed on loaded spinal or knee-dominant patterns.**
+  **Exception: RIR 0 is not programmed on loaded spinal patterns, nor on any pattern
+  `injury-history.md` names.**
   Form breakdown under fatigue is where old injuries return.
 - **Progression rule:** one sentence, no in-session decisions. Deficit: "hold load and
   reps; add reps only when RIR is clearly 3+." Surplus: standard double progression.
@@ -51,7 +52,7 @@ programming error is prescribing the frequency they aspire to.
 
 - **Steps are the primary tool.** Set a daily target and treat it as a process goal.
   More sustainable and less recovery-costly than programmed cardio, and NEAT is what
-  silently collapses during a diet. Also the most knee-friendly option available.
+  silently collapses during a diet. Also the most joint-friendly option available.
 - 2–3 low-intensity sessions of 20–40 min if they'll do them.
 - Keep HIIT minimal. It competes directly with lifting for recovery, and in a deficit
   recovery is the scarce resource.

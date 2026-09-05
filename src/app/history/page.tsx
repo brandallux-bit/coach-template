@@ -144,7 +144,7 @@ export default function HistoryPage() {
 
       <Card
         title="Calories out — estimated"
-        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + background movement + the day&rsquo;s movement outside sessions (a step feed where this chart has one, the described level where it does not) + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{plan.estMaintenanceKcal.toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a structural weekly gap that exists whatever you do. A maintenance figure measured from this chart&rsquo;s own ledger is what replaces it; until one exists, this series has no honest plan line.</>}
+        caption={<>Estimated expenditure: RMR (recomputed daily from that day&rsquo;s weight) + food thermic effect + background movement + the day&rsquo;s movement outside sessions (a step feed where this chart has one, the described level where it does not) + session METs, summed over the days each week counted. The model is in <code>data/METHOD.md</code>. <strong>There is no plan line on this chart, on purpose:</strong> the plan&rsquo;s ~{(plan.estMaintenanceKcal ?? 0).toLocaleString()} kcal/day maintenance figure is <code>RMR &times; 1.5</code>, and the 1.5 already contains all activity — so plotting it against this itemised model compares two incompatible things and shows a structural weekly gap that exists whatever you do. A maintenance figure measured from this chart&rsquo;s own ledger is what replaces it; until one exists, this series has no honest plan line.</>}
       >
         <Legend items={[{ label: 'Estimated burn', color: 'var(--series-1)' }]} />
         {weeks.length ? (
@@ -170,7 +170,9 @@ export default function HistoryPage() {
           <LineChart
             series={[{ name: 'Weight', color: 'var(--series-1)', points: weightPoints }]}
             refLines={[
-              { value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` },
+              ...(plan.baselineWeightLb != null
+                ? [{ value: plan.baselineWeightLb, label: `baseline ${plan.baselineWeightLb}` }]
+                : []),
               ...(plan.weightCheckpointLb != null
                 ? [{ value: plan.weightCheckpointLb, label: `checkpoint ${plan.weightCheckpointLb}` }]
                 : []),
@@ -454,7 +456,7 @@ export default function HistoryPage() {
           actually happened. Steps, session and food-thermic burn are already accrued by
           construction, and the step feed lags real time, so the true figure is a little higher
           than shown. <strong>Burned no longer carries a plan figure beside it</strong> — the
-          ~{plan.estMaintenanceKcal.toLocaleString()} kcal that used to sit there is{' '}
+          {plan.estMaintenanceKcal != null ? `~${(plan.estMaintenanceKcal ?? 0).toLocaleString()} kcal` : 'maintenance figure'} that used to sit there is{' '}
           <code>RMR &times; 1.5</code>, a different model from the itemised one this column shows,
           so the two were never comparable and the gap between them was mostly arithmetic. The
           calorie columns keep their targets, which are like-for-like.{' '}

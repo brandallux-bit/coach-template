@@ -48,12 +48,16 @@ if (!hasChart) {
 // Refuse rather than write numbers the chart's own plan does not want. A chart that opted out has
 // no `kcalByWeekday` to generate from, so the only way to produce a row here would be to CHOOSE a
 // figure — which is the one thing this generator exists to avoid doing.
+// ⚠ **EXIT 0, NOT 1.** This used to exit 1, and `daily-rollover.yml` runs this script every day
+// through the push-retry loop — so a chart that had opted out IN WRITING, exactly as the policy
+// asks, got a red rollover and a failure email every single morning. Nothing to generate is the
+// ordinary state of that chart, not a fault in it.
 const optedOut = noDailyTargetReason(constants)
 if (optedOut) {
-  console.error('This chart runs without daily calorie targets, by policy:\n')
-  console.error(`  ${optedOut}\n`)
-  console.error('Change plan.dailyKcalTargetPolicy in athlete/constants.json if that is wrong.')
-  process.exit(1)
+  console.log('This chart runs without daily calorie targets, by policy — nothing to generate:')
+  console.log(`  ${optedOut}`)
+  console.log('Change plan.dailyKcalTargetPolicy in athlete/constants.json if that is wrong.')
+  process.exit(0)
 }
 
 const { plan, athlete } = constants

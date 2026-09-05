@@ -1,13 +1,24 @@
 ---
 name: daily-dashboard
-description: Render today's meal-plan progress and today's workout as two compact charts, no prose. Use whenever the athlete asks to see their "dashboard," "daily dashboard," "today," or "what's left" — and automatically as the last thing in the response whenever a session opens on a new calendar day.
+description: Render today's numbers as compact charts, no prose — today's targets where the chart has daily targets, today's session where it has a training domain, and today's manual daily metrics where the registry has any. Use whenever the athlete asks to see their "dashboard," "daily dashboard," "today," or "what's left" — and automatically as the last thing in the response whenever a session opens on a new calendar day.
 ---
 
 # Daily Dashboard
 
-Two charts. No prose, no commentary, no coaching voice — just the numbers. If something
-needs saying (a trigger fired, a safety flag, adherence dropped), say it elsewhere in the
-response. This skill's own output stands alone.
+Up to three blocks, **each rendered only where this chart has the domain for it**. No prose, no
+commentary, no coaching voice — just the numbers. If something needs saying (a trigger fired, a
+safety flag, adherence dropped), say it elsewhere in the response. This skill's own output stands
+alone.
+
+| Block | Rendered when | Read from |
+|---|---|---|
+| **1. Targets** | `plan.dailyKcalTargetPolicy` is not `none` | `data/targets.csv`, `data/meals.csv` |
+| **2. Session** | the chart has a training domain and `program.weeklyTemplate` or a `training.csv` row | `data/training.csv`, `data/prescriptions.csv`, `data/sets.csv` |
+| **3. Daily metrics** | any registry entry is `feed: manual` + `cadence: daily` | `athlete/constants.json` → `metrics`, `data/metrics.csv` |
+
+A chart with none of the three renders nothing and says so in one line. A block rendered for a
+domain the chart does not have — a meals chart on a chart that opted out of calorie targets — is
+the default CLAUDE.md §1.1 exists to catch.
 
 ## When to render it
 
@@ -20,7 +31,11 @@ response. This skill's own output stands alone.
   second time later the same session unless they ask again — a mid-day ask always gets a
   freshly recomputed version, since the numbers will have moved.
 
-## 1. Meals chart
+## 1. Targets chart — where the chart has daily targets
+
+**Skip this block entirely on a chart whose `plan.dailyKcalTargetPolicy` is `none`.** Do not
+render it with TBD in every cell and do not say "no target" — that chart has no target by its own
+recorded decision.
 
 Source, in this order — **all of it from `data/`, never from the prose log** (CLAUDE.md §0.3):
 
@@ -54,7 +69,7 @@ Fibre (g)         30       14       16   ▓▓▓▓░░░░░░ 47%
 
 Numbers above are illustrative, not a template to copy verbatim — recompute for real.
 
-## 2. Workout chart
+## 2. Session chart — where the chart has a training domain
 
 ⚠ **RUN `skills/session-recommendation` FIRST, where this chart has a training domain and that
 skill has been promoted into `skills/` from the library.** The weekly template is a weekday map and nothing in
@@ -114,18 +129,27 @@ WORKOUT — <session name>
 ...
 ```
 
-> **The shape is the example; the numbers are not.** Recompute every one from
-> `prescriptions.csv`. The loads above read **35 lb** for the row and the carry until
-> 2026-08-14 — both were re-anchored to **50 lb** on 08-11 at the athlete's own
-> instruction, and the carry's 30-40 s dose sat entirely below the fire line of the
-> strength marker it feeds, so a coach following this file verbatim rendered a
-> superseded prescription into the chart they were shown (audit F-35, F-50).
-> `scripts/test-single-home.mjs` §2b now fails on any load stated here that disagrees
-> with the live row, which is why the example is kept rather than deleted: a rule with
-> nothing to check certifies whatever happens next.
+> **The shape is the example; the numbers are not, and the example carries none.** Recompute
+> every one from `prescriptions.csv`. An earlier version of this file stated real loads in the
+> example, they went stale the day the athlete re-anchored them, and a coach following the file
+> verbatim rendered a superseded prescription into the chart they were shown (audit F-35, F-50).
+> `scripts/test-single-home.mjs` §2b fails on any load stated in this file that disagrees with
+> the live row — so none is stated.
 
 If the session was skipped or hasn't been decided yet, say that in one line instead of
 rendering an empty table.
+
+## 3. Daily metrics — where the registry has any
+
+For every entry in `athlete/constants.json` → `metrics` with `feed: manual` and `cadence: daily`,
+one line: the label, yesterday's value from `data/metrics.csv` or `—` if none, and today's if
+already reported. This is CLAUDE.md §0.2's standing check made visible, in the athlete's own
+vocabulary; it names nothing the registry does not.
+
+```
+METRICS — <Weekday> <YYYY-MM-DD>
+<label>                 yesterday <value> <unit>    today —
+```
 
 ## Notes
 
@@ -136,6 +160,6 @@ rendering an empty table.
   rendered** — the same row `scripts/generate-targets.mjs` writes on a timer. The
   prescription exception was removed on 2026-08-14; see step 3 above for why a rendering
   skill must never write a prescription.
-- Meals + workout only, per the athlete's spec — steps, weight, sleep, etc. aren't part
-  of this view. Adding them is a scope change to this file, not something to improvise
-  in the moment.
+- The three blocks above and nothing else — steps, weight, sleep and the like are not part of
+  this view unless the registry makes one a daily manual metric. Adding a block is a scope change
+  to this file, not something to improvise in the moment.

@@ -7,6 +7,11 @@
 > Then run `node scripts/compute-energy.mjs` and commit `data/energy.csv` with it.
 >
 > This file is for the *reasoning*. The numbers live in `data/`.
+>
+> **Keep only the sections this chart's domains need.** A chart with no training domain deletes
+> *Training*; one that runs without daily targets deletes *Target today*; one with no tape domain
+> deletes *Tape measurements*. A section no domain reads is a chore the coach invented (CLAUDE.md
+> §1.1).
 
 ## Training
 - Session: [planned / actual / skipped — and if skipped, the real reason]

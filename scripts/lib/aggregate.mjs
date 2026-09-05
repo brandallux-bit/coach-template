@@ -654,6 +654,17 @@ export const KG_PER_LB = 0.45359237
 export const kgFromLb = (lb) => (lb == null ? null : lb * KG_PER_LB)
 
 /**
+ * The other direction, and the two length constants, for a chart that declares
+ * `athlete.units: "metric"`. The ledger stores pounds and inches on every chart — one unit for the
+ * arithmetic — and the Log tab converts on the way in. These live here beside `KG_PER_LB` so
+ * there is one home for each constant (INVARIANTS.md X-8).
+ */
+export const lbFromKg = (kg) => kg / KG_PER_LB
+export const CM_PER_IN = 2.54
+export const inFromCm = (cm) => cm / CM_PER_IN
+export const cmFromIn = (inches) => inches * CM_PER_IN
+
+/**
  * The chart's session model: `kcal = MET × 3.5 × kg / 200 × minutes` (data/METHOD.md).
  *
  * Null-propagating on purpose. A session with no duration on file has an UNKNOWN cost, not a zero

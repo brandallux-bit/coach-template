@@ -245,6 +245,15 @@ for (const [file, spec] of Object.entries(SPEC)) {
 // swings Mifflin-St Jeor by 166 kcal/day with nothing on screen to reveal it.
 try {
   const { constants } = await import('./lib/athlete.mjs')
+  // ⚠ **NOT EVERY CHART HAS AN ENERGY PLAN, AND THE VALIDATOR MUST NOT INVENT ONE.** This list
+  // used to require a baseline bodyweight, a protein floor and a maintenance estimate on every
+  // chart — so a symptom-control chart with no energy domain had to make up three numbers to
+  // commit anything, from the check whose job is to refuse invented numbers. The identity fields
+  // stay universal (RMR is computed from them whenever a weigh-in exists); the three energy fields
+  // are required exactly where the chart runs daily calorie targets, and `plan.dailyKcalTargetPolicy`
+  // is the one home that says whether it does (scripts/lib/targets.mjs).
+  let energyPlan = true
+  try { energyPlan = !noDailyTargetReason(constants) } catch { energyPlan = true }
   const REQUIRED = {
     'athlete.name': (v) => typeof v === 'string' && v.length > 0,
     'athlete.sex': (v) => v === 'male' || v === 'female',
@@ -260,9 +269,19 @@ try {
       try { new Intl.DateTimeFormat('en-CA', { timeZone: v }); return true } catch { return false }
     },
     'baseline.date': (v) => DATE_RE.test(v ?? ''),
-    'baseline.weightLb': (v) => typeof v === 'number' && v > 50 && v < 500,
-    'plan.proteinFloorG': (v) => typeof v === 'number' && v > 0,
-    'plan.estMaintenanceKcal': (v) => typeof v === 'number' && v > 800,
+    // Optional on every chart: the ledger stores pounds and inches regardless, and this only
+    // changes what the Log tab asks for and how it labels what it shows.
+    'athlete.units': (v) => v === undefined || v === 'imperial' || v === 'metric',
+    ...(energyPlan ? {
+      'baseline.weightLb': (v) => typeof v === 'number' && v > 50 && v < 500,
+      'plan.proteinFloorG': (v) => typeof v === 'number' && v > 0,
+      'plan.estMaintenanceKcal': (v) => typeof v === 'number' && v > 800,
+    } : {
+      // Present is fine; present and malformed is not.
+      'baseline.weightLb': (v) => v === undefined || (typeof v === 'number' && v > 50 && v < 500),
+      'plan.proteinFloorG': (v) => v === undefined || (typeof v === 'number' && v > 0),
+      'plan.estMaintenanceKcal': (v) => v === undefined || (typeof v === 'number' && v > 800),
+    }),
   }
   for (const [path, ok] of Object.entries(REQUIRED)) {
     const value = path.split('.').reduce((o, k) => o?.[k], constants)

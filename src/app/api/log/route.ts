@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { commitRow, trainingRowExists, LogError } from '@/lib/github'
-import { today } from '@/lib/data'
+import { plan, today } from '@/lib/data'
 import type { Row } from '@/lib/log-write'
+import { toLedgerUnits } from '@/lib/units'
 
 /**
  * The dashboard's one write endpoint. Everything behind the shared password (src/proxy.ts covers
@@ -14,17 +15,28 @@ import type { Row } from '@/lib/log-write'
 
 const str = (form: FormData, key: string) => String(form.get(key) ?? '').trim()
 
-/** A form's empty field means "not measured" and must never be written as a zero. */
+/**
+ * A form's empty field means "not measured" and must never be written as a zero.
+ *
+ * On a metric chart the form posts `weight_kg`, `waist_cm`, `neck_cm` and `load_kg`; they are
+ * converted to the ledger's pounds and inches here, before validation, so the validator and the
+ * file only ever see one unit (src/lib/units.ts).
+ */
 const rowFrom = (form: FormData, fields: string[]): Row =>
-  Object.fromEntries(fields.map((f) => [f, str(form, f)])) as Row
+  toLedgerUnits(Object.fromEntries(fields.map((f) => [f, str(form, f)])), plan.units) as Row
 
-const BODY_FIELDS = ['weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
+const METRIC_CHART = plan.units === 'metric'
+const BODY_FIELDS = [METRIC_CHART ? 'weight_kg' : 'weight_lb', METRIC_CHART ? 'waist_cm' : 'waist_in',
+  METRIC_CHART ? 'neck_cm' : 'neck_in', 'sleep_h', 'sleep_quality',
+  'resting_hr_overnight', 'energy', 'hunger', 'mood', 'note']
+/** The ledger's names for the same fields, for the "nothing filled in" check after conversion. */
+const BODY_LEDGER_FIELDS = ['weight_lb', 'waist_in', 'neck_in', 'sleep_h', 'sleep_quality',
   'resting_hr_overnight', 'energy', 'hunger', 'mood', 'note']
 // Anything not in that list is a per-athlete reading and belongs in metrics.csv, which is long
 // format precisely so one athlete's medication or symptom never becomes a column in every chart.
 const METRIC_FIELDS = ['metric', 'value', 'unit', 'note']
 const TRAINING_FIELDS = ['type', 'session', 'status', 'rpe', 'duration_min', 'pain_flag', 'note']
-const SETS_FIELDS = ['session', 'exercise', 'set_index', 'load_lb', 'reps', 'duration_s', 'rir', 'note']
+const SETS_FIELDS = ['session', 'exercise', 'set_index', METRIC_CHART ? 'load_kg' : 'load_lb', 'reps', 'duration_s', 'rir', 'note']
 
 export async function POST(req: NextRequest) {
   const form = await req.formData()
@@ -40,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     if (kind === 'body') {
       const row: Row = { date, ...rowFrom(form, BODY_FIELDS) }
-      if (BODY_FIELDS.every((f) => !row[f])) throw new LogError('Nothing filled in — nothing saved.')
+      if (BODY_LEDGER_FIELDS.every((f) => !row[f])) throw new LogError('Nothing filled in — nothing saved.')
       await commitRow('body.csv', row, `Log ${date} measurements from the dashboard`)
       return back({ ok: summarise(row, [['weight_lb', 'lb'], ['waist_in', '" waist'], ['neck_in', '" neck']]) })
     }

@@ -73,9 +73,9 @@ export default function TodayPage() {
   // What today is *meant* to be, when no coaching session has written a training.csv row yet.
   // A written row always wins: the template is the default, never a claim about what happened.
   //
-  // ⚠ This used to be `d.sessions[0]` — file order. Since 2026-08-13 the daily rehab block is
-  // logged as its own training row, so nearly every day has two, and `[0]` was whichever the
-  // coach happened to append first. `primarySession` is the one shared, deliberate answer; see
+  // ⚠ This used to be `d.sessions[0]` — file order. On a chart whose daily block is logged as its
+  // own training row nearly every day has two, and `[0]` was whichever the coach happened to
+  // append first. `primarySession` is the one shared, deliberate answer; see
   // src/lib/forecast.ts for the rank and why the prescription key sits where it does.
   const sessions = orderedSessions(d.sessions, now)
   const written = primarySession(d.sessions, now)
@@ -233,7 +233,9 @@ export default function TodayPage() {
 
       <div className="grid cols-4" style={{ marginBottom: 20 }}>
         <Tile label="Eaten" value={fmt(d.intakeKcal)} unit="kcal"
-          foot={d.targetKcal ? `target ${d.targetKcal.toLocaleString()}` : 'no target set'} />
+          foot={d.targetKcal
+            ? `target ${d.targetKcal.toLocaleString()}`
+            : plan.dailyKcalTargetPolicy === 'none' ? 'no daily target, by policy' : 'no target set'} />
         {/* ⚠ NO "full day projects to X" HERE ANY MORE, and no `elapsed >= 1` branch either.
             Both were audit F-55. The figure was `burn_total_kcal` — whole-day RMR and NEAT plus
             activity accrued SO FAR — so at 17:18 it read "full day projects to 1,851" on a chart
@@ -283,7 +285,9 @@ export default function TodayPage() {
         caption={
           d.targetKcal
             ? 'A calorie ceiling and a protein floor. Everything else lives inside them.'
-            : 'No target written for today yet.'
+            : plan.dailyKcalTargetPolicy === 'none'
+              ? 'This chart runs without daily calorie targets, by policy. What was eaten is still on record.'
+              : 'No target written for today yet.'
         }
       >
         <UnitToggle>
@@ -293,8 +297,10 @@ export default function TodayPage() {
             actual={d.proteinG}
             target={d.targetProteinG}
             unit=" g"
-            floor={plan.proteinFloorG}
-            note={`Floor ${plan.proteinFloorG} g marked on the track; aim ${plan.proteinAimG} g.`}
+            floor={plan.proteinFloorG ?? undefined}
+            note={plan.proteinFloorG != null
+              ? `Floor ${plan.proteinFloorG} g marked on the track${plan.proteinAimG != null ? `; aim ${plan.proteinAimG} g` : ''}.`
+              : undefined}
           />
           <Meter name="Fat" actual={d.fatG} target={d.targetFatG} unit=" g" />
           <Meter name="Fibre" actual={d.fibreG} target={d.targetFibreG} unit=" g" />

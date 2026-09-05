@@ -7,6 +7,8 @@ description: Evaluate any supplement — one they're taking, one they're conside
 
 ## Order of operations, every time
 
+*Where the chart has a symptom, medication or lab domain, step 1 is most of the audit.*
+
 1. **Check `athlete/profile.md` for medications.** If that field is empty, ask before
    recommending anything beyond food. This is a required step, not a formality.
 2. **Ask what problem it's meant to solve.** Then ask whether that problem is actually
@@ -19,13 +21,13 @@ description: Evaluate any supplement — one they're taking, one they're conside
 
 **Strong — worth the money**
 - **Creatine monohydrate**, 3–5 g/day, any time of day, no loading needed. The
-  best-supported ergogenic aid there is, and particularly valuable in a deficit for
-  preserving performance and lean mass. Causes a small water-weight gain in the first
+  best-supported ergogenic aid there is, and particularly valuable where the chart runs a
+  deficit, for preserving performance and lean mass. Causes a small water-weight gain in the first
   weeks — warn them in advance so they don't read it as fat and panic.
 - **Protein powder.** Not magic; it's convenient food. Genuinely useful when protein
-  targets are hard to hit, which in a deficit they usually are.
+  targets are hard to hit, which under a calorie ceiling they usually are.
 - **Caffeine**, 3–6 mg/kg pre-training. Effective. Cut off 8–10 hours before bed —
-  during a deficit, sleep is worth more than the session boost.
+  sleep is worth more than the session boost.
 - **Vitamin D** if deficient. Test rather than assume.
 
 **Moderate — situational**
@@ -33,8 +35,8 @@ description: Evaluate any supplement — one they're taking, one they're conside
 - Magnesium (sleep quality, if intake is low)
 - Electrolytes (high sweat rate, low-carb phases)
 - Beta-alanine (only for repeated high-effort work in the 1–4 minute range)
-- Psyllium / fibre supplement (satiety and regularity in a deficit — unglamorous and
-  genuinely useful)
+- Psyllium / fibre supplement (satiety and regularity, especially under a calorie ceiling —
+  unglamorous and genuinely useful; check it against any digestive domain first)
 
 **Skip — don't spend the money**
 - Fat burners and "thermogenics." Effect sizes are trivial to nonexistent; the risk of

@@ -119,7 +119,7 @@ const c = hasChart
   ? stripNotes(constants)
   : { athlete: {}, baseline: {}, plan: {}, triggers: {}, program: {}, events: {} }
 const latestWeightLb =
-  body.map((r) => num(r.weight_lb)).filter((v) => v != null).at(-1) ?? c.baseline.weightLb
+  body.map((r) => num(r.weight_lb)).filter((v) => v != null).at(-1) ?? c.baseline.weightLb ?? null
 const asOf = body.at(-1)?.date
 
 // ⚠ **READ BEFORE `plan`, WHICH DERIVES THE OBSERVED STEP MEAN FROM IT.** `const` is in its
@@ -133,7 +133,13 @@ const plan = {
   ...c.triggers,
   events: c.events ?? {},
   weeklyTemplate: c.program?.weeklyTemplate ?? {},
-  baselineWeightLb: c.baseline.weightLb,
+  // Null, never undefined, on a chart with no energy plan: JSON drops undefined keys and the
+  // bundle contract (scripts/lib/schema.mjs) reads an absent key as a defect.
+  baselineWeightLb: c.baseline.weightLb ?? null,
+  estMaintenanceKcal: c.plan.estMaintenanceKcal ?? null,
+  proteinFloorG: c.plan.proteinFloorG ?? null,
+  // What the Log tab asks in, and labels with. The ledger is pounds and inches on every chart.
+  units: c.athlete.units ?? 'imperial',
   baselineDate: c.baseline.date,
   heightIn: c.athlete.heightIn,
   timezone: c.athlete.timezone,
@@ -144,7 +150,7 @@ const plan = {
   // so the floor tracks the athlete down instead of drifting further below them.
   // Null on the template repo: there is no athlete yet, and a fabricated floor is worse
   // than an absent one.
-  rmrFloorKcal: hasChart ? rmrFloorKcal(latestWeightLb, asOf) : null,
+  rmrFloorKcal: hasChart && latestWeightLb != null ? rmrFloorKcal(latestWeightLb, asOf) : null,
   // --- Forward-projection inputs, for the Next 7 Days view -------------------------------------
   // These are re-exports, NOT new numbers. The forecast has to estimate the burn of a session that
   // has not happened, and the only correct source for that is the same MET table and step constant

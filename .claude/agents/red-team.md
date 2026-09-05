@@ -36,7 +36,7 @@ For every plan you review, answer:
      to catch, not easier. Ask where it came from, not whether it is defensible.
    - **Deleting an unconfirmed threshold is the same error with the sign flipped.** Flag it as
      proposed; do not resolve it by removing it, and do not resolve it by picking a value.
-4. **Does every session in this block have rows in `data/prescriptions.csv`?** Not a table
+4. *Where the chart has a training domain:* **does every session in this block have rows in `data/prescriptions.csv`?** Not a table
    in `program/`, not a list in the chat — rows, effective-dated, with the load and dose the
    athlete will actually be shown. Check the same way the dashboard does: for each `session`
    named in `constants.json`'s `weeklyTemplate`, the newest set of rows on or before today.
@@ -44,8 +44,9 @@ For every plan you review, answer:
    than the revision renders the superseded one.
 
    **Reject a block that exists only as prose.** `data/METHOD.md`: *"the failure mode is a
-   rehab block that exists in a markdown file and never reaches the athlete."* This chart has
-   paid for it with three knee flares. Also run `node scripts/check-suspensions.mjs` and read
+   rehab block that exists in a markdown file and never reaches the athlete."* A chart has paid
+   for it with repeated flares of the injury the block was written to protect. Also run
+   `node scripts/check-suspensions.mjs` and read
    what it says — nothing in the template, the rows, or `program/exercise-library.md` may
    prescribe what the active block suspends.
 
