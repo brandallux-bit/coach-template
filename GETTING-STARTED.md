@@ -1,7 +1,7 @@
 # Getting started
 
-**You do not need to know anything technical.** There is no code to write. There are four
-commands to copy and paste, and an AI does everything after that while you watch.
+**You do not need to know anything technical, and you need a Mac.** There is no code to write.
+There are four commands to copy and paste, and an AI does everything after that while you watch.
 
 Read this page once before you start. Five minutes now saves an hour later.
 
@@ -175,7 +175,8 @@ leave the window open, but you will not need to type in it again.
 
 1. **Unzip the starter folder** you were sent, if you have not already. Your Desktop is
    fine.
-2. **Open the Claude app** and start **Claude Code**.
+2. **Open the Claude app** and choose the **Code** tab — not Chat, and not Cowork. Cowork can
+   read your files but cannot save your chart, and nothing on screen will tell you it didn't.
 3. **Point it at that starter folder.** If it asks permission to read the folder, say yes.
 4. **Paste in exactly this, and press Enter:**
 
@@ -190,12 +191,13 @@ explained, say no and ask why.
 
 ### It will ask you to move to a new folder
 
-When it finishes it will have created your chart at **`~/Documents/yourname-coach`** and
+When it finishes it will have created your chart at **`~/yourname-coach`** — a folder called
+`yourname-coach` directly inside your home folder — and
 will tell you to open Claude Code there instead.
 
 **Do that — it matters.** Your chart folder contains the rules your coach runs on, and
 those only load when it is the folder you have open. Close the starter session, open Claude
-Code on `~/Documents/yourname-coach`, and say:
+Code on `~/yourname-coach`, and say:
 
 > Continue my setup.
 
@@ -208,7 +210,7 @@ You can throw the starter folder away after this. Everything now lives in your c
 Now it finds out who you are. This is the most important thing you will do, and rushing it
 produces a worse coach for months afterwards.
 
-**Say this:**
+It usually starts on its own once setup finishes. If it has not, **say this:**
 
 > Let's start the intake.
 
@@ -294,7 +296,7 @@ cannot detect on its own.
 **Give it two weeks first.** Get the daily logging habit before adding anything.
 
 After that, if you want your numbers on your phone — charts, today's targets, your history
-in one place — see **[DASHBOARD.md](DASHBOARD.md)**. It is a free Vercel account and about
+in one place — see **[the dashboard guide](DASHBOARD.md)**. It is a free Vercel account and about
 twenty minutes.
 
 **Do not do it before intake is finished.** It will not build, on purpose, and you will get
@@ -304,7 +306,7 @@ a failed-deployment email every time the coach saves something.
 
 ## If something goes wrong
 
-See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — it covers the handful of things that
+See **[the troubleshooting guide](TROUBLESHOOTING.md)** — it covers the handful of things that
 actually go wrong, with what to type.
 
 The shortest version: **tell the coach.** Paste the error at it and say what you were

@@ -149,8 +149,8 @@ This is the fiddliest screen in the whole system. Follow it exactly.
 4. **Generate new token**.
 5. Fill in:
    - **Token name:** `coach-dashboard`
-   - **Expiration:** 1 year. Put a reminder in your calendar — when it expires, logging
-     stops working and nothing warns you first.
+   - **Expiration:** 1 year. GitHub emails you a week before it expires, and the Log tab says
+     so when a save is refused; put a reminder in your calendar as well.
    - **Repository access:** choose **Only select repositories**, then pick
      **`yourname-coach`**. Only that one.
    - **Permissions** → **Repository permissions** → find **Contents** → set it to

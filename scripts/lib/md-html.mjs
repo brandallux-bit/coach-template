@@ -40,10 +40,12 @@ const rewriteHref = (href) =>
 const renderer = {
   heading({ tokens, depth }) {
     const text = this.parser.parseInline(tokens)
-    // No id on an h1: the kit wraps each document in a <section> carrying the document's own
-    // anchor, and GETTING-STARTED.md's h1 slugged to the same string as its section.
-    const id = depth === 1 ? '' : ` id="${slug(text)}"`
-    return `<h${depth}${id}>${text}</h${depth}>\n`
+    // A document's own h1 becomes the kit's h2: the kit is ONE page with one h1 (in the hero), and
+    // three h1s on a page is what a screen reader announces as three documents. It keeps the h1's
+    // size through `.doc-title`. No id on it — the kit wraps each document in a <section> carrying
+    // the document's own anchor, and GETTING-STARTED.md's h1 slugged to the same string.
+    if (depth === 1) return `<h2 class="doc-title">${text}</h2>\n`
+    return `<h${depth} id="${slug(text)}">${text}</h${depth}>\n`
   },
 
   /**

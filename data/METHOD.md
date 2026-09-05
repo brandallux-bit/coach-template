@@ -62,7 +62,7 @@
 4. **`energy.csv` is generated, never hand-edited.** Run `node scripts/compute-energy.mjs`.
 5. **Every file has a header row. Dates are `YYYY-MM-DD`. Text fields containing commas are
    double-quoted.** `scripts/validate-data.mjs` enforces all of it in CI.
-6. **⚠ The date on a row is the ATHLETE'S LOCAL DATE, from `plan.timezone` — never the coaching
+6. **⚠ The date on a row is the ATHLETE'S LOCAL DATE, from `athlete.timezone` — never the coaching
    session's date.** Added 2026-08-08 after a real corruption: a dinner eaten at ~20:00 PDT
    Saturday was written to Sunday, because the session clock runs **UTC and the athlete is
    `America/Los_Angeles`, 7–8 hours behind**. Eight meal rows, a `targets.csv` row and a whole

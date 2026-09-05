@@ -118,7 +118,7 @@ Count the rows when you add one.
 | X-2 | Dates are the athlete's local date, from `athlete.timezone`. | `ENFORCED` ✓ | 0 |
 | X-3 | `data/` is written before the prose, never in parallel. | `ENFORCED` ✓ | 11 |
 | X-4 | Append-only wherever possible. | `UNENFORCED` | 0 |
-| X-5 | Every write commits and pushes immediately. | `UNENFORCED` | 0 |
+| X-5 | Every write commits and pushes immediately. | `PARTIAL` | 0 |
 | X-6 | Work on `main`. | `ENFORCED` ✓ | 5 |
 | X-7 | Fail loudly, never plausibly. | `ENFORCED` ✓ | 4 |
 | X-8 | A number has exactly one home. Everything else renders it — including code. | `ENFORCED` ✓ | 15 |
@@ -133,7 +133,7 @@ Count the rows when you add one.
 | X-17 | **A machine-readable default always answers. Prose may refine it, never suppress it.** | `ENFORCED` ✓ | *(new)* |
 | X-18 | **A proposal is checked against the record before it is presented.** | `PARTIAL` | *(new)* |
 
-Thirteen of the eighteen are enforced; two are `PARTIAL` and three `UNENFORCED`. The audit found
+Thirteen of the eighteen are enforced; three are `PARTIAL` and two `UNENFORCED`. The audit found
 no violations of X-4 or X-5, which is worth knowing — they are prose and they are holding, so they
 stay prose for now.
 
@@ -358,8 +358,11 @@ Not urgent; nothing has broken it outside the exception above.
 
 ## X-5 · Every write commits and pushes immediately
 
-**Status:** `UNENFORCED`, **zero violations found.** Not mechanically checkable from inside a
-session. Stays prose; revisit only if a divergence incident occurs.
+**Status:** `PARTIAL` as of 2026-09-05 — was `UNENFORCED`. **The commit half is enforced:**
+`scripts/chart-commit.mjs` is the commit a session makes, and it validates, commits and pushes in
+one step, refusing on a red check (CLAUDE.md §0.3). **The "immediately after every write" half is
+not** — whether a session runs it after each write, rather than once at the end, is not checkable
+from inside the repository. That half stays prose; revisit only if a divergence incident occurs.
 
 ---
 
@@ -1040,7 +1043,7 @@ same reasoning removed that skill's licence to write a prescription row at all: 
 preserved table into the live file is how a superseded prescription becomes the current one.
 
 **Why it needed naming.** X-3 governs the write. Nothing governs the read, and the chart has
-already paid for it: three knee flares while a rehab block called for at intake sat unwritten.
+already paid for it: repeated flares of an injury while a rehab block called for at intake sat unwritten.
 `METHOD.md:226` names the failure exactly — *"a rehab block that exists in a markdown file and
 never reaches the athlete."*
 

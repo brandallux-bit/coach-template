@@ -47,7 +47,7 @@ else is Claude's.
 
 ### It says my chart is somewhere else
 
-Setup creates your chart at `~/Documents/yourname-coach` and the starter folder's job is
+Setup creates your chart at `~/yourname-coach` and the starter folder's job is
 done. Open Claude Code on the chart folder and say *"continue my setup"*.
 
 **This matters more than it looks.** Your chart folder holds the rules your coach runs on —
@@ -100,7 +100,7 @@ reporting rather than answering politely. Answering trains it to keep doing it.
 a coaching session and say *"sync my chart"* — the coach finds stray branches, merges them
 and deletes them before doing anything else.
 
-If your dashboard has logging switched on ([DASHBOARD.md](DASHBOARD.md) step 4), it also
+If your dashboard has logging switched on ([the dashboard guide](DASHBOARD.md) step 4), it also
 shows a red banner across every page when this happens. Without that step it cannot check,
 and says so quietly at the top of the page — that grey line is informational, not a fault.
 
@@ -149,14 +149,15 @@ If either is missing the dashboard refuses everyone, deliberately — it fails c
 
 ### The Log tab buttons are greyed out
 
-`GITHUB_REPO` and `GITHUB_TOKEN` are not set. See [DASHBOARD.md](DASHBOARD.md) step 4. This
+`GITHUB_REPO` and `GITHUB_TOKEN` are not set. See [the dashboard guide](DASHBOARD.md) step 4. This
 is the designed behaviour rather than a fault: it disables the buttons instead of accepting
 something and silently dropping it.
 
 ### Logging worked and then stopped
 
-**Your token expired.** Fine-grained tokens have a hard expiry and nothing warns you first.
-Make a new one the same way, update `GITHUB_TOKEN` in Vercel, redeploy.
+**Your token expired.** Fine-grained tokens expire on the date you set when you made it. GitHub
+emails you a week before, and the Log tab says so when a save is refused. Make a new one the same
+way, update `GITHUB_TOKEN` in Vercel, redeploy.
 
 ### I want to log meals from the dashboard
 
@@ -185,14 +186,21 @@ visibility** → **Make private**.
 Your chart is safe on GitHub. Nothing was lost as long as the coach was saving, which it
 does after every number.
 
-Install the Claude app and the tools ([getting started](GETTING-STARTED.md) step 2), then
-open Terminal and paste this, with your own username and name:
+Install the Claude app and the tools ([getting started](GETTING-STARTED.md) step 2, including
+signing in with `gh auth login`), then open Terminal and paste these two, with your own username
+and name:
 
 ```bash
-git clone https://github.com/YOURUSERNAME/YOURNAME-coach.git ~/Documents/YOURNAME-coach
+git clone https://github.com/YOURUSERNAME/YOURNAME-coach.git ~/YOURNAME-coach
 ```
 
-Then open Claude Code on that folder.
+```bash
+git -C ~/YOURNAME-coach remote add upstream "$(cat ~/YOURNAME-coach/library/starter-kit/TEMPLATE-URL)"
+```
+
+The second one reconnects your chart to the template it came from, which a plain download does
+not remember — without it, system updates can never reach your chart again. Then open Claude
+Code on that folder and say *"sync my chart"*.
 
 ### Everything is broken and I want to start over
 
@@ -207,16 +215,16 @@ you actually want.
 
 ## Reading the checks yourself
 
-If you want to see the state of things, in Terminal, in your chart folder:
+If you want to see the state of things, open Terminal and paste this, with your own name:
 
 ```bash
-npm run check
+cd ~/yourname-coach && npm run check
 ```
 
 Green with skips is healthy. Red names the file and the row.
 
 ```bash
-npm run validate
+cd ~/yourname-coach && npm run validate
 ```
 
 Just the data check — faster, and the one that catches a malformed row.

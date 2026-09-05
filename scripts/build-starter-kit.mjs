@@ -4,8 +4,8 @@
  *
  *   node scripts/build-starter-kit.mjs [--out DIR] [--zip]
  *
- * WHY THIS IS A BUILD AND NOT A FOLDER SOMEBODY MAINTAINS. The kit is four documents, three of
- * which already exist in this repo as the canonical copies. Hand-assembling it means that the
+ * WHY THIS IS A BUILD AND NOT A FOLDER SOMEBODY MAINTAINS. The kit is five documents and a URL,
+ * three of the documents already existing in this repo as the canonical copies. Hand-assembling it means that the
  * moment `GETTING-STARTED.md` is edited, every zip already sent — and the one sitting on a
  * desktop waiting to be sent — is silently a different document from the one in `main`. That is
  * the two-homes defect (INVARIANTS.md X-8) with a delivery mechanism attached, and it is worse
@@ -74,7 +74,10 @@ nav .sub{color:var(--mut);font-size:12px;margin-bottom:20px;line-height:1.45}
 nav a{display:block;padding:6px 0;color:var(--mut);text-decoration:none}
 nav a:hover{color:var(--accent)}
 main{padding-top:40px;min-width:0}
-h1{font-size:31px;line-height:1.2;letter-spacing:-.02em;margin:0 0 20px}
+h1{font-size:22px;line-height:1.25;letter-spacing:-.015em;margin:0 0 8px}
+h2.doc-title{font-size:31px;line-height:1.2;letter-spacing:-.02em;margin:0 0 20px;border-top:0;padding-top:0}
+.skip{position:absolute;left:-999px;top:8px;background:var(--card);color:var(--fg);padding:8px 12px;
+border:1px solid var(--line);border-radius:6px;z-index:2}.skip:focus{left:24px}
 h2{font-size:23px;line-height:1.25;letter-spacing:-.015em;margin:44px 0 14px;
 padding-top:20px;border-top:1px solid var(--line)}
 /* A horizontal rule immediately before a heading would otherwise draw a second line. */
@@ -114,9 +117,10 @@ letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:70
 @media(max-width:840px){.wrap{grid-template-columns:1fr;gap:0;padding:0 20px 64px}
 nav{position:static;padding:28px 0 0;border-bottom:1px solid var(--line)}
 nav a{display:inline-block;margin-right:18px}main{padding-top:26px}}
-@media print{nav{display:none}.wrap{display:block;max-width:none}
+@media print{nav,.skip{display:none}.wrap{display:block;max-width:none}
 body{background:#fff;color:#000;font-size:11pt}
-blockquote,pre,.tw{page-break-inside:avoid}}
+blockquote,pre,.tw{page-break-inside:avoid}
+main a[href^="http"]::after{content:" (" attr(href) ")";font-size:9pt;color:#555}}
 `
 
 const read = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -140,9 +144,10 @@ writeFileSync(join(OUT, 'START-HERE.html'), `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Your coach — getting started</title>
-<style>${CSS}</style></head><body><div class="wrap">
-<nav><div class="brand">Your coach</div><div class="sub">Setup &amp; first weeks</div>${nav}</nav>
-<main><div class="hero"><span class="k">Start here</span>
+<style>${CSS}</style></head><body><a class="skip" href="#main">Skip to content</a><div class="wrap">
+<nav aria-label="Contents"><div class="brand">Your coach</div><div class="sub">Setup &amp; first weeks</div>${nav}</nav>
+<main id="main"><div class="hero"><span class="k">Start here</span>
+<h1>Your coach, set up in an afternoon</h1>
 <p>Everything you need, in order. You do not need to know anything technical &mdash;
 there is no code to write. Read section&nbsp;1, then follow it.</p></div>
 ${body}</main></div></body></html>
@@ -164,9 +169,10 @@ console.log(`starter kit → ${OUT}`)
 if (ZIP) {
   const zip = `${OUT}.zip`
   rmSync(zip, { force: true })
-  // -x excludes the metadata Finder sprinkles into any folder that has been opened, which
-  // otherwise ships as a visible __MACOSX/ directory on the recipient's machine.
-  const r = spawnSync('zip', ['-qr', zip, OUT.split('/').pop(), '-x', '.DS_Store', '__MACOSX/*'], {
+  // -x excludes the .DS_Store files Finder writes into any folder that has been opened. The
+  // pattern is path-anchored, so it has to match the nested path, not the bare name. (`__MACOSX/`
+  // is not a concern here: Finder's own Compress creates it; `zip` never does.)
+  const r = spawnSync('zip', ['-qr', zip, OUT.split('/').pop(), '-x', '*/.DS_Store', '.DS_Store'], {
     cwd: dirname(OUT),
     stdio: 'inherit',
   })

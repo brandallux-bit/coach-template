@@ -46,10 +46,10 @@ Terminal. Say which of 2.2, 2.3 or 2.4 they need:
 Wait for them to come back and re-run this check. **Do not work around it** — every step
 below needs these.
 
-## 2. Ask for their first name
+## 2. Their first name
 
-Lower case. It names the folder and the repo — `jane-coach`. **That is the only question
-this bootstrap needs.**
+It is in the sentence they pasted; ask only if it is not there. Lower case. It names the folder
+and the repo — `jane-coach`. **That is the only question this bootstrap may ask.**
 
 ⛔ **Do not ask them anything about goals, weight, training, diet, or injuries — and do not
 accept it if they volunteer it.** Write it down for later and say you will get to it
@@ -58,13 +58,18 @@ is named. Answers given during a software install are answers to a different que
 
 ## 3. Create the chart
 
-Replace `NAME` with their first name in both commands. **Use the full paths as written** —
-do not rely on a `cd` from an earlier command still applying.
+Replace `NAME` with their first name in both commands. Run them from the starter folder — the
+folder this session has open, where `TEMPLATE-URL` sits — and note that the chart itself is
+named by full path, so nothing here depends on a `cd` from an earlier command.
 
 ```bash
-git clone "$(cat TEMPLATE-URL)" ~/Documents/NAME-coach
-git -C ~/Documents/NAME-coach remote rename origin upstream
+git clone "$(cat TEMPLATE-URL)" ~/NAME-coach
+git -C ~/NAME-coach remote rename origin upstream
 ```
+
+`~/NAME-coach` is directly under their home folder, deliberately not `~/Documents`: on a Mac
+with iCloud's *Desktop & Documents* sync on, a git repository in `~/Documents` is a well-known
+source of evicted files and a corrupted index.
 
 `TEMPLATE-URL` sits beside this file in the starter folder and is the only place the template's
 address is written down — the same file ships inside the chart at
@@ -86,10 +91,10 @@ limit, no safety floors.
 
 So tell them, in your own words:
 
-> Your chart is built, at `~/Documents/NAME-coach`.
+> Your chart is built, at `~/NAME-coach`.
 >
 > Setup finishes in that folder, not this one. Close this session, open Claude Code on
-> `~/Documents/NAME-coach`, and say: **continue my setup**.
+> `~/NAME-coach`, and say: **continue my setup**.
 >
 > You can throw this starter folder away afterwards.
 

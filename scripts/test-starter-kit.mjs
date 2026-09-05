@@ -56,7 +56,8 @@ yes('an autolink is a link',
 yes('underscore emphasis works', mdToHtml('_it_ and __bo__').includes('<em>it</em>'))
 yes('h5 is a heading, not prose', mdToHtml('##### five').includes('<h5'))
 yes('a task list is a list', mdToHtml('- [ ] todo').includes('<li'))
-yes('a setext heading is a heading', mdToHtml('Title\n=====').includes('<h1'))
+// A document's h1 renders as the kit's styled h2 — one page, one h1 — so this asserts the demotion, not <h1>.
+yes('a setext heading is a heading', mdToHtml('Title\n=====').includes('<h2 class="doc-title"'))
 yes('an escaped asterisk stays literal',
   !mdToHtml('\\*not emphasis\\*').includes('<em>'), mdToHtml('\\*not emphasis\\*'))
 yes('arithmetic asterisks do not eat the text between them',
@@ -127,6 +128,10 @@ try {
     .every((id) => html.includes(`<section id="${id}">`)))
   yes('the page names itself', html.includes('<title>'))
   yes('it is theme-aware', html.includes('prefers-color-scheme'))
+  // One page, one h1. Three documents' h1s on one page read to a screen reader as three pages.
+  yes('exactly one h1', (html.match(/<h1[\s>]/g) ?? []).length === 1, `found ${(html.match(/<h1[\s>]/g) ?? []).length}`)
+  yes('the navigation is labelled', /<nav aria-label="[^"]+"/.test(html))
+  yes('there is a skip link to the content', html.includes('href="#main"') && html.includes('id="main"'))
 
   // The .md copies are what Claude Code reads. They are renamed on the way in, so a link naming
   // the original filename points at a file the athlete does not have.
