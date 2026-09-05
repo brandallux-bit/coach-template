@@ -67,6 +67,26 @@ export function localToday() {
 }
 
 /**
+ * The hour of the day (0-23) in a timezone, at an instant. Pure, so the scheduled jobs' window
+ * gate can be tested against fixed instants rather than the clock.
+ *
+ * WHY THIS EXISTS. The scheduled workflows used to carry a fixed UTC cron chosen for one
+ * timezone, and a script rewrote the cron line per chart. That made `.github/workflows/` differ
+ * on every chart, put a stale comment above every rewritten line, and — because the rewrite was a
+ * hard check in `check-all` — refused the first commit of any athlete outside that timezone. The
+ * jobs now run on one fixed sampling cron everywhere and ask THIS question instead: is it the
+ * athlete's local window right now? One workflow file, identical on every chart.
+ */
+export function localHourIn(timeZone, at = new Date()) {
+  const h = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(at).find((p) => p.type === 'hour')?.value
+  return Number(h)
+}
+
+/** The athlete's local hour right now. Throws `NO_CHART_MESSAGE` before intake, like `localToday`. */
+export const localHour = () => localHourIn(constants.athlete.timezone)
+
+/**
  * Pounds to kilograms. Delegates — the constant lives in `scripts/lib/aggregate.mjs` beside the
  * session formula that also needs it, rather than existing here as a second `2.20462` divisor.
  */

@@ -57,6 +57,14 @@ import { weekdayKey } from './lib/weekdays.mjs'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 let failed = 0
+
+/**
+ * Did check-all withhold a step because there was no chart? A `skip` line with a `(declined: …)`
+ * reason is a step that could not run for a reason unrelated to the chart — `test-starter-kit`
+ * needs `marked`, which a fresh clone does not have — and that is not the omission these states
+ * exist to catch. See `step()` in scripts/check-all.mjs for the two shapes.
+ */
+const chartSkipped = (out) => out.split('\n').some((l) => /^skip\s/.test(l) && !l.includes('(declined:'))
 /** `--keep` leaves each state's temp repo on disk, named. The states are built and destroyed in
  *  one process, so without it a failure inside a clone is only ever visible as captured output. */
 const KEEP = process.argv.includes('--keep')
@@ -504,10 +512,20 @@ console.log('STATE A — a repo with no chart at all')
      * has fixtures that did not need a chart, and skipping it is coverage thrown away on precisely
      * the repo a stranger forks.
      */
-    const registered = [...readFileSync(join(repo, 'scripts', 'check-all.mjs'), 'utf8')
-      .matchAll(/run\('(test-[^']+\.mjs)'/g)].map((m) => m[1])
-    const skippedSuites = registered.filter((f) =>
-      new RegExp(`^skip\\s+${f.replace('.mjs', '')}\\b`, 'm').test(all.out))
+    // Each registration is `step('<label>', () => run('<suite>'…`. The LABEL is what check-all
+    // prints, and it matters which of the two skip forms printed it: a chart-skip is the bare
+    // label, while a step that DECLINED for a stated reason (`unless`, e.g. a devDependency that
+    // is not installed) prints the label followed by ` — <why>`. The first version matched on the
+    // suite name alone and so counted a declined `test-starter-kit` — which exits 0 when it
+    // declines, by design — as "a suite that passes without a chart was skipped".
+    const registrations = [...readFileSync(join(repo, 'scripts', 'check-all.mjs'), 'utf8')
+      .matchAll(/step\('((?:[^'\\]|\\.)+)',\s*(?:\(\)\s*=>\s*)?run\('(test-[^']+\.mjs)'/gs)]
+      .map((m) => ({ label: m[1].replace(/\\'/g, "'"), suite: m[2] }))
+    const registered = registrations.map((r) => r.suite)
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const skippedSuites = registrations
+      .filter((r) => new RegExp(`^skip\\s+${esc(r.label)}\\s*$`, 'm').test(all.out))
+      .map((r) => r.suite)
     const wronglySkipped = skippedSuites.filter((f) => runScript(repo, f).code === 0)
     wronglySkipped.length === 0
       ? ok(`...and no suite that PASSES without a chart was skipped (checked all ${registered.length})`)
@@ -543,7 +561,7 @@ console.log('\nSTATE B — a chart, written by intake, with no rows in it yet')
     all.code === 0
       ? ok('check-all is GREEN on a fresh chart with no history')
       : fail('a new athlete\'s first push must not be red', all.out.slice(-2500))
-    ;!(/skip /).test(all.out)
+    ;!chartSkipped(all.out)
       ? ok('...and nothing is skipped — the chart exists, so every check runs')
       : fail('a chart with constants must run every step', all.out.slice(-800))
 
@@ -1046,7 +1064,7 @@ console.log('\nSTATE C — a chart with a month of rows and no step feed')
     all.code === 0
       ? ok('check-all is GREEN on a chart with rows and no step feed')
       : fail('the majority configuration must not be red', all.out.slice(-2500))
-    ;!(/skip /).test(all.out)
+    ;!chartSkipped(all.out)
       ? ok('...and nothing is skipped — a skipped step proves nothing about this state')
       : fail('a chart with constants must run every step', all.out.slice(-800))
 

@@ -5,37 +5,41 @@ name: Check steps gap
 # the row goes silently missing and the burn model quietly runs on a floor instead of a fact
 # until someone notices.
 #
-# This is the repo-side safety net: check every morning, fail loudly if yesterday's row is
-# missing. It cannot fix the on-device automation — that's outside this repo entirely — but a
-# missing row becomes a CI failure (and GitHub's default email to the repo owner) the next
-# morning instead of sitting silent until a coaching session stumbles onto it.
+# This is the repo-side safety net: check once a day, fail loudly if yesterday's row is missing.
+# It cannot fix the on-device automation — that's outside this repo entirely — but a missing row
+# becomes a CI failure (and GitHub's default email to the repo owner) the same afternoon instead
+# of sitting silent until a coaching session stumbles onto it.
 #
 # ⚠ ONLY A CHART THAT DECLARES plan.stepFeed HAS A FEED TO BE LATE. scripts/check-steps-gap.mjs
-# exits cleanly on any other, so this workflow is harmless on a chart with no wearable — but it
-# is also pointless there, and SETUP.md §4a says to delete BOTH this file and log-steps.yml.
-# Deleting only the writer leaves this, the one that mails you the failure.
+# exits cleanly on any other chart, so this workflow is harmless on a chart with no wearable.
+# **Leave it in place on such a chart.** It used to say "delete both step workflows" — and a
+# deleted workflow is a modify/delete conflict on every later `git merge upstream/main`, for a
+# file that costs nothing to keep. Byte-identical on every chart is the whole point.
 
 on:
   schedule:
-    # ~13:00 America/Los_Angeles. Cron is fixed UTC and does not shift for DST: this lands at
-    # 13:00 during PDT (Mar-Nov) and 12:00 during PST — earlier in winter, never later.
-    #
-    # Deliberately midday, not dawn. The Shortcut sends *yesterday's* completed total when the
-    # athlete first picks up the phone, so yesterday's row does not exist until they do.
-    # A 07:00 check would fire before that write and fail every morning on a day that was
-    # about to be fine — and a safety net that false-alarms daily is one they learn to ignore.
-    # Midday clears any plausible wake time in both offsets.
-    - cron: '0 20 * * *'
+    # Six samples a day; the gate below picks the one that falls in 12:00-16:00 athlete-local.
+    # Deliberately midday, not dawn: the Shortcut sends *yesterday's* completed total when the
+    # athlete first picks up the phone, so yesterday's row does not exist until they do. A check
+    # at dawn would fire before that write and fail every morning on a day that was about to be
+    # fine — and a safety net that false-alarms daily is one they learn to ignore. See
+    # daily-rollover.yml for why this is one sampling cron rather than a per-chart line.
+    - cron: '0 */4 * * *'
   workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
+      - name: Is it the afternoon window in the athlete's timezone?
+        id: gate
+        run: node scripts/local-window.mjs --between 12 16
+
       - name: Check yesterday's steps row
+        if: steps.gate.outputs.due == 'true' || github.event_name == 'workflow_dispatch'
         run: node scripts/check-steps-gap.mjs

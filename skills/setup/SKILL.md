@@ -145,22 +145,14 @@ If it is red, stop and fix it here. A chart that starts red teaches them to igno
 `npm install` is **not** needed — `scripts/` is dependency-free Node. It is only required
 for the dashboard, which comes later.
 
-## 6. Set the clock to their timezone
+## 6. The clock is theirs already
 
-The two scheduled jobs run on fixed UTC crons written for the template author's timezone.
-**On a chart in another timezone the daily rollover fires mid-afternoon**, so the day's
-calorie target — which `CLAUDE.md` §0.3 says a day may never lack — does not exist for the
-first half of that day.
-
-You cannot fix this yet: the timezone is `athlete.timezone`, which intake writes. **Say so
-now, and leave a reminder that it is owed**, so it is not discovered weeks later:
-
-> One thing I will need to set once you have told me where you live: the automatic
-> daily job runs on a clock that is currently set for California.
-
-`skills/intake` picks this up at the point it writes `constants.json`. If you are reading
-this on a chart whose intake is already done, do it now: `node scripts/check-crons.mjs`
-prints the correct cron lines for the athlete's timezone and which files to change.
+The two scheduled jobs — the daily rollover that writes each day's target, and the steps check —
+run on one sampling cron on every chart and gate themselves on `athlete.timezone` at run time
+(`scripts/local-window.mjs`). There is nothing to set here and nothing to set at intake: once
+intake writes the timezone, the next run lands in their local window. **Do not edit the cron
+lines.** They are identical on every chart, and that is what lets a template update reach the
+workflow files without a conflict.
 
 ## 7. What is deliberately NOT done here
 

@@ -94,7 +94,10 @@ const step = (label, fn, { needsChart = true, unless = null } = {}) => {
   const why = unless?.()
   if (why) {
     skipped++
-    console.log(`skip  ${label} — ${why}`)
+    // A distinct shape from the chart-skip above, on purpose: `test-cold-start.mjs` asserts that
+    // a chart runs EVERY step, and a step that declined because a devDependency is absent is not
+    // a step the chart withheld. The parenthesis is what the two suites key on.
+    console.log(`skip  ${label}  (declined: ${why})`)
     return
   }
   try {
@@ -200,8 +203,8 @@ step('test-aggregations  — null propagation, one day set, partial markers', ()
 step('test-single-home   — one definition site per constant and formula', () => run('test-single-home.mjs'))
 // Both inline, for the reason test-aggregations earns its place: pure file reads, no network, no
 // subprocess, ~0.1 s, and what they guard is what the athlete is told to DO. A suspended modality
-// still on the template is the defect that has already cost this chart three knee flares — it must
-// not be able to reach main between deploys.
+// still on the template is the defect that has already cost a chart repeated flares of an injury
+// it was supposed to be protecting — it must not be able to reach main between deploys.
 step('test-suspensions   — the suspension grammar, on fixtures', () => run('test-suspensions.mjs'),
   { needsChart: false })
 // ⚠ **`needsChart: false`, AND THE DEFAULT IS BACKWARDS FOR THIS ONE.** `needsChart` defaults to
@@ -219,11 +222,13 @@ step('test-recent-work   — does today repeat the last three days', () => run('
 step('test-session-table — what today\'s card shows, and what it refuses to claim',
   () => run('test-session-table.mjs'), { needsChart: false })
 step('check-suspensions  — nothing prescribes what the block suspends', () => run('check-suspensions.mjs'))
-// The scheduled jobs run on fixed UTC crons. Nothing derived them from `athlete.timezone`, and
-// while the template and its one chart shared a timezone nothing had to. A chart in any other
-// zone gets its daily rollover — and therefore that day's calorie target — at the wrong hour,
-// and no existing check notices, because `check-targets-gap` only inspects past days.
-step('check-crons        — the scheduled jobs land at a sane local hour', () => run('check-crons.mjs'))
+// The scheduled jobs run on one sampling cron on every chart and gate themselves on the athlete's
+// local hour (scripts/local-window.mjs). This is the proof that the gate lands exactly one run a
+// day for every timezone; it needs no chart and must not be withheld from one. It replaced a
+// per-chart cron rewrite that ran here as a hard error and refused the first commit of any
+// athlete outside the template author's timezone.
+step('test-local-window  — the scheduled jobs land once a day in every timezone',
+  () => run('test-local-window.mjs'), { needsChart: false })
 // The athlete-facing docs, rendered. Fixtures and file reads only — no chart, no network — so
 // like the two suites above it must not be withheld from a repo that has not run intake. It is
 // the ONLY check that looks at the starter kit, and the kit is the one document in this repo

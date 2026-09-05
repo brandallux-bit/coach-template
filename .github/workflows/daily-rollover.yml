@@ -7,15 +7,28 @@
 #
 # The push is the point. src/generated/data.json is gitignored and built at build time, so the
 # dashboard only reflects data/ as of the last commit — a day with no commits is a stale
-# dashboard. This job guarantees at least one push per day.
+# dashboard. This job guarantees at least one push per day on a chart with daily targets.
 name: Daily rollover
 
 on:
   schedule:
-    # 09:00 UTC = 02:00 America/Los_Angeles during PDT, 01:00 during PST. Cron is fixed UTC and
-    # does not shift for DST; both land safely after local midnight, which is what matters — the
-    # script derives the athlete-local date itself and never trusts the runner's clock.
-    - cron: '0 9 * * *'
+    # ⚠ ONE SAMPLING CRON FOR EVERY CHART, AND A GATE THAT PICKS THE RUN. This fires six times a
+    # day in UTC; the first step asks whether it is 00:00-04:00 in the ATHLETE's timezone, and
+    # only that run does anything. A four-hour window sampled every four hours lands exactly one
+    # run a day inside it for every UTC offset — scripts/test-local-window.mjs proves it for
+    # whole-hour, half-hour and three-quarter-hour zones in both halves of the year.
+    #
+    # This replaced a fixed `0 9 * * *` (02:00 Los Angeles) plus a script that rewrote the line
+    # per chart. That rewrite lived in check-all as a hard error, so an athlete anywhere else had
+    # their first commit after intake refused, every chart's workflow files drifted from the
+    # template's, and the template's own cold-start suite went red on its Lisbon fixture. This
+    # file is now byte-identical on every chart, and nothing derives from the timezone but the
+    # gate. The cost is five skipped runs a day of about twenty seconds each.
+    #
+    # GitHub drops and delays scheduled slots under load — a run can land up to ~50 minutes late.
+    # The window is wide enough that a late run still lands inside it; a dropped run is covered by
+    # `--fill-gaps` on the next, which writes every missing day rather than only its own.
+    - cron: '0 */4 * * *'
   workflow_dispatch:
     inputs:
       date:
@@ -29,13 +42,19 @@ jobs:
   rollover:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
+
+      # Before intake there is no timezone and nothing to roll over; the gate says `due=false` and
+      # the job ends green. A manual dispatch always runs — that is what dispatch is for.
+      - name: Is it the rollover window in the athlete's timezone?
+        id: gate
+        run: node scripts/local-window.mjs --between 0 4
 
       # Generate, check and push in ONE step, because on a lost race the push loop resets to
       # origin/main and re-runs the generator against it (audit F-18). generate-targets.mjs is
@@ -52,13 +71,14 @@ jobs:
       # confident wrong number is the failure mode this whole repo is built to avoid. The full
       # suite runs, not just validate-data: this bot's pushes use GITHUB_TOKEN and therefore never
       # trigger the Validate data workflow, so this is the only gate they get.
-      # --fill-gaps, not today alone. A run GitHub drops — the schedule note above says whole slots
-      # get dropped — used to leave that day with no target forever, because the next run only ever
-      # wrote its own date. It never overwrites an existing row, so it stays idempotent and the
-      # push-retry loop can still replay it verbatim. It is also what keeps
-      # `check-targets-gap.mjs` (a hard error in check-all) from wedging the other bots: the job
-      # that guarantees a target is the job that closes every gap. See scripts/lib/targets.mjs.
+      # --fill-gaps, not today alone. A run GitHub drops used to leave that day with no target
+      # forever, because the next run only ever wrote its own date. It never overwrites an
+      # existing row, so it stays idempotent and the push-retry loop can still replay it verbatim.
+      # It is also what keeps `check-targets-gap.mjs` (a hard error in check-all) from wedging the
+      # other bots: the job that guarantees a target is the job that closes every gap. See
+      # scripts/lib/targets.mjs.
       - name: Generate today's targets row, fill any gap, check it, and push
+        if: steps.gate.outputs.due == 'true' || github.event_name == 'workflow_dispatch'
         env:
           ROLLOVER_DATE: ${{ inputs.date }}
         run: |
