@@ -1,4 +1,22 @@
-# Starting a new chart
+# Starting a new chart — reference
+
+> ### This is no longer the document a new athlete follows
+>
+> It was written for a person to execute in a shell, which is the wrong shape: the athlete
+> has Claude Code, and Claude Code can install Homebrew, authenticate `gh`, clone, create the
+> repo and push. Asking a non-technical person to do that by hand was never necessary.
+>
+> | Purpose | Document |
+> |---|---|
+> | **A new athlete setting up** | **[GETTING-STARTED.md](GETTING-STARTED.md)** — three accounts, one pasted sentence |
+> | **The AI performing that setup** | **[skills/setup](skills/setup/SKILL.md)** — §0–§2 and §4–§6 below, made executable |
+> | **The dashboard** | **[DASHBOARD.md](DASHBOARD.md)** — §5 below, expanded, including the write token |
+>
+> **This file stays, and stays authoritative, for everything those three do not cover:** the
+> constants reference in §4, the merge and re-pin procedure at the bottom, and the reasoning
+> behind each rule. `skills/setup` is deliberately the smaller document — where the two
+> disagree about a *rule*, this one is right and the skill has drifted.
+
 
 Roughly 30 minutes of setup on a fresh Mac — most of it waiting on Homebrew — then intake. **Do not fill anything in before intake** — the
 whole design depends on the athlete's goals being elicited before any category is named.

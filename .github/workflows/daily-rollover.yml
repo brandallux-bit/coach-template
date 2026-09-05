@@ -63,7 +63,7 @@ jobs:
           ROLLOVER_DATE: ${{ inputs.date }}
         run: |
           git config user.name "rollover-bot"
-          git config user.email "brandallux@gmail.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node scripts/git-commit-push.mjs \
             --apply "node scripts/generate-targets.mjs --fill-gaps" \
             --message "Daily rollover: generate today's targets, recompute energy.csv" \

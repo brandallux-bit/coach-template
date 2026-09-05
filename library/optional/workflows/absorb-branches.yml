@@ -92,5 +92,5 @@ jobs:
       - name: Absorb every branch that is not main
         run: |
           git config user.name "absorb-bot"
-          git config user.email "brandallux@gmail.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node scripts/absorb-branches.mjs

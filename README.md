@@ -3,7 +3,15 @@
 A file-backed AI coaching system. The files are the source of truth; the coach reads them
 before it speaks and writes to them after.
 
-**This repo is the system, not a chart.** Fork it per athlete — see [SETUP.md](SETUP.md).
+**This repo is the system, not a chart.** Fork it per athlete.
+
+| You are | Read |
+|---|---|
+| Setting this up for yourself, and not technical | **[GETTING-STARTED.md](GETTING-STARTED.md)** — accounts, install, intake. No code. |
+| The AI doing that setup | **[skills/setup](skills/setup/SKILL.md)** — the executable procedure |
+| Adding the web dashboard, later | **[DASHBOARD.md](DASHBOARD.md)** — Vercel and the write token |
+| Stuck | **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** |
+| Maintaining the template, or pulling its updates into a chart | **[SETUP.md](SETUP.md)** — the reference and the rationale |
 
 ## The design principle
 

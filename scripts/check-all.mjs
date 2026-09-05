@@ -209,6 +209,12 @@ step('test-recent-work   — does today repeat the last three days', () => run('
 step('test-session-table — what today\'s card shows, and what it refuses to claim',
   () => run('test-session-table.mjs'), { needsChart: false })
 step('check-suspensions  — nothing prescribes what the block suspends', () => run('check-suspensions.mjs'))
+// The athlete-facing docs, rendered. Fixtures and file reads only — no chart, no network — so
+// like the two suites above it must not be withheld from a repo that has not run intake. It is
+// the ONLY check that looks at the starter kit, and the kit is the one document in this repo
+// that every new athlete reads and nobody here ever does.
+step('test-starter-kit   — the docs a new athlete is sent, rendered',
+  () => run('test-starter-kit.mjs'), { needsChart: false })
 
 step('check-no-athlete-leak — nothing shared encodes one athlete', () => run('check-no-athlete-leak.mjs'))
 // The athlete's own standing instructions. Inert on a chart that has not written one, which is

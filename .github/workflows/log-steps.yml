@@ -102,7 +102,7 @@ jobs:
           RESTING_HR_OVERNIGHT: ${{ github.event.client_payload.resting_hr_overnight }}
         run: |
           git config user.name "steps-bot"
-          git config user.email "brandallux@gmail.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           MSG=$(node -e 'const d = String(process.env.STEPS_DATE ?? "").replace(/[^0-9-]/g, "").slice(0, 10);
             const s = String(process.env.STEPS_COUNT ?? "").replace(/[^0-9]/g, "").slice(0, 6);
             const sd = String(process.env.SLEEP_DATE ?? "").replace(/[^0-9-]/g, "").slice(0, 10);

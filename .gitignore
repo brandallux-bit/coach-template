@@ -18,3 +18,8 @@ data/findings.json
 
 # Local env files of any name — .env.example is already tracked and stays so.
 .env*
+
+# The starter kit is BUILT from GETTING-STARTED.md, DASHBOARD.md, TROUBLESHOOTING.md and
+# library/starter-kit/. Committing the output would give those docs a second home that goes
+# stale the moment one is edited. Rebuild with `npm run starter -- --zip`.
+build/
