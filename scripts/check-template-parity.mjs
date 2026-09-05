@@ -111,10 +111,29 @@ const changed = git(['diff', '--numstat', REF, '--', ...present])
   })
   .sort((a, b) => (b.added + b.removed) - (a.added + a.removed))
 
-const withDigest = changed.map((c) => ({
-  ...c,
-  digest: digestOf(git(['diff', REF, '--', c.path])),
-}))
+/**
+ * A generated block is not drift. `data/METHOD.md` carries this chart's MET table between
+ * `<!-- GENERATED:… -->` markers, rendered by `scripts/build-docs.mjs` from the chart's own
+ * registry — so it differs from the template on every chart, by design, forever. Reporting it
+ * every week is how the weekly review learns to skip this line. Compare the two sides with those
+ * blocks removed; a file that differs only inside them has not moved.
+ */
+const GENERATED = /<!-- GENERATED:([^\s]+)[^>]*-->[\s\S]*?<!-- \/GENERATED:\1 -->/g
+const withoutGenerated = (text) => text.replace(GENERATED, '')
+const onlyGeneratedDiffers = (path) => {
+  const theirs = gitTry(['show', `${REF}:${path}`])
+  if (theirs.status !== 0 || !existsSync(join(ROOT, path))) return false
+  const ours = readFileSync(join(ROOT, path), 'utf8')
+  if (!GENERATED.test(ours) && !GENERATED.test(theirs.stdout)) return false
+  return withoutGenerated(ours) === withoutGenerated(theirs.stdout)
+}
+
+const withDigest = changed
+  .filter((c) => !onlyGeneratedDiffers(c.path))
+  .map((c) => ({
+    ...c,
+    digest: digestOf(git(['diff', REF, '--', c.path])),
+  }))
 
 const ackByPath = new Map(ACKNOWLEDGED.map((a) => [a.path, a]))
 const drift = []

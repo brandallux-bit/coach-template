@@ -9,12 +9,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -23,8 +26,45 @@ jobs:
       # GITHUB_TOKEN pushes, so absorb-bot, steps-bot and rollover-bot never reach this job. Four
       # copies of a step list is the two-homes defect (INVARIANTS.md X-8), and it had already
       # drifted into three different answers about what "checked" means.
+      #
+      # ⚠ `--regen-energy`, NOT CI MODE, and the step after this is why. The dashboard's Log tab
+      # writes a row through the GitHub Contents API and cannot recompute data/energy.csv — so
+      # every session logged from a phone left the derived ledger stale, this job (in CI mode)
+      # went red, and the athlete got a failure email for having logged a session. Regenerating
+      # here is the same answer every bot gives: a derived file is out of date because an input
+      # just changed, and the fix is to write it, not to fail on it.
       - name: Run the data-layer check suite
-        run: node scripts/check-all.mjs
+        run: node scripts/check-all.mjs --regen-energy
+
+      # Land the regenerated ledger. This push uses GITHUB_TOKEN, so it does not re-trigger this
+      # workflow, and the re-apply loop in push-retry.mjs handles a coaching session pushing at the
+      # same moment. Nothing to commit is the ordinary outcome — most pushes are the coach's own,
+      # and chart-commit.mjs already regenerated the ledger before pushing.
+      - name: Commit data/energy.csv if this push left it stale
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet -- data/energy.csv; then
+            echo "energy.csv is current — nothing to commit."
+            exit 0
+          fi
+          git config user.name "ledger-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/git-commit-push.mjs \
+            --apply "node scripts/compute-energy.mjs" \
+            --message "Recompute energy.csv after a write that could not" \
+            --file data/energy.csv
+
+  # ⚠ **THE THREE JOBS BELOW ARE THE MAINTAINER'S, AND THEY RUN ONLY WHERE THERE IS NO CHART.**
+  #
+  # git-sync replays the branch-absorption races; cold-start forks the template and runs intake;
+  # build compiles the dashboard. All three test the SYSTEM — code the athlete never changes — and
+  # this file used to run them on every push to every chart, so a logged meal cost four billed
+  # jobs. CLAUDE.md §0.3 says commit every write immediately; at ten to fifteen pushes a day that
+  # is well past the free allowance for a private repository, and when the minutes run out the
+  # daily rollover stops too. A chart gets `validate` above, which is the job that guards its
+  # data. The template, and a chart before intake, get all four.
+  #
+  # `hashFiles` only sees the workspace after checkout, so the gate is a step inside each job.
 
   # DELIBERATELY NOT IN check-all.mjs, and therefore not in the bot workflows.
   #
@@ -34,25 +74,27 @@ jobs:
   # to environment differences, and — the deciding argument — it tests the push machinery itself.
   # A flake in it would stop a logged meal from being saved in order to protect a test about saving
   # meals. INVARIANTS.md: the software never blocks reality.
-  #
-  # It belongs in CI, where the audience is the maintainer and the only thing it can hold up is a
-  # deploy. It runs on every push to main and every dispatch, which is where a regression in the
-  # git plumbing would be introduced.
   git-sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Is there a chart yet?
+        id: chart
+        run: echo "present=$([ -f athlete/constants.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        if: steps.chart.outputs.present == 'false'
         with:
           node-version: '22'
 
       # The scripts commit inside their fixtures; a runner has no default git identity.
       - name: Give the runner a git identity
+        if: steps.chart.outputs.present == 'false'
         run: |
           git config --global user.name "ci-fixture"
           git config --global user.email "ci-fixture@example.invalid"
 
       - name: Replay the branch-absorption races against real repositories
+        if: steps.chart.outputs.present == 'false'
         timeout-minutes: 5
         run: node scripts/test-git-sync.mjs
 
@@ -68,18 +110,24 @@ jobs:
   cold-start:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - name: Is there a chart yet?
+        id: chart
+        run: echo "present=$([ -f athlete/constants.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7
+        if: steps.chart.outputs.present == 'false'
         with:
           node-version: '22'
 
       # The suite commits inside its fixture repositories; a runner has no default git identity.
       - name: Give the runner a git identity
+        if: steps.chart.outputs.present == 'false'
         run: |
           git config --global user.name "ci-fixture"
           git config --global user.email "ci-fixture@example.invalid"
 
       - name: Fork the template, run intake, and check the result
+        if: steps.chart.outputs.present == 'false'
         timeout-minutes: 5
         run: node scripts/test-cold-start.mjs
 
@@ -88,11 +136,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version: '22'
-          cache: npm
+          # Two commits, so the "did the system layer change" step below can diff the push.
+          fetch-depth: 2
 
       # ⚠ **A CHART-LESS REPO MUST GO GREEN HERE, for exactly the reason check-all.mjs does.**
       # `npm run build` is REFUSED before intake, on purpose — scripts/check-chart-for-build.mjs,
@@ -102,7 +149,12 @@ jobs:
       # says "`npm run validate` and `npm run check` are both green on this repo right now" while
       # the commit beside it shows a failure. A red build that is the expected outcome teaches a
       # new athlete that red is normal, which is how the one that matters gets ignored.
-      - name: Is there a chart yet?
+      #
+      # ⚠ **AND ON A CHART, ONLY WHEN THE SYSTEM LAYER MOVED.** Vercel builds every push already
+      # and mails the athlete if it fails; a second build here for a logged meal buys nothing and
+      # costs three billed minutes. So on a chart this job runs when the push touched code, config
+      # or the workflows, and on a dispatch. On the template it runs every time.
+      - name: Is there a chart yet, and did the system layer change?
         id: chart
         run: |
           if [ -f athlete/constants.json ]; then
@@ -113,8 +165,23 @@ jobs:
             echo "SKIPPED, not failed. They render an athlete; there is not one yet."
             echo "The typecheck below still runs, and still has to pass."
           fi
+          if [ "${{ github.event_name }}" != "push" ] || ! git rev-parse -q --verify HEAD~1 >/dev/null 2>&1; then
+            echo "system=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet HEAD~1 HEAD -- scripts src package.json package-lock.json next.config.mjs tsconfig.json .github; then
+            echo "system=false" >> "$GITHUB_OUTPUT"
+            echo "this push touched no code, config or workflow — the build is Vercel's to run."
+          else
+            echo "system=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v7
+        if: steps.chart.outputs.present == 'false' || steps.chart.outputs.system == 'true'
+        with:
+          node-version: '22'
+          cache: npm
 
       - name: Clean install from the lockfile
+        if: steps.chart.outputs.present == 'false' || steps.chart.outputs.system == 'true'
         run: npm ci
 
       # Runs with or without a chart, and that is the point of it existing separately from the
@@ -124,10 +191,11 @@ jobs:
       # that module instead, so the typecheck answers the question it is actually being asked,
       # on any repo, in any state.
       - name: Typecheck
+        if: steps.chart.outputs.present == 'false' || steps.chart.outputs.system == 'true'
         run: npx tsc --noEmit
 
       - name: Build
-        if: steps.chart.outputs.present == 'true'
+        if: steps.chart.outputs.present == 'true' && steps.chart.outputs.system == 'true'
         run: npm run build
 
       # A green `next build` proves nothing about any page: every route is force-dynamic, so
@@ -142,7 +210,7 @@ jobs:
       # run was cancelled by hand, and a hang reads as "still running" rather than "failed" — the
       # exact plausible-not-loud failure X-7 forbids.
       - name: Smoke-test every route
-        if: steps.chart.outputs.present == 'true'
+        if: steps.chart.outputs.present == 'true' && steps.chart.outputs.system == 'true'
         timeout-minutes: 5
         env:
           AUTH_SECRET: ci-smoke-secret

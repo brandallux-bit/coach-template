@@ -46,9 +46,20 @@ async function gh(path: string, init?: RequestInit) {
   return res
 }
 
+/**
+ * What a rejected token looks like to the person holding the phone. A fine-grained token expires
+ * on a date they set a year ago; GitHub emails them a week before, and after that the Contents
+ * API answers 401. "(401)" on its own told nobody what to do.
+ */
+const explainStatus = (status: number) =>
+  status === 401 || status === 403
+    ? ` GitHub rejected GITHUB_TOKEN (${status}) — it has probably expired. Make a new fine-grained token, `
+      + 'update it in Vercel, and redeploy (DASHBOARD.md step 4).'
+    : ''
+
 async function readFile(file: string): Promise<{ text: string; sha: string }> {
   const res = await gh(`/repos/${repo()}/contents/data/${file}?ref=${BRANCH}`)
-  if (!res.ok) throw new LogError(`Could not read data/${file} from GitHub (${res.status}).`)
+  if (!res.ok) throw new LogError(`Could not read data/${file} from GitHub (${res.status}).${explainStatus(res.status)}`)
   const json = await res.json()
   return { text: Buffer.from(json.content, 'base64').toString('utf8'), sha: json.sha }
 }
@@ -93,7 +104,7 @@ export async function commitRow(file: string, row: Row, message: string): Promis
 
     if (res.ok) return
     if (res.status !== 409 && res.status !== 422) {
-      throw new LogError(`GitHub rejected the write (${res.status}): ${await res.text()}`)
+      throw new LogError(`GitHub rejected the write (${res.status}).${explainStatus(res.status)} ${await res.text()}`)
     }
     // 409/422 = someone else wrote this file first. Re-read and rebuild on top of their version.
     await new Promise((r) => setTimeout(r, 300 * attempt))

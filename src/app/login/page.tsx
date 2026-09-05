@@ -30,6 +30,7 @@ export default async function Login({
           </p>
         )}
         {error === '1' && <p className="error">Wrong password.</p>}
+        {error === 'locked' && <p className="error">Too many wrong passwords. Wait a minute, then try again.</p>}
       </form>
     </div>
   )

@@ -51,14 +51,14 @@ jobs:
   log-steps:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
 
       # Pinned to match the Validate data workflow. This job had no setup-node at all and ran on
       # whatever the runner image happened to ship, so the suite it now runs could pass in CI and
       # behave differently here — a second home for "which Node is this checked against".
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 

@@ -153,6 +153,8 @@ export const audienceFor = (id) => {
  * and short enough that the card stays a card rather than becoming a calendar.
  */
 const FOLLOWUP_HORIZON_DAYS = 21
+/** Six weeks — the cadence domain-structure.md gives for asking whether the domain SET is still right. */
+const DOMAIN_SET_REVIEW_DAYS = 42
 const FOLLOWUP_SOON_DAYS = 7
 
 /** Enough of the line to recognise the commitment, without pasting a paragraph into a card. */
@@ -1083,6 +1085,38 @@ export function buildFindings({
           + 'threshold that is their doctor, not the coach. Do not invent one to close the gap.',
         source: 'athlete/goals.md',
         domain: HEALTH,
+      })
+    }
+  }
+
+  // --- the domain SET, not just its order --------------------------------------------------------
+  // Reordering happens every session (CLAUDE.md §1). Retiring a domain, or admitting a new one, is
+  // the question no weekly review asks on its own, and `skills/intake/reference/domain-structure.md`
+  // says a set that can only be reordered goes stale more quietly than one that cannot be reordered
+  // at all. goals.md carries a `Last full review` line for exactly this; a chart that has gone six
+  // weeks without one, or never wrote one, gets a finding for the coach — never a plan change.
+  // Keyed on the LINE, not on the file: a goals.md written before the template carried the line
+  // says nothing here (an older chart is not wrong for predating a form), while the shipped
+  // placeholder — `Last full review: _pending intake_` — is a review nobody has done yet.
+  if (goalsText && today) {
+    const line = goalsText.match(/^\s*(?:-\s*)?Last full review:\s*(.*)$/m)
+    const last = line?.[1]?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
+    const age = last ? daysBetween(last, today) : null
+    if (line && (last == null || age > DOMAIN_SET_REVIEW_DAYS)) {
+      add({
+        id: 'domain-set-review-due',
+        severity: 'attention',
+        headline: last == null
+          ? 'The domain set has never had a dated full review.'
+          : `The domain set was last reviewed ${age} days ago — over the ${DOMAIN_SET_REVIEW_DAYS}-day cadence.`,
+        detail: last == null
+          ? `athlete/goals.md: "${line[0].trim().slice(0, 80)}" — no date.`
+          : `athlete/goals.md: Last full review: ${last}.`,
+        action: 'In this week\'s review, ask whether the SET of domains is still right — what life has '
+          + 'retired, what a diagnosis, an event or a change of heart has added — then write today\'s '
+          + 'date on that line. Any change goes through skills/intake Session 2 and red-team; nothing '
+          + 'here decides it.',
+        source: 'athlete/goals.md; skills/weekly-review §0b',
       })
     }
   }

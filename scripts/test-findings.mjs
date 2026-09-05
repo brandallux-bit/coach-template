@@ -116,6 +116,14 @@ check('  a filled threshold is silent', { body: steadyBody, targets: [], goalsTe
 check('  prose quoting a historical blank is not a finding', { body: steadyBody, targets: [], goalsText: 'This read "above ___ / ___" until it was filled.' }, null)
 check('  markdown emphasis is not a blank', { body: steadyBody, targets: [], goalsText: '- The ___emphasised___ case' }, null)
 
+console.log('the domain SET — reviewed every six weeks, or the coach is told')
+check('  a full review 43 days ago is due', { body: steadyBody, targets: [], goalsText: 'Last full review: 2026-07-02' }, 'domain-set-review-due')
+check('  a full review 42 days ago is not yet due', { body: steadyBody, targets: [], goalsText: 'Last full review: 2026-07-03' }, null)
+check('  a review last week is silent', { body: steadyBody, targets: [], goalsText: 'Last full review: 2026-08-10' }, null)
+check('  the template\'s undated placeholder is reported', { body: steadyBody, targets: [], goalsText: '# Goals\n\nLast full review: _pending intake_' }, 'domain-set-review-due')
+check('  a goals.md with no such line (an older chart) is silent', { body: steadyBody, targets: [], goalsText: '# Goals\n\n## Domain: Sleep' }, null)
+check('  a bulleted line counts', { body: steadyBody, targets: [], goalsText: '- Last full review: 2026-08-10' }, null)
+
 console.log('goals.md triggers — evaluated against data, reported as a sentence to say')
 const triggers = { weightFloorLb: 170, weightCeilingLb: 185, weightCheckpointLb: 175, waistTriggerIn: 33 }
 const withTriggers = { ...deficitChart, triggers }
