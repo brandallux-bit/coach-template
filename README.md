@@ -3,7 +3,7 @@
 A file-backed AI coaching system. The files are the source of truth; the coach reads them
 before it speaks and writes to them after.
 
-**This repo is the system, not a chart.** Fork it per athlete.
+**This repo is the system, not a chart.** Clone it per athlete.
 
 | You are | Read |
 |---|---|
@@ -123,7 +123,7 @@ outright; it fails closed, never open.
 | Variable | What it is |
 |---|---|
 | `DASHBOARD_PASSWORD` | what you type on the login screen |
-| `AUTH_SECRET` | the session cookie's secret; rotating it signs every device out |
+| `AUTH_SECRET` | the session cookie's value, verbatim — anyone holding it is signed in; rotating it signs every device out |
 
 **Deploying to Vercel:** [DASHBOARD.md](DASHBOARD.md) is the procedure, in the detail somebody
 setting it up for the first time needs. It is deliberately not restated here — the variables,

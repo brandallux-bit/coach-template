@@ -54,7 +54,7 @@ modifiers on existing expertise, not separate specialists (§7.1).
 | File | Enforced by |
 |---|---|
 | `athlete/hard-constraints.md` | **Head coach, on every food suggestion** (§5.1). Not delegated. |
-| `athlete/injury-history.md` | Head coach + any programming agent, before any programming. Always present — `athlete/TEMPLATE-injury-history.md` is renamed in at setup — and a chart whose intake found nothing says so in the file rather than omitting it |
+| `athlete/injury-history.md` | Head coach + any programming agent, before any programming. Always present — `athlete/TEMPLATE-injury-history.md` is copied in at setup — and a chart whose intake found nothing says so in the file rather than omitting it |
 
 ---
 

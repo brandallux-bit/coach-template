@@ -154,6 +154,14 @@ try {
   yes('the bootstrap never runs the installer itself',
     !/curl[^\n]*install\.sh/.test(boot) && !/^\s*gh auth login\s*$/m.test(boot),
     'Homebrew needs sudo and gh auth login is a TUI; neither can prompt from inside a tool call')
+  // The claim the first adversarial review found false survived in the one document that calls
+  // itself authoritative where the others disagree. A regression here is a regression everywhere
+  // the skill defers to SETUP.md.
+  for (const doc of ['SETUP.md', 'README.md', 'GETTING-STARTED.md', 'TROUBLESHOOTING.md']) {
+    yes(`${doc} does not claim Claude Code installs the tools`,
+      !/Claude Code can (install|do all of it|authenticate)/i.test(readFileSync(join(ROOT, doc), 'utf8')),
+      'a command run from a tool call has no terminal for a password or an arrow-key menu')
+  }
 } finally {
   rmSync(out, { recursive: true, force: true })
 }

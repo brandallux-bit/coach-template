@@ -36,8 +36,8 @@ Three states need different actions, and guessing wrong is destructive:
 | What you see | State | What to do |
 |---|---|---|
 | `athlete/constants.json` exists | **Already a chart.** Setup has run. | Stop. Say so. Route to `skills/intake` only if they want to re-take intake. |
-| `CLAUDE.md` present, `athlete/TEMPLATE-*.md` still named that way | **The normal entry point.** The bootstrap cloned this and handed over. | Start at §1. |
-| Neither — only the starter kit's documents | **Wrong folder.** | They are still in the starter folder. Tell them to open Claude Code on `~/Documents/<name>-coach` and say *continue my setup*. |
+| `CLAUDE.md` present, no `athlete/goals.md` yet | **The normal entry point.** The bootstrap cloned this and handed over. | Start at §1. |
+| Neither — only the starter kit's documents | **Wrong folder.** | They are still in the starter folder. Tell them to open Claude Code on `~/<name>-coach` and say *continue my setup*. |
 
 Every step is safe to re-run. Check for its result before doing it rather than assuming it
 has not happened — an interrupted setup resumes here.
@@ -102,12 +102,20 @@ three now, not after there is data in it.
 
 ## 4. Turn the blanks into their files
 
-The template ships forms named `TEMPLATE-goals.md` and so on. Drop the prefix:
+The template ships forms named `TEMPLATE-goals.md` and so on. **Copy** each one to its real
+name, and leave the `TEMPLATE-` original where it is:
 
 ```bash
-cd ~/Documents/NAME-coach/athlete && for f in TEMPLATE-*.md; do mv "$f" "${f#TEMPLATE-}"; done
-cd ~/Documents/NAME-coach && git add -A && git commit -m "Rename templates for this athlete" && git push
+cd ~/NAME-coach/athlete && for f in TEMPLATE-*.md; do cp "$f" "${f#TEMPLATE-}"; done
+cd ~/NAME-coach && git add -A && git commit -m "Copy the forms for this athlete" && git push
 ```
+
+> **Copy, never rename.** This used to be `mv`. Git then saw `TEMPLATE-goals.md → goals.md` as
+> a rename, and every later template edit to the blank form was three-way merged into the
+> athlete's real `goals.md` by `git merge upstream/main` — silently while the file was empty, and
+> as a conflict inside their domain model once intake had filled it in. With a copy the form and
+> the athlete's file have separate identities, and a template update to the form never touches
+> the athlete's own words.
 
 ⛔ **Leave every one of them empty.** Filling anything in before intake is the one thing
 that breaks the design — you would be recording your model of this person, then eliciting
@@ -133,7 +141,7 @@ against it.
 ## 5. Prove it works
 
 ```bash
-cd ~/Documents/NAME-coach && npm run check
+cd ~/NAME-coach && npm run check
 ```
 
 **Expect green, with about a dozen steps skipped** and a line naming the reason: *no
@@ -162,8 +170,9 @@ Three things a thorough installer would do now, all wrong now:
   ordinary day. Until it is answered the chart runs on a shipped default and
   `build-findings` raises `movement-level-unanswered` on every run — it keeps asking, which
   is designed behaviour, not a gap to close here.
-- **The step workflows** stay as shipped. With no `plan.stepFeed` they exit cleanly and cost
-  nothing. Deleting them is a §4a decision following from an answer nobody has given yet.
+- **The step workflows** stay as shipped, on every chart, feed or no feed. With no
+  `plan.stepFeed` they exit cleanly and cost nothing, and a deleted workflow is a modify/delete
+  conflict on every later template update.
 - **The dashboard** cannot build before intake — `check-chart-for-build.mjs` refuses on
   purpose, because a deployed dashboard rendering TBD in every cell looks like a broken chart
   rather than an absent one. **Say this out loud before they wander off and connect Vercel**,
@@ -174,7 +183,7 @@ Three things a thorough installer would do now, all wrong now:
 
 Setup is done. Tell them plainly:
 
-- Their chart lives in `~/Documents/NAME-coach`, and is backed up privately on GitHub.
+- Their chart lives in `~/NAME-coach`, and is backed up privately on GitHub.
 - Nothing about them has been written down yet. That is next, and it is a conversation.
 - It runs across **five or six short sessions on separate days**, not one sitting — people
   give honest answers in session one and performative answers in minute forty.

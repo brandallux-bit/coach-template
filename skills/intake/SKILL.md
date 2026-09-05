@@ -182,7 +182,7 @@ agent, is checked against that file before it is spoken.
 ### Injuries — only as deep as the athlete has them
 
 If the PAR-Q+ or Session 1 surfaced an injury or pain history, fill
-`athlete/injury-history.md` properly — the form renamed in at setup carries the headings and the
+`athlete/injury-history.md` properly — the form copied in at setup carries the headings and the
 elicitation prompts, including the ones people under-specify. It takes its own conversation. If
 there is genuinely no injury history, write that in the file, and **do not create a programming
 constraint that doesn't exist.**
@@ -384,9 +384,9 @@ Run these in order, once, when the interview is finished and the values are real
          their goals want one. Register any walking type with `energyCountedIn: "steps"` and
          `met: 0`. **Do not also ask the second question** — the feed counts what it would
          describe, and the validator rejects both together.
-       - **No** → ask the second question, and delete both `.github/workflows/log-steps.yml` and
-         `.github/workflows/check-steps.yml` (SETUP.md §4a names both; deleting only the writer
-         leaves the checker mailing a failure every morning).
+       - **No** → ask the second question. **Leave both step workflows in place.** With no
+         `plan.stepFeed` they exit cleanly, and a deleted workflow is a modify/delete conflict on
+         every later template update (SETUP.md §4a).
 
      **Second, only on a no:** *"Roughly how much are you on your feet on an ordinary day —
      **outside anything you'd call exercise**?"* Read them the four descriptions in

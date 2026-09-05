@@ -2,21 +2,24 @@
 
 > ### This is no longer the document a new athlete follows
 >
-> It was written for a person to execute in a shell, which is the wrong shape: the athlete
-> has Claude Code, and Claude Code can install Homebrew, authenticate `gh`, clone, create the
-> repo and push. Asking a non-technical person to do that by hand was never necessary.
+> It was written for a person to execute in a shell, end to end. The athlete-facing path is now
+> split: **the athlete installs the tools themselves in Terminal** — Homebrew asks for the Mac
+> password and `gh auth login` is an arrow-key menu, and a command Claude Code runs has no
+> terminal for either prompt — and **Claude Code does everything after that**: the clone, their
+> private repo, the forms, the checks, intake.
 >
 > | Purpose | Document |
 > |---|---|
-> | **A new athlete setting up** | **[GETTING-STARTED.md](GETTING-STARTED.md)** — three accounts, one pasted sentence |
-> | **The AI performing that setup** | **[skills/setup](skills/setup/SKILL.md)** — §0–§2 and §4–§6 below, made executable |
+> | **A new athlete setting up** | **[GETTING-STARTED.md](GETTING-STARTED.md)** — two accounts, four pasted commands, one pasted sentence |
+> | **The AI performing that setup** | **[skills/setup](skills/setup/SKILL.md)** — §1–§2 and §4–§6 below, made executable |
 > | **The dashboard** | **[DASHBOARD.md](DASHBOARD.md)** — §5 below, expanded, including the write token |
 >
 > **This file stays, and stays authoritative, for everything those three do not cover:** the
 > constants reference in §4, the merge and re-pin procedure at the bottom, and the reasoning
 > behind each rule. `skills/setup` is deliberately the smaller document — where the two
-> disagree about a *rule*, this one is right and the skill has drifted.
-
+> disagree about a *rule*, this one is right and the skill has drifted. Where they disagree about
+> *who runs a command*, GETTING-STARTED.md is right: nothing that prompts for a password or an
+> arrow key is Claude's.
 
 Roughly 30 minutes of setup on a fresh Mac — most of it waiting on Homebrew — then intake. **Do not fill anything in before intake** — the
 whole design depends on the athlete's goals being elicited before any category is named.
@@ -91,11 +94,15 @@ approve.
 This downloads the template and renames the remote, **keeping the git history**:
 
 ```bash
-cd ~/Documents
+cd ~
 git clone https://github.com/OWNER/coach-template.git NAME-coach
 cd NAME-coach
 git remote rename origin upstream
 ```
+
+> **Directly under the home folder, not `~/Documents`.** On a Mac with iCloud's *Desktop &
+> Documents* sync switched on, a git repository plus `node_modules` inside `~/Documents` is a
+> well-known source of evicted files and a corrupted index. `~/NAME-coach` is outside it.
 
 > **Keep the history — do not `rm -rf .git`.** An earlier version of this doc deleted it "for a
 > clean slate," which silently broke the whole point of the template: with no common ancestor,
@@ -118,17 +125,23 @@ Sanity check — `origin` should point at their repo, `upstream` at the template
 git remote -v
 ```
 
-## 2. Rename the blanks
+## 2. Copy the blanks
 
-The template ships forms named `TEMPLATE-goals.md` and so on. This drops the prefix so
-they become the chart's real files:
+The template ships forms named `TEMPLATE-goals.md` and so on. This **copies** each to its real
+name and leaves the `TEMPLATE-` original in place:
 
 ```bash
 cd athlete
-for f in TEMPLATE-*.md; do mv "$f" "${f#TEMPLATE-}"; done
+for f in TEMPLATE-*.md; do cp "$f" "${f#TEMPLATE-}"; done
 cd ..
-git add -A && git commit -m "Rename templates for this athlete" && git push
+git add -A && git commit -m "Copy the forms for this athlete" && git push
 ```
+
+> **Copy, never rename.** This used to be `mv`, and git then treated `TEMPLATE-goals.md →
+> goals.md` as a rename: every later template edit to the blank form was three-way merged into
+> the athlete's own `goals.md` by "Pulling template improvements later" below — silently while the
+> file was empty, as a conflict inside their domain model once it was not. Verified on a chart
+> built exactly this way. A copy gives the form and the athlete's file separate identities.
 
 **Leave the files empty.** Filling anything in before intake is the one thing that breaks
 the design.
@@ -307,11 +320,11 @@ counting that movement — and set `"loading": false` if it isn't the kind of se
 tires anyone out. `validate-data.mjs` rejects `energyCountedIn: "steps"` here, because that
 promises the energy is counted in a column nothing will ever write.
 
-**Delete both step workflows:** `.github/workflows/log-steps.yml` (the writer) and
-`.github/workflows/check-steps.yml` (the checker). Deleting only the writer leaves the
-checker running, and it is the one that mails you a failure. Leaving them in place is
-harmless — with no `plan.stepFeed`, `check-steps-gap.mjs` exits cleanly — but a workflow
-nobody needs is one more thing to read past.
+**Leave both step workflows in place** — `.github/workflows/log-steps.yml` (the writer) and
+`.github/workflows/check-steps.yml` (the checker). With no `plan.stepFeed` both exit cleanly and
+cost nothing, and `.github/workflows/` stays byte-identical to the template's. This used to say
+"delete both", and a deleted workflow is a modify/delete conflict on every later
+`git merge upstream/main`, for a file that costs nothing to keep.
 
 ### (b) A wearable, feeding steps in
 
@@ -358,9 +371,10 @@ Some surfaces a coach connects from create their own branch instead of committin
 that happens the data is *in git and invisible*: `main` never gets it, the build never sees it, and
 the dashboard shows a blank panel for a meal logged hours ago.
 
-**Two things already handle this and neither needs setting up.** The dashboard shows a loud
-stray-branch banner on every page, so nothing sits unnoticed; and `CLAUDE.md` §0.1 makes a coaching
-session find, merge and delete stray branches before it does anything else.
+**Two things already handle this.** `CLAUDE.md` §0.1 makes a coaching session find, merge and
+delete stray branches before it does anything else; and a dashboard that has its write token
+(DASHBOARD.md step 4) shows a loud stray-branch banner on every page. Without the token the
+dashboard cannot check and says so in one quiet line — it does not pretend.
 
 **The optional third is an automation that shortens the window to seconds:**
 
@@ -388,7 +402,7 @@ two environment variables for Production and Preview:
 | Variable | Value |
 |---|---|
 | `DASHBOARD_PASSWORD` | what you type at the login screen |
-| `AUTH_SECRET` | a long random string — `openssl rand -hex 32` |
+| `AUTH_SECRET` | the session cookie's value, verbatim — anyone holding it is signed in. Make it with `openssl rand -hex 32` |
 
 Both must be set or sign-in is refused; it fails closed, never open. Vercel's Hobby tier
 is sufficient — the app carries its own auth, so it doesn't need Vercel's Pro-only
@@ -407,9 +421,10 @@ git merge upstream/main
 ```
 
 The template holds system files only — charter, skills, agents, scripts, dashboard. The
-athlete's own files (`athlete/*.md`, `data/*.csv`, `logs/`, `decisions.md`) were renamed
-or written after the fork, so upstream never touches them. Conflicts should be rare and
-confined to system files you've deliberately customised.
+athlete's own files (`athlete/*.md`, `data/*.csv`, `logs/`, `decisions.md`) were **copied**
+or written after the fork, and the template's forms keep their `TEMPLATE-` names, so a merge
+never touches them. Conflicts should be rare and confined to system files you've deliberately
+customised — `CLAUDE.md` above all.
 
 > ⚠ **THIS WORKS ONLY FOR A CHART CREATED THE WAY §1 CREATES ONE — by cloning the template and
 > renaming the remote, so the two share a git history.** A chart made any other way (downloaded as
