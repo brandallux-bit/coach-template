@@ -439,6 +439,15 @@ Run these in order, once, when the interview is finished and the values are real
 
 2. **`node scripts/build-docs.mjs`** — `data/METHOD.md` renders **this chart's** MET table, so a
    fork carries the previous athlete's table until this runs.
-3. **`node scripts/check-all.mjs`** — everything now applies. Fix what it prints before the first
+3. **`node scripts/check-crons.mjs --fix`** — the two scheduled jobs ship on fixed UTC crons set
+   for the timezone this template was extracted from. `athlete.timezone` exists for the first time
+   now, so this is the first moment the correct hours can be known.
+
+   **Do not skip it on a chart outside that timezone.** `daily-rollover.yml` writes the day's
+   calorie target, and `CLAUDE.md` §0.3 says a day may never lack one — left unfixed in
+   `Europe/London` it fires at 10:00 local, so every morning has no target until mid-morning, and
+   nothing reports it: `check-targets-gap.mjs` only inspects days that are already over. Commit
+   the rewritten workflow files with the rest of intake.
+4. **`node scripts/check-all.mjs`** — everything now applies. Fix what it prints before the first
    coaching session; `scripts/test-cold-start.mjs` asserts a fresh chart passes clean, so anything
    red here is real.

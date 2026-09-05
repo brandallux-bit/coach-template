@@ -442,6 +442,10 @@ details.table-view[open] > summary { margin-bottom: 10px; }
 }
 .banner.ok { border-color: var(--good); color: var(--text-primary); }
 .banner.bad { border-color: var(--critical); color: var(--text-primary); }
+/* A stated trade-off, not a fault: a read-only deploy that has deliberately not configured
+   branch checking. Muted on purpose — it must not compete with .bad, which means something
+   is actually wrong. See src/components/stray-branches.tsx. */
+.banner.note { border-color: var(--border); color: var(--text-secondary); }
 .banner code { font-size: 12.5px; }
 
 /* A per-measure trend under the registered-measures table. See src/components/metrics-card.tsx:

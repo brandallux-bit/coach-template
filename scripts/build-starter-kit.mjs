@@ -22,11 +22,12 @@
  *   2-Dashboard-Later.md               ├ the same content as files, for Claude Code to read
  *   3-Troubleshooting.md               ┘
  *   Setup-Instructions-For-Claude.md   the bootstrap they paste a reference to
+ *   TEMPLATE-URL                       where the chart is cloned from, read by the bootstrap
  *
  * The HTML exists because a `.md` file on a Mac opens in TextEdit or Xcode showing raw markup.
  * The `.md` copies exist because Claude Code reads those, not the HTML. Neither is redundant.
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -46,6 +47,15 @@ const DOCS = [
 ]
 
 const BOOTSTRAP = 'library/starter-kit/Setup-Instructions-For-Claude.md'
+
+/**
+ * The template's clone address, shipped verbatim beside the bootstrap that reads it.
+ *
+ * One home, deliberately: the URL was written out in both the bootstrap and `skills/setup`, which
+ * is X-8 between the two documents whose whole relationship is "this one bootstraps, that one
+ * governs". Whoever forks this repo changes one file and both sides follow.
+ */
+const URL_FILE = 'library/starter-kit/TEMPLATE-URL'
 
 const CSS = `
 :root{--bg:#fbfaf8;--fg:#1c1b19;--mut:#5f5b54;--line:#e3ded6;--card:#fff;--accent:#8a3d1f;
@@ -74,6 +84,7 @@ li>blockquote,li>pre,li>.tw{margin-top:10px}
 h3{font-size:18px;margin:30px 0 10px;letter-spacing:-.01em}
 h4{font-size:15.5px;margin:22px 0 8px;font-family:ui-sans-serif,system-ui,sans-serif}
 p{margin:0 0 15px}
+img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}
 a{color:var(--accent)}
 ul,ol{margin:0 0 15px;padding-left:22px}li{margin:5px 0}
 hr{border:0;border-top:1px solid var(--line);margin:32px 0}
@@ -110,7 +121,7 @@ blockquote,pre,.tw{page-break-inside:avoid}}
 
 const read = (p) => readFileSync(join(ROOT, p), 'utf8')
 
-for (const p of [...DOCS.map((d) => d.src), BOOTSTRAP]) {
+for (const p of [...DOCS.map((d) => d.src), BOOTSTRAP, URL_FILE]) {
   if (!existsSync(join(ROOT, p))) {
     console.error(`missing source document: ${p}`)
     process.exit(1)
@@ -137,8 +148,16 @@ there is no code to write. Read section&nbsp;1, then follow it.</p></div>
 ${body}</main></div></body></html>
 `)
 
-for (const d of DOCS) cpSync(join(ROOT, d.src), join(OUT, d.as))
-cpSync(join(ROOT, BOOTSTRAP), join(OUT, 'Setup-Instructions-For-Claude.md'))
+// The .md copies are what Claude Code reads, and they are RENAMED on the way in, so a link
+// naming a sibling by its repo filename points at a file the athlete does not have. The HTML
+// gets the same rewrite as an in-page anchor; these get it as a filename.
+const RENAME = new Map(DOCS.map((d) => [d.src, d.as]))
+const relink = (text) => text.replace(/\]\(([^)#]+\.md)((?:#[^)]*)?)\)/g,
+  (m, file, frag) => (RENAME.has(file) ? `](${RENAME.get(file)}${frag})` : m))
+
+for (const d of DOCS) writeFileSync(join(OUT, d.as), relink(read(d.src)))
+writeFileSync(join(OUT, 'Setup-Instructions-For-Claude.md'), read(BOOTSTRAP))
+writeFileSync(join(OUT, 'TEMPLATE-URL'), read(URL_FILE))
 
 console.log(`starter kit → ${OUT}`)
 

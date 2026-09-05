@@ -374,6 +374,12 @@ const PROSE_FILES = [
   // in METHOD.md ran over nothing at all and reported itself green. A rule that scans no file
   // containing the thing it checks is worse than no rule, because it is believed.
   'CLAUDE.md', 'README.md', 'data/METHOD.md',
+  // The athlete-facing four. Coverage was inverted without them: `skills/setup/SKILL.md` was
+  // scanned while the three documents a beginner actually reads — and that, per
+  // `test-starter-kit.mjs`'s header, nobody in this repo ever reads — were not. They restate
+  // figures constantly ("about a dozen skipped", "5-6 sessions", plan names), which is exactly
+  // what this scan is for.
+  'SETUP.md', 'GETTING-STARTED.md', 'DASHBOARD.md', 'TROUBLESHOOTING.md',
   ...walk(['athlete', 'nutrition', 'program', 'skills', '.claude'], /\.md$/),
   ...walk(['docs/modules', 'docs/build-prd'], /\.md$/),
   ...readdirSync(join(ROOT, 'logs')).filter((f) => /^TEMPLATE-.*\.md$/.test(f)).map((f) => `logs/${f}`),

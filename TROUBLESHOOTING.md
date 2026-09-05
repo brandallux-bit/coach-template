@@ -6,8 +6,8 @@
 
 That is not a brush-off — it is genuinely the fastest path. The coach can read this file,
 read its own repair instructions, run the diagnostics and usually fix the problem while you
-watch. Everything below is here for the cases where you would rather understand it, or where
-the coach itself is what is stuck.
+watch. Everything below is here for the cases where you would rather understand it, or
+where the coach itself is what is stuck.
 
 ---
 
@@ -16,27 +16,47 @@ the coach itself is what is stuck.
 ### `brew: command not found`
 
 **Cause:** Homebrew finished installing and printed a **"Next steps"** section with two
-`echo` commands. Those did not get run. This is the single most common failure in the whole
-setup, and it always surfaces later than it happened.
+`echo` commands. Those did not get run. This is the most common failure in the whole setup,
+and it always surfaces later than it happened.
 
-**Fix:** scroll back up your Terminal window to find that section and run the two lines
-exactly as printed, then open a fresh Terminal window. Or just tell the coach: *"brew is not
-found — I think I skipped the Next steps commands."*
+**Fix:** scroll back up your Terminal window, find that section, and run the two lines
+exactly as printed. Then close Terminal and open a new one.
 
 ### The password prompt shows nothing when I type
 
 **Not broken.** Terminal deliberately shows nothing for passwords — no dots, no stars, no
 cursor movement. Type it and press Enter.
 
-### `gh auth login` is asking me to make a token
+### A window appeared about "command line developer tools"
 
-You picked the wrong option. Press Ctrl-C to cancel and run it again, answering:
-**GitHub.com** → **HTTPS** → **Y** → **Login with a web browser**. It should give you an
-eight-character code, not ask you to create anything.
+Click **Install** and wait for it to finish. That is macOS noticing you do not have the
+basics yet. Then re-run whatever command you were on.
 
-### "12 steps skipped"
+### `gh auth login` is asking me to paste a token
 
-**This is correct.** A fresh chart skips every check that needs to know who you are, and
+You picked the wrong option. Press **Ctrl-C** to cancel, run it again, and answer:
+**GitHub.com** → **HTTPS** → **Yes** → **Login with a web browser**. It should give you an
+eight-character code, not ask you to create or paste anything.
+
+### Claude is stuck on a command that wants a password
+
+**It cannot type one, and neither can you while it is running.** Commands Claude runs have
+nowhere for you to reply. Press Escape to stop it, then do that step yourself in Terminal —
+it is step 2 of the getting-started guide. Anything needing a password is yours; everything
+else is Claude's.
+
+### It says my chart is somewhere else
+
+Setup creates your chart at `~/Documents/yourname-coach` and the starter folder's job is
+done. Open Claude Code on the chart folder and say *"continue my setup"*.
+
+**This matters more than it looks.** Your chart folder holds the rules your coach runs on —
+how it syncs, how many questions it may ask, when it must stop and refer you to a doctor.
+Those load only when the chart is the folder you have open.
+
+### The check printed a list of "skipped" steps
+
+**That is correct.** A fresh chart skips every check that needs to know who you are, and
 names the reason: *no `athlete/constants.json` — run intake first*. The line that matters is
 the last one:
 
@@ -44,13 +64,14 @@ the last one:
 check-all: all checks passed.
 ```
 
-Those skips turn into real checks as intake fills the chart in.
+Those skips turn into real checks as intake fills the chart in. The number of them changes
+as the system grows; the last line is what you read.
 
 ### It says I already have a chart
 
 Setup has already run in this folder. If you want to start over, do not delete anything —
-tell the coach *"I want to re-run intake"* and let it handle it. Deleting the folder loses
-your history, which is the one thing that cannot be rebuilt.
+tell the coach *"I want to re-run intake"*. Deleting the folder loses your history, which is
+the one thing that cannot be rebuilt.
 
 ---
 
@@ -71,20 +92,17 @@ Tell it. *"That is already in my chart — read it instead of asking."*
 The charter forbids asking a question the chart answers, so this is a real bug and worth
 reporting rather than answering politely. Answering trains it to keep doing it.
 
-### I logged something this morning and the dashboard does not show it
+### I logged something and the dashboard does not show it
 
-Usually one of two things.
+**The page may be cached.** Pull to refresh on your phone.
 
-**The page is cached.** Pull to refresh on your phone.
+**Or your data went to a side branch instead of the main one.** Some surfaces do this. Start
+a coaching session and say *"sync my chart"* — the coach finds stray branches, merges them
+and deletes them before doing anything else.
 
-**Your data went to a side branch instead of the main one.** Some surfaces do this. The
-dashboard shows a loud banner across every page when it happens, so check the top of the
-screen. The fix is to start a coaching session and say *"Sync my chart"* — the coach finds
-stray branches, merges them and deletes them before doing anything else.
-
-To make that automatic, ask the coach: *"Turn on stray-branch absorption."* It ships off by
-default because auto-merging every pushed branch is only safe on a personal chart — which
-yours is.
+If your dashboard has logging switched on ([DASHBOARD.md](DASHBOARD.md) step 4), it also
+shows a red banner across every page when this happens. Without that step it cannot check,
+and says so quietly at the top of the page — that grey line is informational, not a fault.
 
 ### It is being agreeable and it should not be
 
@@ -109,7 +127,7 @@ Open the deployment in Vercel and read the red text.
 
 **`cannot build the dashboard — No athlete/constants.json`** — intake is not finished. This
 is on purpose: a dashboard rendering TBD in every cell looks broken rather than empty.
-Finish intake, then **Redeploy**.
+Finish intake, then click **Redeploy**.
 
 **Anything else** — copy the whole error and paste it to the coach.
 
@@ -133,12 +151,18 @@ If either is missing the dashboard refuses everyone, deliberately — it fails c
 
 `GITHUB_REPO` and `GITHUB_TOKEN` are not set. See [DASHBOARD.md](DASHBOARD.md) step 4. This
 is the designed behaviour rather than a fault: it disables the buttons instead of accepting
-a meal and silently dropping it.
+something and silently dropping it.
 
 ### Logging worked and then stopped
 
 **Your token expired.** Fine-grained tokens have a hard expiry and nothing warns you first.
 Make a new one the same way, update `GITHUB_TOKEN` in Vercel, redeploy.
+
+### I want to log meals from the dashboard
+
+**It does not do that**, and it is not misconfigured. The Log tab records measurements, a
+metric reading, a session, and a set. Meals go to the coach in conversation, because a meal
+is the one thing that reliably needs a follow-up question.
 
 ### My repo is not in Vercel's list
 
@@ -161,9 +185,14 @@ visibility** → **Make private**.
 Your chart is safe on GitHub. Nothing was lost as long as the coach was saving, which it
 does after every number.
 
-Install the Claude app, then open Terminal and tell Claude Code:
+Install the Claude app and the tools ([getting started](GETTING-STARTED.md) step 2), then
+open Terminal and paste this, with your own username and name:
 
-> Clone my coach repo `yourusername/yourname-coach` into `~/Documents` and check it.
+```bash
+git clone https://github.com/YOURUSERNAME/YOURNAME-coach.git ~/Documents/YOURNAME-coach
+```
+
+Then open Claude Code on that folder.
 
 ### Everything is broken and I want to start over
 
@@ -178,7 +207,7 @@ you actually want.
 
 ## Reading the checks yourself
 
-If you want to see the state of things:
+If you want to see the state of things, in Terminal, in your chart folder:
 
 ```bash
 npm run check
@@ -193,4 +222,4 @@ npm run validate
 Just the data check — faster, and the one that catches a malformed row.
 
 **A red check is a stop sign, not a suggestion.** The coach is required not to save past
-one. If it offers to, that is a bug worth telling us about.
+one. If it offers to, that is a bug worth reporting.

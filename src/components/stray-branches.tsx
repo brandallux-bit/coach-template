@@ -10,6 +10,13 @@ import { strayBranches } from '@/lib/github'
  * Fail-safe in the honest direction: if the check itself cannot run, it says the check could not
  * run rather than staying silent. Silence here would read as "all clear", which is the one thing
  * it must never mean.
+ *
+ * ⚠ **EXCEPT WHEN THE CHECK WAS NEVER SWITCHED ON.** A dashboard deployed without
+ * `GITHUB_TOKEN` is a read-only dashboard, which `DASHBOARD.md` step 4 explicitly offers as a
+ * supported choice. Treating that as a failure put a red "cannot confirm this chart is complete"
+ * banner on every page of such a deploy, permanently, from the first minute — and a banner that
+ * is always on is a banner nobody reads, which is audit F-45 arriving by a different door. So
+ * `unconfigured` gets one quiet line naming the trade, and every other failure stays loud.
  */
 export default async function StrayBranchBanner() {
   const check = await strayBranches()
@@ -17,6 +24,15 @@ export default async function StrayBranchBanner() {
   if (check.ok && check.branches.length === 0) return null
 
   if (!check.ok) {
+    if (check.unconfigured) {
+      return (
+        <p className="banner note">
+          Branch checking is off — this dashboard is read-only (no <code>GITHUB_TOKEN</code>). If
+          a coaching session ever commits somewhere other than <code>main</code>, this page will
+          not know. A session started with &ldquo;sync my chart&rdquo; still finds and merges it.
+        </p>
+      )
+    }
     return (
       <p className="banner bad">
         <strong>Cannot confirm this chart is complete.</strong> The check for unmerged branches
@@ -38,9 +54,10 @@ export default async function StrayBranchBanner() {
       Anything logged there is missing from every number on this page.{' '}
       {check.branches.map((b) => `${b.name} (+${b.ahead})`).join(' · ')}.
       <br />
-      Branches are absorbed into <code>main</code> automatically within seconds of a push, so this
-      means either the automation is failing or it hit a merge conflict it will not resolve on its
-      own. Start a coaching session and it will be handled.
+      Start a coaching session and say &ldquo;sync my chart&rdquo; — it merges stray branches
+      before doing anything else. If this chart has the optional absorber installed
+      (<code>library/optional/workflows/absorb-branches.yml</code>), a branch still sitting here
+      means that job failed or hit a merge conflict it will not resolve on its own.
     </p>
   )
 }

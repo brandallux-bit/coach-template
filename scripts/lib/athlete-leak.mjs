@@ -81,6 +81,21 @@ export const SCOPE = [
   { dir: 'skills', mode: 'enforced', kind: 'prose' },
   { dir: '.claude/agents', mode: 'enforced', kind: 'prose' },
   { dir: 'docs', mode: 'reported', kind: 'prose' },
+  // ⚠ **ADDED WHEN THE TEMPLATE BECAME PUBLIC.** This file's own header already named
+  // `CLAUDE.md`, `data/METHOD.md`, `README.md` and `.github/workflows/*` as shared surfaces where
+  // a hit is enforced — but SCOPE did not list them, so the default scan walked straight past all
+  // of them. The claim and the code disagreed, and the code was what ran. The workflows were the
+  // live case: three of them committed as a named person's email address, which is exactly the
+  // shape of leak this scanner exists to find, and it never looked.
+  { dir: '.github', mode: 'enforced', kind: 'code' },
+  { dir: 'library', mode: 'enforced', kind: 'prose' },
+  { file: 'CLAUDE.md', mode: 'enforced', kind: 'prose' },
+  { file: 'README.md', mode: 'enforced', kind: 'prose' },
+  { file: 'SETUP.md', mode: 'enforced', kind: 'prose' },
+  { file: 'GETTING-STARTED.md', mode: 'enforced', kind: 'prose' },
+  { file: 'DASHBOARD.md', mode: 'enforced', kind: 'prose' },
+  { file: 'TROUBLESHOOTING.md', mode: 'enforced', kind: 'prose' },
+  { file: 'data/METHOD.md', mode: 'reported', kind: 'prose' },
 ]
 
 const EXTENSIONS = ['.mjs', '.js', '.ts', '.tsx', '.md', '.json', '.yml', '.yaml']
@@ -475,14 +490,20 @@ export function scanForLeaks(root, denylist = denylistFrom(root), { only = null 
    * A path outside `SCOPE` is `enforced`: it is shared, it ships to every fork, and one athlete
    * in it is a leak by exactly the same argument that makes `scripts/` enforced.
    */
-  const scopeOf = (rel) => SCOPE.find(({ dir }) => rel === dir || rel.startsWith(`${dir}/`))
+  // A SCOPE entry names either a `dir` (walked) or a single `file`. The file form exists because
+  // the shared surface is not all directories: `CLAUDE.md` and the athlete-facing guides sit at
+  // the repo root beside `decisions.md` and `logs/`, which are the chart itself and must never be
+  // scanned as if they were shared.
+  const scopeOf = (rel) => SCOPE.find((e) =>
+    e.file ? rel === e.file : rel === e.dir || rel.startsWith(`${e.dir}/`))
   const targets = only
     ? [...only]
       .filter((rel) => EXTENSIONS.some((e) => rel.endsWith(e)) && existsSync(join(root, rel)))
       .map((rel) => ({ rel, ...(scopeOf(rel) ?? { mode: 'enforced', kind: 'prose' }) }))
       .sort((a, b) => (a.rel < b.rel ? -1 : 1))
-    : SCOPE.flatMap(({ dir, mode, kind }) => walk(join(root, dir))
-      .map((full) => relative(root, full))
+    : SCOPE.flatMap(({ dir, file, mode, kind }) => (file
+      ? (existsSync(join(root, file)) ? [file] : [])
+      : walk(join(root, dir)).map((full) => relative(root, full)))
       .filter((rel) => !NEVER_SCANNED.some((n) => rel.startsWith(n.path)) && !isChartInstance(root, rel))
       .map((rel) => ({ rel, mode, kind })))
 

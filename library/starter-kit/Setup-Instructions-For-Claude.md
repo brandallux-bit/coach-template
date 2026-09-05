@@ -6,71 +6,47 @@ and do not assume they know what a repository, a remote or a commit is.
 
 ## What this file is, and what it is not
 
-This is a **bootstrap**. It gets the template onto their Mac and then **hands over to the
-real procedure**, which ships inside the template at `skills/setup/SKILL.md`.
+This is a **bootstrap**. It creates the chart and then **hands over to the real
+procedure**, which ships inside the chart at `skills/setup/SKILL.md`.
 
 **Do not treat this file as the whole procedure.** It deliberately stops early. The steps
-after the clone — creating their repo, renaming the blank files, the checks, and the
-several things that must *not* be done yet — live in the skill, are maintained there, and
-this copy would rot. Where the two disagree, the skill is right.
+after the clone — the athlete's own repo, the blank files, the checks, and the several
+things that must *not* be done yet — live in that skill, are maintained there, and this
+copy would rot. Where the two disagree, the skill is right.
+
+> ### ⛔ You cannot install anything, and you must not try
+>
+> Homebrew asks for the Mac login password and `gh auth login` is an arrow-key menu. **A
+> command you run has no terminal attached, so neither prompt has anywhere for the athlete
+> to answer.** Running them does not produce a prompt they can see — it hangs, or fails
+> with `sudo: a terminal is required to read the password`.
+>
+> `GETTING-STARTED.md` step 2 has them do this themselves in Terminal, before they ever
+> open you. **If a tool below is missing, that step was skipped — send them back to it.
+> Never paste the Homebrew or `gh auth login` command into a command of your own.**
 
 ---
 
-## 1. Preflight
+## 1. Confirm the tools are there
 
 ```bash
-for c in git gh node brew; do printf "%s: %s\n" "$c" "$(command -v $c >/dev/null 2>&1 && $c --version 2>&1 | head -1 || echo MISSING)"; done
+git --version && node --version && gh auth status
 ```
 
-All four present → go to §2.
+Two version numbers and a line saying they are logged in to GitHub → go to §2.
 
-### If anything is MISSING
+**Anything missing or not-logged-in → stop.** Tell them plainly which one, and send them
+back to **step 2 of `1-Getting-Started.md`** in this folder, which walks through it in
+Terminal. Say which of 2.2, 2.3 or 2.4 they need:
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
+- `git` or `node` missing → 2.2 and 2.3 (Homebrew, then `brew install gh node`)
+- `gh` missing → 2.3
+- `gh auth status` says not logged in → 2.4 (`gh auth login`)
 
-⛔ **STOP HERE AND HAND OVER.** This asks for their **Mac login password**, which you must
-never type or see. Tell them:
+Wait for them to come back and re-run this check. **Do not work around it** — every step
+below needs these.
 
-> Type your Mac password into the Terminal window. **Nothing will appear as you type — no
-> dots, no stars.** That is normal. Press Enter when done.
-
-**When it finishes it prints a "Next steps" section with two `echo` commands. Run exactly
-what it printed.** Skipping them is the most common failure in this whole setup, and the
-symptom — `brew: command not found` — appears several steps later, far from its cause. Then
-have them open a fresh Terminal window.
-
-```bash
-brew install gh node
-```
-
-**`node` is not optional.** It runs the validator and the energy model, which the coach uses
-every time it writes a number.
-
-Verify — three version numbers means ready:
-
-```bash
-git --version && gh --version && node --version
-```
-
-## 2. Sign them in to GitHub
-
-```bash
-gh auth login
-```
-
-Answer: **GitHub.com** → **HTTPS** → **Y** → **Login with a web browser**.
-
-⛔ **STOP HERE AND HAND OVER.** It prints an eight-character code and opens their browser.
-Read them the code, tell them to press Return, paste it in the browser and approve. You
-cannot approve it for them.
-
-If it ever offers to create a personal access token instead, back out — wrong option.
-
-Confirm with `gh auth status` before continuing.
-
-## 3. Ask for their first name
+## 2. Ask for their first name
 
 Lower case. It names the folder and the repo — `jane-coach`. **That is the only question
 this bootstrap needs.**
@@ -80,24 +56,43 @@ accept it if they volunteer it.** Write it down for later and say you will get t
 properly. The entire design depends on those being elicited at intake, before any category
 is named. Answers given during a software install are answers to a different question.
 
-## 4. Clone the template
+## 3. Create the chart
+
+Replace `NAME` with their first name in both commands. **Use the full paths as written** —
+do not rely on a `cd` from an earlier command still applying.
 
 ```bash
-cd ~/Documents
-git clone https://github.com/brandallux-bit/coach-template.git NAME-coach
-cd NAME-coach
-git remote rename origin upstream
+git clone "$(cat TEMPLATE-URL)" ~/Documents/NAME-coach
+git -C ~/Documents/NAME-coach remote rename origin upstream
 ```
+
+`TEMPLATE-URL` sits beside this file in the starter folder and is the only place the template's
+address is written down — the same file ships inside the chart at
+`library/starter-kit/TEMPLATE-URL`, so the two can never disagree about where updates come from.
 
 > ⛔ **Never delete the `.git` folder.** With no shared history this chart can never receive
 > a system fix again — `git pull upstream main` fails permanently with *refusing to merge
 > unrelated histories*. Keep it.
 
-## 5. Hand over to the real procedure
+## 4. Hand the session over, and stop
 
-**Read `skills/setup/SKILL.md` in the folder you just cloned, and follow it from §3
-onward.** It covers creating their private repo, renaming the blank athlete files, the
-verification step, and — importantly — the several things that look like sensible setup and
-must not be done yet.
+⛔ **Everything from here runs in the new folder, and this session cannot do it.**
 
-Then it hands you to `skills/intake`, which is where the coaching actually starts.
+The chart carries `CLAUDE.md` — the charter that governs every coaching session, including
+intake. **It only loads when the chart is the folder Claude Code has open**, and right now
+you are open on the starter folder. Continuing from here would run the most important
+conversation in the system with none of its rules loaded: no sync protocol, no question
+limit, no safety floors.
+
+So tell them, in your own words:
+
+> Your chart is built, at `~/Documents/NAME-coach`.
+>
+> Setup finishes in that folder, not this one. Close this session, open Claude Code on
+> `~/Documents/NAME-coach`, and say: **continue my setup**.
+>
+> You can throw this starter folder away afterwards.
+
+Then stop. **Do not run `npm run check`, do not create their GitHub repo, and do not start
+intake** — `skills/setup/SKILL.md` §3 onward does all of it, from inside the chart, where
+the charter is loaded. It knows it is resuming and picks up from what is already done.

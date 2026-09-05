@@ -150,7 +150,14 @@ export async function trainingRowExists(date: string): Promise<boolean> {
 
 export type BranchCheck =
   | { ok: true; branches: { name: string; ahead: number }[] }
-  | { ok: false; reason: string }
+  // `unconfigured` separates a CHOSEN state from a FAULT. Without writes configured this check
+  // cannot run at all — but that is a deploy the athlete deliberately made (DASHBOARD.md step 4
+  // is optional), not something going wrong. Rendering it as loudly as a real failure lit a red
+  // "cannot confirm this chart is complete" banner on every page of every read-only dashboard,
+  // permanently, from day one. That is audit F-45's lesson — a permanent alarm is a deleted
+  // alarm — arriving by a different door.
+  | { ok: false; unconfigured: true; reason: string }
+  | { ok: false; unconfigured?: false; reason: string }
 
 /**
  * Is anything sitting on a branch right now?
@@ -179,7 +186,9 @@ export type BranchCheck =
  * no amount of absorbing could ever clear (audit F-45). A permanent alarm is a deleted alarm.
  */
 export async function strayBranches(): Promise<BranchCheck> {
-  if (!writesConfigured()) return { ok: false, reason: 'GITHUB_REPO / GITHUB_TOKEN not set' }
+  if (!writesConfigured()) {
+    return { ok: false, unconfigured: true, reason: 'GITHUB_REPO / GITHUB_TOKEN not set' }
+  }
 
   try {
     const res = await gh(`/repos/${repo()}/branches?per_page=100`)

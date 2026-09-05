@@ -125,10 +125,10 @@ outright; it fails closed, never open.
 | `DASHBOARD_PASSWORD` | what you type on the login screen |
 | `AUTH_SECRET` | the session cookie's secret; rotating it signs every device out |
 
-**Deploying to Vercel:** import the chart repo, leave the root directory at the repo root, and
-set both variables for Production and Preview. Every commit redeploys — and because the coach
-commits on every logged meal (§0.3), the dashboard refreshes several times a day with no extra
-machinery. See [SETUP.md](SETUP.md) §5.
+**Deploying to Vercel:** [DASHBOARD.md](DASHBOARD.md) is the procedure, in the detail somebody
+setting it up for the first time needs. It is deliberately not restated here — the variables,
+the ordering and the write token were previously stated in three places and had already drifted
+apart in two of them.
 
 ## Two things that make or break it
 

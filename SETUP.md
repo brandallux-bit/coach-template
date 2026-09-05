@@ -79,13 +79,12 @@ Answer: **GitHub.com** → **HTTPS** → **Y** (authenticate Git) → **Login wi
 browser**. It shows an 8-character code; press Return, paste the code in the browser,
 approve.
 
-**On the template owner's Mac**, if the template repo is private, grant read access once:
-
-```bash
-gh api -X PUT repos/OWNER/coach-template/collaborators/THEIR-USERNAME -f permission=pull
-```
-
-The athlete accepts the emailed invitation before continuing.
+> **No access grant is needed — the template is public.** This section used to have the owner
+> add each athlete as a collaborator and wait for them to accept an emailed invitation. That is
+> gone: the template holds no athlete data (every `data/*.csv` ships header-only, and
+> `check-no-athlete-leak.mjs` covers the shared surface), so it is readable by anyone and
+> `git clone` needs no authentication at all. **The athlete's own chart is still private** —
+> `gh repo create --private` in §1, checked in `skills/setup` §3.
 
 ## 1. Create the chart repo
 

@@ -3,8 +3,8 @@
 Optional. Free. About 20 minutes.
 
 The dashboard is a private website showing your chart: today's targets, your weight trend,
-what you are training, what you have eaten. It also has a **Log** tab so you can record a
-meal from your phone without opening Claude.
+what you are training, your history in one place. It also has a **Log** tab for recording a
+few things from your phone without opening Claude.
 
 ---
 
@@ -42,25 +42,24 @@ forever — this is one small site with one visitor.
 
 ## Step 2 — Two secrets, made now (2 minutes)
 
-You need two values before you start the import. Get them ready first — the import form
-asks for them and it is annoying to go hunting mid-flow.
+Get these ready before you start the import; the form asks for them and it is annoying to
+go hunting mid-flow.
 
 **A password.** Whatever you want to type to get into your dashboard. Make it a real one:
 this page shows your weight, your medical notes and your food. Put it in your password
 manager now.
 
-**A long random string.** This signs your login cookie. Ask the coach:
-
-> Generate an AUTH_SECRET for me.
-
-Or run this in Terminal yourself and copy the output:
+**A long random string.** Open Terminal (⌘-Space → **Terminal** → Enter) and paste:
 
 ```bash
 openssl rand -hex 32
 ```
 
-You get 64 characters of hex. That is the value. You never type it again — paste it and
-forget it.
+Copy the 64 characters it prints. Put that in your password manager too.
+
+> ⚠ **Do not ask Claude to generate this one.** It is the value your browser stores to keep
+> you signed in — anyone who has it is signed in as you. Generate it yourself with the
+> command above so it exists in exactly two places: your password manager, and Vercel.
 
 > **Neither of these may be blank.** The dashboard refuses every sign-in unless both are
 > set. It fails closed, never open — a blank that locks you out is a good outcome, a
@@ -79,9 +78,8 @@ forget it.
 
 3. **Root Directory:** leave it as `./`. Do not change it.
 4. **Framework Preset:** it should detect **Next.js** on its own. Leave it.
-5. Open **Environment Variables** and fill in the two below. Vercel pre-fills some names
-   from the repo with empty values; you are supplying the values.
-6. Click **Deploy**, and wait two or three minutes.
+5. Open **Environment Variables** and add both of the rows below. Vercel pre-fills some
+   names from the repo with empty values; you are supplying the values.
 
 | Name | Value |
 |---|---|
@@ -90,6 +88,8 @@ forget it.
 
 **Tick both for Production *and* Preview.** A variable set for only one of them is the most
 common reason sign-in works in one place and fails in another.
+
+6. **Now** click **Deploy**, and wait two or three minutes.
 
 You get a URL like `yourname-coach.vercel.app`. Open it, enter your password. That is your
 dashboard.
@@ -113,18 +113,31 @@ For anything else, copy the error and paste it to the coach.
 
 ## Step 4 — Logging from the dashboard (10 minutes, and genuinely optional)
 
-Everything above is **read-only** and it works now. This step turns on the **Log** tab so
-you can record meals and sets from your phone.
+Everything above is **read-only** and it works now. This step turns on the **Log** tab.
 
-**Skip it if you do not want it.** Without it the Log tab still appears, but its buttons
-are disabled with a banner saying logging is not configured. Nothing breaks and nothing
-pretends to have saved.
+**What the Log tab can record**, and it is a short list:
 
-### Why this step exists at all
+| | |
+|---|---|
+| **Measurements** | Weight and any tape measurements, the morning set |
+| **A reading** | One registered metric — blood pressure, sleep, whatever your chart tracks |
+| **A session** | That you trained, how long, how hard, whether anything hurt |
+| **A set** | One working set: exercise, load, reps, reps-in-reserve |
 
-The website has no database. **Your repository is the database.** So when you log a meal
-from your phone, the page writes the row directly into your chart on GitHub — the same way
-the coach does, checked by the same validator. That write needs its own key.
+⚠ **Meals are not on that list.** Food goes to the coach in conversation — *"chicken and
+rice, about 600 calories"* — because a meal is the one thing that reliably needs a
+follow-up question. If daily food logging on your phone is the reason you were setting this
+up, this step will not give you it, and you can skip it with nothing lost.
+
+**Skipping is fine.** Without it the Log tab still appears, with its buttons disabled and a
+banner saying logging is not configured. Nothing else changes and nothing pretends to have
+saved.
+
+### Why this step needs a key at all
+
+The website has no database. **Your repository is the database.** So when you log a set from
+your phone, the page writes the row directly into your chart on GitHub — the same way the
+coach does, checked by the same validator. That write needs its own key.
 
 ### Make the key
 
@@ -143,8 +156,9 @@ This is the fiddliest screen in the whole system. Follow it exactly.
    - **Permissions** → **Repository permissions** → find **Contents** → set it to
      **Read and write**.
 
-     > **Contents, and nothing else.** This key can rewrite your entire chart. Leave every
-     > other permission alone.
+     > **Contents is the only one you set.** This key can rewrite your entire chart, so it
+     > gets nothing else. GitHub will switch on **Metadata: Read-only** by itself and will
+     > not let you turn it off — that is expected and correct, not something you did wrong.
 
 6. **Generate token**, then **copy it immediately** — it starts `github_pat_` and GitHub
    will never show it to you again. If you lose it, delete it and make another.
@@ -161,7 +175,7 @@ This is the fiddliest screen in the whole system. Follow it exactly.
 | `GITHUB_TOKEN` | the `github_pat_...` value you just copied |
 
 > **Environment variables do not apply to a site that is already built.** Skipping the
-> redeploy in step 3 is why this most often appears not to have worked.
+> redeploy above is why this most often appears not to have worked.
 
 Open the Log tab. The buttons should be live.
 
@@ -187,7 +201,7 @@ argument for logging as you go rather than reconstructing your day at bedtime.
 | **Goals & Progress** | Your domains, where each one stands, what is trending |
 | **Today** | Today's targets, what is prescribed, what you have logged so far |
 | **Next 7 Days** | What is coming, and the projection |
-| **Log** | Record a meal, a set, a weigh-in |
+| **Log** | The four things listed in step 4 |
 | **History** | The record, back to day one |
 
 Which pages are useful depends on what your intake produced. A chart that does not track
@@ -201,5 +215,7 @@ training has a thin Today page, and that is correct rather than broken.
 - **The dashboard needs your password**, and refuses everyone if either secret is missing.
 - **The URL is guessable.** `yourname-coach.vercel.app` is not a secret — the password is
   the thing protecting it, so make it a real one.
-- **Rotating `AUTH_SECRET` signs every device out.** That is your panic button if you ever
-  lose a phone: change it in Vercel, redeploy, done.
+- **`AUTH_SECRET` is not a password you type — it *is* the signed-in token your browser
+  holds.** Treat it like a second password: anyone who has the value is signed in as you.
+  Changing it in Vercel and redeploying signs every device out, which is your panic button
+  if you ever lose a phone.

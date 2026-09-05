@@ -1,10 +1,9 @@
 # Getting started
 
-**You do not need to know anything technical to set this up.** There is no code to write.
-You will type two things into a Terminal window, and an AI does the rest while you watch.
+**You do not need to know anything technical.** There is no code to write. There are four
+commands to copy and paste, and an AI does everything after that while you watch.
 
-Read this page once before you start. It takes about five minutes and will save you an
-hour.
+Read this page once before you start. Five minutes now saves an hour later.
 
 ---
 
@@ -27,7 +26,7 @@ Be honest with yourself about this before you spend an afternoon on it:
 
 - **About 15 minutes a day**, most of it logging what you ate.
 - **A 20-minute check-in once a week**, same day each week.
-- **Three or four short conversations in the first week** to set it up. Not one long one.
+- **Five or six short conversations to set it up**, on separate days. Not one long one.
 - **Telling it the truth**, including the days that went badly. A coach with a flattering
   record is worse than no coach — the whole value is that the history is real.
 
@@ -42,9 +41,9 @@ that. It is the one thing that matters most.
 | **GitHub** | Free forever | Stores your files privately and backs them up |
 | **Vercel** | Free forever | *Optional.* A web dashboard. Skip it for now. |
 
-**Nothing else.** No API keys, no database, no subscriptions beyond Claude. If any
-instruction ever asks you to put in a credit card beyond your Claude plan, stop — you are
-following the wrong instructions.
+**No paid services beyond Claude.** No database, no subscriptions, nothing metered. Later
+on, the optional dashboard uses one free GitHub key — that is the only key in the system,
+and it only touches your own files.
 
 ### One thing to do before you start
 
@@ -75,7 +74,7 @@ This is where your chart lives, privately, backed up.
 3. Choose the **Free** plan when offered.
 4. Verify the email they send you.
 
-**Write your username down.** You will need it once, in about ten minutes.
+**Write your username down** — you will need it if you add the dashboard later.
 
 > **What GitHub is, in one sentence:** a place that stores folders of files and remembers
 > every version of every file forever. That is genuinely all you need to know. You will
@@ -86,17 +85,98 @@ This is where your chart lives, privately, backed up.
 
 ---
 
-## Step 2 — Let Claude install the rest (15 minutes, mostly waiting)
+## Step 2 — Four commands (15 minutes, mostly waiting)
 
-Here is where you would normally be asked to install developer tools. **You are not going
-to do that.** Claude will.
+These install the tools your coach needs. **You paste them; you do not have to understand
+them.**
 
-1. **Unzip the starter folder** you were sent, if you have not already. Put it somewhere
-   you can find it — your Desktop is fine.
-2. **Open the Claude app.**
-3. Start **Claude Code** and point it at that folder.
-   - In the Claude desktop app, choose **Code**, then open the starter folder.
-   - If it asks for permission to read the folder, say yes.
+### Open Terminal
+
+Press **⌘-Space**, type **Terminal**, press **Enter**. A window with text in it opens.
+That is Terminal. You will paste four things into it, pressing Enter after each, and wait
+for each to finish before starting the next.
+
+> **Why you and not the AI?** Two of these ask for a password. Claude runs commands in a
+> way that has nowhere for you to type a reply, so a password prompt would simply hang with
+> no way to answer it. Anything that can be done without a password, Claude does — which is
+> everything from Step 3 onward.
+
+### 2.1 — What is already installed?
+
+Paste this and press Enter:
+
+```bash
+for c in git gh node; do printf '%s: ' "$c"; $c --version >/dev/null 2>&1 && echo ok || echo MISSING; done
+```
+
+> **A window may appear offering to install "command line developer tools".** Click
+> **Install**, wait for it to finish, then run the command above again. That is macOS
+> noticing you do not have the basics yet.
+
+**If all three say `ok`, skip ahead to 2.4.** Otherwise carry on.
+
+### 2.2 — Homebrew
+
+Homebrew installs the other tools. Paste this:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+⛔ **It asks for your Mac login password.** As you type it, **nothing appears on screen —
+no dots, no stars, no cursor movement.** That is normal and it is not broken. Type it and
+press Enter.
+
+⚠ **When it finishes it prints a short "Next steps" section containing two commands
+starting with `echo`. Run those two, exactly as printed.** This is the step people skip,
+and skipping it breaks the next command with a confusing message about `brew` not being
+found. Then **close Terminal and open a new one** (⌘-Space → Terminal → Enter).
+
+### 2.3 — The tools themselves
+
+```bash
+brew install gh node
+```
+
+A few minutes of scrolling text. `gh` talks to GitHub; `node` runs the checks your coach
+does every time it writes a number.
+
+### 2.4 — Sign in to GitHub
+
+```bash
+gh auth login
+```
+
+This asks you four short questions using the **arrow keys and Enter**. Answer:
+
+1. **GitHub.com**
+2. **HTTPS**
+3. **Yes** (authenticate Git with your GitHub credentials)
+4. **Login with a web browser**
+
+It then shows an eight-character code like `A1B2-C3D4`. **Copy it**, press Enter, and your
+browser opens. Paste the code there and approve.
+
+> If it ever offers to paste an authentication token instead, press Ctrl-C and start this
+> command again — you picked the wrong option.
+
+### Check it worked
+
+```bash
+git --version && node --version && gh auth status
+```
+
+Two version numbers and a line saying you are logged in. **You are done with Terminal** —
+leave the window open, but you will not need to type in it again.
+
+---
+
+## Step 3 — Let Claude build your chart (5 minutes)
+
+1. **Unzip the starter folder** you were sent, if you have not already. Your Desktop is
+   fine.
+2. **Open the Claude app** and start **Claude Code**.
+3. **Point it at that starter folder.** If it asks permission to read the folder, say yes.
 4. **Paste in exactly this, and press Enter:**
 
    > Read `Setup-Instructions-For-Claude.md` in this folder and set up my coach. My first
@@ -104,39 +184,26 @@ to do that.** Claude will.
 
    Put your actual first name in the blank.
 
-Then watch. It will explain what it is doing as it goes, and ask permission before
-anything that changes your computer. **Say yes to those.**
+It will explain each step as it goes and ask permission before anything that changes your
+computer. **Read what it says before approving.** If it asks for something it has not
+explained, say no and ask why.
 
-### Two moments where it will stop and need you
+### It will ask you to move to a new folder
 
-It cannot do these two things for you, on purpose — both involve a password it must never
-see.
+When it finishes it will have created your chart at **`~/Documents/yourname-coach`** and
+will tell you to open Claude Code there instead.
 
-**Your Mac password.** A tool called Homebrew asks for it. Type it into the Terminal
-window. **The screen will not show anything as you type — no dots, no stars.** That is
-normal and not broken. Type it and press Enter.
+**Do that — it matters.** Your chart folder contains the rules your coach runs on, and
+those only load when it is the folder you have open. Close the starter session, open Claude
+Code on `~/Documents/yourname-coach`, and say:
 
-**A GitHub code.** It will show you an eight-character code like `A1B2-C3D4`, and open
-your browser. Copy the code, paste it into the browser page, click through to approve.
+> Continue my setup.
 
-That is the entire technical component. Everything else it handles.
-
-### How you know it worked
-
-It will run a check and show you something like:
-
-```
-check-all: 12 step(s) skipped — No athlete/constants.json — run intake first
-check-all: all checks passed.
-```
-
-**"Skipped" is correct here and "all checks passed" is what matters.** The system is
-installed and empty, waiting for you. It skips twelve checks because there is nothing
-about you in it yet.
+You can throw the starter folder away after this. Everything now lives in your chart.
 
 ---
 
-## Step 3 — Intake: the part that is actually about you (3–4 short sessions)
+## Step 4 — Intake: the part that is actually about you (5–6 short sessions)
 
 Now it finds out who you are. This is the most important thing you will do, and rushing it
 produces a worse coach for months afterwards.
@@ -151,11 +218,11 @@ produces a worse coach for months afterwards.
 happened, asks what you have tried before and what specifically ended it — then reflects it
 back and stops. **It will not weigh you, name a calorie target, or propose anything.** That
 is deliberate. It is finding out what you want *before* it names any categories, because
-the moment it says the word "fat loss" it has started steering you.
+the moment it says the words "fat loss" it has started steering you.
 
-**Do them on separate days.** Three or four sessions of 15–20 minutes, not one sitting of
-an hour. People give honest answers in session one and performative answers in minute
-forty. The coach will suggest stopping; let it.
+**Do them on separate days.** Five or six sessions of 15–20 minutes, not one sitting.
+People give honest answers in session one and performative answers in minute forty. The
+coach will suggest stopping; let it.
 
 **Answer as yourself, not as the person you plan to become.** When it asks how many days a
 week you will train, it wants the number you actually managed last year. It is designing
@@ -171,7 +238,8 @@ around your real life, and it can only do that if it knows what your real life i
 | **2** | Turning that into the things this coach will actually track |
 | **3** | Safety — medical history, allergies, injuries |
 | **4** | How you want to live while doing this. Wine, restaurants, whatever it is. |
-| **5–6** | Your schedule, your baseline numbers, and the pushback you pre-authorise |
+| **5** | Your schedule and what gets in the way |
+| **6** | Your baseline numbers, and the pushback you pre-authorise |
 
 **Session 4 matters more than it sounds.** Any plan that works by deleting something you
 love is a plan you will abandon in five weeks. It asks so it can design around those
@@ -183,7 +251,7 @@ the most work.
 
 ---
 
-## Step 4 — Using it (every day, 15 minutes)
+## Step 5 — Using it (every day, 15 minutes)
 
 **Open the app, go to your chart folder, and talk to it.** That is the whole interface.
 
@@ -225,9 +293,9 @@ cannot detect on its own.
 
 **Give it two weeks first.** Get the daily logging habit before adding anything.
 
-After that, if you want your numbers on your phone — charts, today's targets, a quick way
-to log a meal without opening Claude — see **[DASHBOARD.md](DASHBOARD.md)**. It is a free
-Vercel account and about twenty minutes.
+After that, if you want your numbers on your phone — charts, today's targets, your history
+in one place — see **[DASHBOARD.md](DASHBOARD.md)**. It is a free Vercel account and about
+twenty minutes.
 
 **Do not do it before intake is finished.** It will not build, on purpose, and you will get
 a failed-deployment email every time the coach saves something.

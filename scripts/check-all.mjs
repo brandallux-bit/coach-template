@@ -80,11 +80,21 @@ let skipped = 0
  * SKIPPED WITH A NAMED REASON rather than run and failed. Nothing is weakened: the moment
  * `athlete/constants.json` exists, every step below runs on every push.
  */
-const step = (label, fn, { needsChart = true } = {}) => {
+const step = (label, fn, { needsChart = true, unless = null } = {}) => {
   if (failed) return
   if (needsChart && !hasChart) {
     skipped++
     console.log(`skip  ${label}`)
+    return
+  }
+  // `unless` is for a step whose PRECONDITION is something other than the chart — currently only
+  // "is a devDependency installed". Without it such a step exits 0 from inside and check-all
+  // prints `ok`, which is a lie of exactly the kind this file exists to avoid: it reports a
+  // check as having run when it declined to.
+  const why = unless?.()
+  if (why) {
+    skipped++
+    console.log(`skip  ${label} — ${why}`)
     return
   }
   try {
@@ -209,12 +219,22 @@ step('test-recent-work   — does today repeat the last three days', () => run('
 step('test-session-table — what today\'s card shows, and what it refuses to claim',
   () => run('test-session-table.mjs'), { needsChart: false })
 step('check-suspensions  — nothing prescribes what the block suspends', () => run('check-suspensions.mjs'))
+// The scheduled jobs run on fixed UTC crons. Nothing derived them from `athlete.timezone`, and
+// while the template and its one chart shared a timezone nothing had to. A chart in any other
+// zone gets its daily rollover — and therefore that day's calorie target — at the wrong hour,
+// and no existing check notices, because `check-targets-gap` only inspects past days.
+step('check-crons        — the scheduled jobs land at a sane local hour', () => run('check-crons.mjs'))
 // The athlete-facing docs, rendered. Fixtures and file reads only — no chart, no network — so
 // like the two suites above it must not be withheld from a repo that has not run intake. It is
 // the ONLY check that looks at the starter kit, and the kit is the one document in this repo
 // that every new athlete reads and nobody here ever does.
 step('test-starter-kit   — the docs a new athlete is sent, rendered',
-  () => run('test-starter-kit.mjs'), { needsChart: false })
+  () => run('test-starter-kit.mjs'), {
+    needsChart: false,
+    // The kit is built on the maintainer's machine, where `npm install` has run. A fresh chart
+    // must stay green without one (test-cold-start STATE A), so this declines rather than fails.
+    unless: () => (existsSync(join(ROOT, 'node_modules/marked')) ? null : 'marked not installed'),
+  })
 
 step('check-no-athlete-leak — nothing shared encodes one athlete', () => run('check-no-athlete-leak.mjs'))
 // The athlete's own standing instructions. Inert on a chart that has not written one, which is

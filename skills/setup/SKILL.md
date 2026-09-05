@@ -1,160 +1,112 @@
 ---
 name: setup
-description: Create a new chart from the template — install the tools, create the athlete's private GitHub repo, and hand off to intake. Use when someone opens the starter kit and asks to set up their coach, when a session starts in a folder that is not yet a chart, or when SETUP.md is being followed by a person rather than executed. Runs exactly once per chart.
+description: Finish creating a new chart — the athlete's private GitHub repo, the blank athlete files, the first check — and hand off to intake. Use when a session opens in a freshly cloned chart that has no athlete/constants.json, when the athlete says "continue my setup", or when SETUP.md is being followed by a person rather than executed. Runs once per chart.
 ---
 
 # Setup
 
 **You are doing the technical work so the athlete does not have to.** They are not
 expected to know what a repository is. Read this whole file before running anything, then
-work through it top to bottom, telling them in plain language what you are doing and why.
+work top to bottom, telling them in plain language what you are doing and why.
 
 Everything here used to live in `SETUP.md` as instructions for a *person* to type. That
-document still exists and is still correct — it is now the reference and the rationale.
-**This file is the executable version, and it is the one that runs.**
+document still exists and is still authoritative on the **rules**; this is the executable
+version, and where it is silent, `SETUP.md` answers.
 
-## The one thing that makes this different from a normal install
+## What is already done before you start
 
-**Two steps need the athlete's own hands and you cannot do them.** Both involve a
-credential you must never see or type:
+The athlete installed the tools themselves in Terminal (`GETTING-STARTED.md` step 2) and a
+bootstrap session cloned the chart. **Both of those steps are finished by the time this
+skill runs**, and neither is yours to repeat.
 
-1. **Homebrew asks for their Mac login password.** You cannot type it. Stop, tell them to
-   type it into Terminal themselves, and wait.
-2. **`gh auth login` opens a browser and asks them to approve a code.** You cannot approve
-   it. Print the code, tell them what to click, and wait.
-
-When you reach either, **stop and hand off in one clear sentence.** Do not retry, do not
-loop, and do not offer to do it for them. Everything on either side of these two moments
-is yours.
+> ### ⛔ You cannot install anything, and you must not try
+>
+> Homebrew asks for the Mac login password; `gh auth login` is an arrow-key menu. **A
+> command you run has no terminal attached**, so neither prompt has anywhere for the athlete
+> to answer — it hangs, or fails with `sudo: a terminal is required to read the password`.
+>
+> If a tool is missing, **send them to `GETTING-STARTED.md` step 2 and wait.** Print the
+> command for them to paste into Terminal themselves; never run it inside a command of your
+> own. This is the one class of work in the whole system that is theirs and not yours.
 
 ## 0. Establish where you are
 
-Before anything, work out which of three states you are in — they need different actions
-and guessing wrong is destructive:
+Three states need different actions, and guessing wrong is destructive:
 
 | What you see | State | What to do |
 |---|---|---|
 | `athlete/constants.json` exists | **Already a chart.** Setup has run. | Stop. Say so. Route to `skills/intake` only if they want to re-take intake. |
-| `CLAUDE.md` + `athlete/TEMPLATE-*.md` present | **Template clone, setup partway.** | Resume at the first step below whose result is missing. |
-| Neither — just the starter kit's docs | **Nothing created yet.** | Start at §1. |
+| `CLAUDE.md` present, `athlete/TEMPLATE-*.md` still named that way | **The normal entry point.** The bootstrap cloned this and handed over. | Start at §1. |
+| Neither — only the starter kit's documents | **Wrong folder.** | They are still in the starter folder. Tell them to open Claude Code on `~/Documents/<name>-coach` and say *continue my setup*. |
 
-Every step below is safe to re-run. Check for its result before doing it rather than
-assuming it has not happened.
+Every step is safe to re-run. Check for its result before doing it rather than assuming it
+has not happened — an interrupted setup resumes here.
 
-## 1. Preflight — what is already installed
+**Use full paths in every command.** Do not rely on a `cd` from an earlier step still
+applying; on some surfaces it does not, and the failure is silent and confusing.
 
-```bash
-for c in git gh node brew; do printf "%s: %s\n" "$c" "$(command -v $c >/dev/null 2>&1 && $c --version 2>&1 | head -1 || echo MISSING)"; done
-```
-
-**`node` is not optional.** It runs the validator and the energy model, which the coach
-uses every single time it writes a number. A chart without it appears to work and then
-fails on the first commit.
-
-If everything is present, skip to §2.
-
-### If anything is MISSING — Homebrew first
-
-Homebrew brings Apple's command line tools, which is where `git` comes from:
+## 1. Confirm the ground
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+git --version && node --version && gh auth status
 ```
 
-⛔ **This is human step one.** It asks for their Mac login password, and typing shows
-nothing on screen — that is normal and worth saying out loud, because it looks broken.
+Two version numbers and a logged-in line. Anything else → the box above; send them to
+`GETTING-STARTED.md` step 2 and wait.
 
-**When it finishes it prints a "Next steps" section containing two `echo` commands.**
-Those add `brew` to their shell's path. **Skipping them is the single most common failure
-in this whole procedure**, and the symptom is `brew: command not found` several steps
-later, long after the cause. Read the output, run exactly what it printed, then have them
-open a fresh Terminal window.
-
-Then:
+Then confirm you are in the chart and it kept its history:
 
 ```bash
-brew install gh node
+git -C . remote -v && git -C . log --oneline -1
 ```
 
-Verify — three version numbers means ready:
+`upstream` should point at the template. **If there is no `upstream` and no history**, this
+chart was made by copying files rather than cloning, and it can never receive a system fix
+— `SETUP.md`'s "Pulling template improvements later" documents the recovery. Say so now
+rather than discovering it in six months.
+
+## 1b. Where the template lives
+
+`library/starter-kit/TEMPLATE-URL` holds the clone URL, and it is the only place it is written
+down. The bootstrap reads it too. If you need it:
 
 ```bash
-git --version && gh --version && node --version
+cat library/starter-kit/TEMPLATE-URL
 ```
 
-## 2. Sign in to GitHub
+## 2. Their first name
 
-```bash
-gh auth login
-```
+Lower case, if you do not already have it from the bootstrap. It names the repo. **That is
+the only question setup needs** — everything else about them is intake's, and asking here
+produces answers to a different question.
 
-⛔ **This is human step two.** Answer: **GitHub.com** → **HTTPS** → **Y** (authenticate
-Git) → **Login with a web browser**. It prints an eight-character code. Tell them the
-code, tell them to press Return, paste it in the browser, and approve.
+## 3. Their own private repo
 
-No tokens, no SSH keys. If they are ever asked to create a personal access token here,
-something has gone wrong — back out and use the browser flow.
-
-Confirm before continuing:
-
-```bash
-gh auth status
-```
-
-## 3. Ask for the one thing only they can decide
-
-**Their first name, lower case.** It names the folder and the repo — `jane-coach`. Ask
-for it if you do not already have it. That is the only question this procedure needs.
-
-Everything else about them is elicited at intake, by intake. **Do not ask about goals,
-weight, training, diet or injuries here, and do not accept them if offered** — write them
-down for later and say you will get to them properly. The whole design rests on those
-being elicited before any category is named, and answers given during a software install
-are answers to a different question.
-
-## 4. Create the chart repo
-
-This downloads the template **keeping its git history**, then points `upstream` at it:
-
-```bash
-cd ~/Documents
-git clone https://github.com/brandallux-bit/coach-template.git NAME-coach
-cd NAME-coach
-git remote rename origin upstream
-```
-
-> ⛔ **Never `rm -rf .git`.** With no shared history, `git pull upstream main` fails
-> forever with *refusing to merge unrelated histories*, and system fixes can never reach
-> this chart again. An earlier version of the setup doc deleted it "for a clean slate" and
-> silently broke the entire point of the template. The handful of template commits cost
-> nothing to carry. `SETUP.md` documents the recovery for a chart already made this way.
-
-Now their own **private** repo, as `origin`:
+The clone's `origin` was renamed to `upstream`, so the template stays reachable for updates.
+This adds their repo as the new `origin`:
 
 ```bash
 gh repo create NAME-coach --private --source=. --remote=origin --push
 ```
 
-**Private is not a default to reconsider.** This repo will hold weight, symptoms,
-medications and injuries. Confirm the flag landed:
+**Private is not a default to reconsider.** This will hold weight, symptoms, medications
+and injuries. Confirm all three before continuing:
 
 ```bash
 git remote -v
 gh repo view --json visibility -q .visibility
 ```
 
-`origin` → their repo, `upstream` → the template, visibility → `PRIVATE`. If any of the
-three is wrong, fix it before continuing rather than after there is data in it.
+`origin` → their repo, `upstream` → the template, visibility → `PRIVATE`. Fix any of the
+three now, not after there is data in it.
 
-## 5. Turn the blanks into their files
+## 4. Turn the blanks into their files
 
 The template ships forms named `TEMPLATE-goals.md` and so on. Drop the prefix:
 
 ```bash
-cd athlete
-for f in TEMPLATE-*.md; do mv "$f" "${f#TEMPLATE-}"; done
-cd ..
-git add -A && git commit -m "Rename templates for this athlete" && git push
+cd ~/Documents/NAME-coach/athlete && for f in TEMPLATE-*.md; do mv "$f" "${f#TEMPLATE-}"; done
+cd ~/Documents/NAME-coach && git add -A && git commit -m "Rename templates for this athlete" && git push
 ```
 
 ⛔ **Leave every one of them empty.** Filling anything in before intake is the one thing
@@ -178,37 +130,53 @@ against it.
 > **a red build on every push for the athlete's entire first week** — teaching someone brand
 > new that a failing build is the normal state of their chart (audit F-39).
 
-## 6. Prove it works
+## 5. Prove it works
 
 ```bash
-npm run check
+cd ~/Documents/NAME-coach && npm run check
 ```
 
 **Expect green, with about a dozen steps skipped** and a line naming the reason: *no
-`athlete/constants.json` — run intake first*. That is the correct and intended output of a
-fresh chart. Show it to them and say what it means: the system is installed, and it is
-waiting for them.
+`athlete/constants.json` — run intake first*. That is the correct output of a fresh chart.
+Show it to them and say what it means: the system is installed, and it is waiting for them.
 
 If it is red, stop and fix it here. A chart that starts red teaches them to ignore red.
 
-`npm install` is **not** needed yet — `scripts/` is dependency-free Node. It is only
-required for the dashboard, which comes later.
+`npm install` is **not** needed — `scripts/` is dependency-free Node. It is only required
+for the dashboard, which comes later.
 
-## 7. Movement, steps, and the dashboard — all later, all deliberately
+## 6. Set the clock to their timezone
 
-Three things a thorough installer would do now, and all three are wrong now:
+The two scheduled jobs run on fixed UTC crons written for the template author's timezone.
+**On a chart in another timezone the daily rollover fires mid-afternoon**, so the day's
+calorie target — which `CLAUDE.md` §0.3 says a day may never lack — does not exist for the
+first half of that day.
+
+You cannot fix this yet: the timezone is `athlete.timezone`, which intake writes. **Say so
+now, and leave a reminder that it is owed**, so it is not discovered weeks later:
+
+> One thing I will need to set once you have told me where you live: the automatic
+> daily job runs on a clock that is currently set for California.
+
+`skills/intake` picks this up at the point it writes `constants.json`. If you are reading
+this on a chart whose intake is already done, do it now: `node scripts/check-crons.mjs`
+prints the correct cron lines for the athlete's timezone and which files to change.
+
+## 7. What is deliberately NOT done here
+
+Three things a thorough installer would do now, all wrong now:
 
 - **Movement configuration** (`SETUP.md` §4) is an intake question, asked in words about an
   ordinary day. Until it is answered the chart runs on a shipped default and
   `build-findings` raises `movement-level-unanswered` on every run — it keeps asking, which
-  is the designed behaviour, not a gap to close here.
+  is designed behaviour, not a gap to close here.
 - **The step workflows** stay as shipped. With no `plan.stepFeed` they exit cleanly and cost
-  nothing. Deleting them is a §4a decision that follows from an answer nobody has given yet.
+  nothing. Deleting them is a §4a decision following from an answer nobody has given yet.
 - **The dashboard** cannot build before intake — `check-chart-for-build.mjs` refuses on
   purpose, because a deployed dashboard rendering TBD in every cell looks like a broken chart
   rather than an absent one. **Say this out loud before they wander off and connect Vercel**,
-  because the coach commits on every logged number (`CLAUDE.md` §0.3), so an early import
-  emails them a failed deployment for every commit of their first week.
+  because the coach commits on every logged number (§0.3), so an early import emails them a
+  failed deployment for every commit of their first week.
 
 ## 8. Hand off to intake
 
@@ -216,8 +184,8 @@ Setup is done. Tell them plainly:
 
 - Their chart lives in `~/Documents/NAME-coach`, and is backed up privately on GitHub.
 - Nothing about them has been written down yet. That is next, and it is a conversation.
-- It runs across **several short sessions, not one sitting** — people give honest answers
-  in session one and performative answers in minute forty.
+- It runs across **five or six short sessions on separate days**, not one sitting — people
+  give honest answers in session one and performative answers in minute forty.
 - **Session 1 ends with no plan.** The coach asks what they want, reflects it back, and
   stops. That is deliberate, not an unfinished session.
 
