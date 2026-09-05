@@ -85,6 +85,25 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // ⚠ **THERE IS DELIBERATELY NO `meals` KIND, AND ADDING ONE IS THE WRONG FIX.**
+    //
+    // Everything for it already exists — `meals.csv` has a schema, `validateRow()` has a rule of
+    // its own for it, `commitRow` would write it — so its absence reads like an oversight and has
+    // been reported as one. It is not.
+    //
+    // `scripts/lib/rowwrite.mjs` requires kcal, protein_g, fat_g, carb_g and fibre_g to be
+    // non-blank on every food row (data/METHOD.md rule 3a): a blank is summed as zero and biases
+    // the day downward. That rule is right, and it is exactly what a quick phone form cannot
+    // satisfy. "Chicken and rice, about 600" is a complete sentence to the coach, which derives
+    // the macros and records the method in the note; it is an incomplete row to the validator.
+    // A form that demanded five derived numbers per item would be slower than typing the
+    // sentence, and would get used twice.
+    //
+    // So meals stay conversational, and `DASHBOARD.md` says so plainly rather than letting the
+    // Log tab imply otherwise. **The feature that would actually work is different**: a picker
+    // over the meal bank in `nutrition/meals.md`, where the macros are already derived, so a
+    // repeat meal is one tap and rule 3a is satisfied honestly. Build that if the need comes up.
+    // Decided 2026-09-05, by the athlete, after review raised the absence as a defect.
     return back({ error: `Unknown form "${kind}".` })
   } catch (e) {
     const message = e instanceof LogError ? e.message : 'Something went wrong saving that.'
